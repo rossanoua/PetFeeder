@@ -10,3 +10,7 @@ This is Arduino library for pet feeder.
 - A button, by clicking on it, feeder will push one portion of food for my pet.
 - Tension sensor and HX711 to get to know what weight we need to push more.
 - HC-06 bluetooth module, to have possibility to have some comfortable way to customise my feeder. 
+
+### What inspired me
+- Actually, the Arduino itself, to be honest.
+- Another projects. Like [Gyver Feeder](https://github.com/AlexGyver/GyverFeed2)

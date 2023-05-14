@@ -1,3 +1,5 @@
+[![Arduino CI](https://github.com/rossanoua/PetFeeder/workflows/Arduino_CI/badge.svg)](https://github.com/marketplace/actions/arduino_ci)
+
 # PetFeeder
 
 This is Arduino library for pet feeder.

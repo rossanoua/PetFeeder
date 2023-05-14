@@ -1,0 +1,24 @@
+name: Arduino Unit Testing
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: per1234/arduino-ide-install@v1
+        with:
+          board: uno
+          sketch: petFeeder.ino
+          libraries: |
+            libraries/PetFeeder
+          ide-version: '1.8.16'
+      - name: Install dependencies
+        run: arduino-cli lib install "ArduinoUnit:3.0.0"
+      - name: Build and test
+        run: |
+          arduino-cli compile --fqbn arduino:avr:uno ${{ github.workspace }}/
+          arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno ${{ github.workspace }}/
+          arduino-cli board details --fqbn arduino:avr:uno
+          arduino-cli serial monitor -p /dev/ttyACM0 -b 115200

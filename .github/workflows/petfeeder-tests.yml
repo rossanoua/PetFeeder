@@ -6,14 +6,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: per1234/arduino-ide-install@v1
-        with:
-          board: uno
-          sketch: petFeeder.ino
-          libraries: |
-            libraries/PetFeeder
-          ide-version: '1.8.16'
+      - uses: actions/checkout@v3
+      - name: arduino_ci
+        uses: Arduino-CI/action@v0.1.5
       - name: Install dependencies
         run: arduino-cli lib install "ArduinoUnit:3.0.0"
       - name: Build and test

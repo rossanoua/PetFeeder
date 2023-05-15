@@ -1,5 +1,5 @@
-#include <ArduinoUnit.h>
-#include <PetFeeder.h>
+#include <ArduinoUnitTests.h>
+#include "../PetFeeder.h"
 
 PetFeeder feeder;
 

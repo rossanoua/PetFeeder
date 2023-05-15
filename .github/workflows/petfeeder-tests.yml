@@ -1,22 +1,21 @@
-name: Arduino Unit Testing
+# This is the name of the workflow, visible on GitHub UI
+name: linux
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
-  test:
+  "TestPetFeeder":
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: arduino_ci
-        uses: Arduino-CI/action@v0.1.5
-        env:
-          USE_SUBDIR: ./libraries/PetFeeder
-          EXPECT_EXAMPLES: false
-      - name: Install dependencies
-        run: arduino-cli lib install "ArduinoUnit:3.0.0"
-      - name: Build and test
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+      - name: Check usage - PetFeeder
         run: |
-          arduino-cli compile --fqbn arduino:avr:uno ${{ github.workspace }}/
-          arduino-cli upload -p /dev/ttyACM0 --fqbn arduino:avr:uno ${{ github.workspace }}/
-          arduino-cli board details --fqbn arduino:avr:uno
-          arduino-cli serial monitor -p /dev/ttyACM0 -b 115200
+          g++ -v
+          bundle install
+          cd libraries/PetFeeder
+          bundle install
+          bundle exec arduino_ci.rb --help
+          bundle exec arduino_ci.rb

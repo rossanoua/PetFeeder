@@ -14,6 +14,9 @@ platforms:
       flags:
 
 unittest:
+  testfiles:
+    select:
+      - "*-*.*"
   platforms:
     - uno
     - due

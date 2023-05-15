@@ -17,8 +17,19 @@ unittest:
   platforms:
     - uno
     - due
+  libraries:
+    - "Servo"
+    - "HX711"
+    - "AccelStepper"
+    - "TM1637"
+    - "ArduinoUnitTests"
 
 compile:
   platforms:
     - uno
     - due
+  libraries:
+    - "Servo"
+    - "HX711"
+    - "AccelStepper"
+    - "TM1637"

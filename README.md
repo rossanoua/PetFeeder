@@ -1,4 +1,4 @@
-[![Arduino CI](https://github.com/rossanoua/PetFeeder/workflows/Arduino_CI/badge.svg)](https://github.com/marketplace/actions/arduino_ci)
+[![Arduino Unit Testing](https://github.com/rossanoua/PetFeeder/actions/workflows/petfeeder-tests.yml/badge.svg?branch=dev)](https://github.com/rossanoua/PetFeeder/actions/workflows/petfeeder-tests.yml)
 
 # PetFeeder
 

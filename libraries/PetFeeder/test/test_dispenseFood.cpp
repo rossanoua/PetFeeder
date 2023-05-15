@@ -1,4 +1,4 @@
-#include <ArduinoUnitTests.h>
+#include <ArduinoUnit.h>
 #include "../PetFeeder.h"
 
 PetFeeder feeder;

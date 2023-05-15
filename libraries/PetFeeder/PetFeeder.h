@@ -1,38 +1,38 @@
 #ifndef PetFeeder_h
 #define PetFeeder_h
 
+#include <Arduino.h>
 #include <Servo.h>
-#include <TM1637Display.h>
 #include <HX711.h>
-#include <SoftwareSerial.h>
+#include <TM1637.h>
+
+struct PetFeederConfig {
+  int servoPin;
+  int hx711DataPin;
+  int hx711ClockPin;
+  int clkPin;
+  int dioPin;
+};
 
 class PetFeeder {
-  public:
-    PetFeeder(int stepPin, int dirPin, int enPin, int loadCellDT, int loadCellSCK, int servoPin, int vibroPin, int displayClk, int displayDIO, int buttonPin, int bluetoothRx, int bluetoothTx);
-    void initialize();
-    void dispenseFood();
-    void displayWeight(float weight);
-    void vibrate();
-    void readBluetooth();
+public:
+  PetFeeder(const PetFeederConfig& config);
 
-  private:
-    int _stepPin;
-    int _dirPin;
-    int _enPin;
-    int _loadCellDT;
-    int _loadCellSCK;
-    int _servoPin;
-    int _vibroPin;
-    int _displayClk;
-    int _displayDIO;
-    int _buttonPin;
-    int _bluetoothRx;
-    int _bluetoothTx;
-    HX711 _loadCell;
-    Servo _servo;
-    TM1637Display _display;
-    SoftwareSerial _bluetooth;
-    float _portionSize;
+  void begin();
+  void dispenseFood(int portion);
+  void refillFood(int amount);
+  float getCurrentFoodWeight();
+
+private:
+  Servo servo;
+  HX711 hx711;
+  TM1637Display display;
+
+  PetFeederConfig config;
+  float emptyWeight;
+  float currentWeight;
+
+  void moveServo(int angle);
 };
 
 #endif

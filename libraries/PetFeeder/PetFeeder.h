@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include <HX711.h>
-#include <TM1637.h>
+#include <TM1637Display.h>
 
 struct PetFeederConfig {
   int servoPin;

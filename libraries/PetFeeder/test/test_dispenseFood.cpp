@@ -1,4 +1,4 @@
-#include <ArduinoUnit.h>
+#include <ArduinoUnitTests.h>
 #include <PetFeeder.h>
 
 test(dispenseFoodTest) {

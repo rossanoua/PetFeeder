@@ -14,12 +14,8 @@ jobs:
       - name: Check usage - PetFeeder
         run: |
           g++ -v
-          bundle install
-          export PATH=$PATH:/home/runner
-          echo "$PATH"
-          ls -la /home/runner
-          arduino-cli lib list
           cd libraries/PetFeeder
           bundle install
+          bundle exec ensure_arduino_installation.rb
           bundle exec arduino_ci.rb --help
           bundle exec arduino_ci.rb

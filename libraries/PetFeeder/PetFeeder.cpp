@@ -1,12 +1,11 @@
 #include "PetFeeder.h"
 
 PetFeeder::PetFeeder(const PetFeederConfig& config)
-    : config(config) {}
+    : config(config), display(config.clkPin, config.dioPin) {}
 
 void PetFeeder::begin() {
   servo.attach(config.servoPin);
   hx711.begin(config.hx711DataPin, config.hx711ClockPin);
-  display.setPin(config.clkPin, config.dioPin);
   display.setBrightness(7);
 
   emptyWeight = hx711.read();

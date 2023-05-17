@@ -1,3 +1,7 @@
+packages:
+  arduino:avr:
+    url: https://downloads.arduino.cc/packages/package_index.json
+
 compile:
   platforms:
     - uno

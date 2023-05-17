@@ -1,40 +1,59 @@
 #include <ArduinoUnitTests.h>
 #include <PetFeeder.h>
 
-test(dispenseFoodTest) {
-  // Create a PetFeeder object with the required configuration
-  PetFeederConfig config = {
-    .servoPin = 9,
-    .hx711DataPin = A0,
-    .hx711ClockPin = A1,
-    .clkPin = 2,
-    .dioPin = 3
-  };
-  PetFeeder feeder(config);
+const int ENABLE_PIN = 2;
+const int DIR_PIN = 3;
+const int STEP_PIN = 4;
+const int FEED_AMOUNT = 3;
+const int BUTTON_PIN = 5;
 
-  // Simulate the current weight and target weight
-  feeder.currentWeight = 100.0;
-  float targetWeight = 80.0;
+PetFeederConfig config = {
+  .enablePin = ENABLE_PIN,
+  .dirPin = DIR_PIN,
+  .stepPin = STEP_PIN,
+  .feedAmount = FEED_AMOUNT,
+  .buttonPin = BUTTON_PIN
+};
 
-  // Create a variable to store the mocked servo angle
-  int mockedServoAngle = 0;
+PetFeeder petFeeder(config);
 
-  // Define the lambda function as the mock for moveServo
-  feeder.moveServo = [&mockedServoAngle](int angle) {
-    // Store the value of angle in the mockedServoAngle variable
-    mockedServoAngle = angle;
-  };
-//  // Mock the necessary behavior
-//  feeder.moveServo = [](int angle) {
-//    // Mock moveServo function
-//    // You can add your own assertions or checks here if needed
-//  };
+unittest_setup() {
+  // Set up any necessary initialization for the tests
+  petFeeder.initialize();
+}
 
-  // Call the dispenseFood method
-  feeder.dispenseFood(20);
+unittest_teardown() {
+  // Clean up any resources after the tests
+}
 
-  // Check if the current weight has reached the target weight
-  assertEqual(feeder.currentWeight, targetWeight);
+unittest(testInitialize) {
+  assertEqual(OUTPUT, pinMode_called[ENABLE_PIN]);
+  assertEqual(OUTPUT, pinMode_called[DIR_PIN]);
+  assertEqual(OUTPUT, pinMode_called[STEP_PIN]);
+  assertEqual(INPUT_PULLUP, pinMode_called[BUTTON_PIN]);
+}
+
+unittest(testFeed) {
+  petFeeder.feed();
+
+  assertEqual(HIGH, digitalWrite_called[ENABLE_PIN]);
+  assertEqual(HIGH, digitalWrite_called[ENABLE_PIN]);
+  assertEqual(STEPS_FRW * FEED_AMOUNT + STEPS_BKW * FEED_AMOUNT, digitalWrite_called[STEP_PIN]);
+  assertEqual(STEPS_FRW * FEED_AMOUNT + STEPS_BKW * FEED_AMOUNT, delayMicroseconds_called);
+  assertEqual(HIGH, digitalWrite_called[STEP_PIN]);
+  assertEqual(STEPS_FRW * FEED_AMOUNT + STEPS_BKW * FEED_AMOUNT + 1, digitalWrite_called[STEP_PIN]);
+}
+
+unittest(testHandleButtonPress) {
+  // Simulate button press
+  simulateDigitalRead(BUTTON_PIN, LOW);
+  petFeeder.handleButtonPress();
+  assertEqual(true, petFeeder.buttonPressed);
+
+  // Simulate button release
+  simulateDigitalRead(BUTTON_PIN, HIGH);
+  petFeeder.handleButtonPress();
+  assertEqual(false, petFeeder.buttonPressed);
 }
 
 unittest_main()

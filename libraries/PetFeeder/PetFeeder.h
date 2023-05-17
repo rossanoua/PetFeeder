@@ -2,37 +2,28 @@
 #define PetFeeder_h
 
 #include <Arduino.h>
-#include <Servo.h>
-#include <HX711.h>
-#include <TM1637Display.h>
 
 struct PetFeederConfig {
-  int servoPin;
-  int hx711DataPin;
-  int hx711ClockPin;
-  int clkPin;
-  int dioPin;
+  int enablePin;
+  int dirPin;
+  int stepPin;
+  int feedAmount;
+  int buttonPin;
 };
 
 class PetFeeder {
 public:
   PetFeeder(const PetFeederConfig& config);
-
-  void begin();
-  void dispenseFood(int portion);
-  void refillFood(int amount);
-  float getCurrentFoodWeight();
+  void initialize();
+  void feed();
+  void handleButtonPress();
 
 private:
-  Servo servo;
-  HX711 hx711;
-  TM1637Display display;
-
   PetFeederConfig config;
-  float emptyWeight;
-  float currentWeight;
+  bool buttonPressed;
 
-  void moveServo(int angle);
+  void disableMotor();
+  void oneRev();
 };
 
 #endif

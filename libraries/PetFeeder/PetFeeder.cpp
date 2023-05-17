@@ -1,37 +1,46 @@
 #include "PetFeeder.h"
 
 PetFeeder::PetFeeder(const PetFeederConfig& config)
-    : config(config), display(config.clkPin, config.dioPin) {}
+  : config(config), buttonPressed(false) {}
 
-void PetFeeder::begin() {
-  servo.attach(config.servoPin);
-  hx711.begin(config.hx711DataPin, config.hx711ClockPin);
-  display.setBrightness(7);
-
-  emptyWeight = hx711.read();
-  currentWeight = emptyWeight;
+void PetFeeder::initialize() {
+  pinMode(config.enablePin, OUTPUT);
+  pinMode(config.dirPin, OUTPUT);
+  pinMode(config.stepPin, OUTPUT);
+  pinMode(config.buttonPin, INPUT_PULLUP);
 }
 
-void PetFeeder::dispenseFood(int portion) {
-  float targetWeight = emptyWeight - portion;
-  while (currentWeight > targetWeight) {
-    moveServo(180);
-    moveServo(0);
-    currentWeight = hx711.read();
-    display.showNumberDec(currentWeight);
-    delay(500);
+void PetFeeder::feed() {
+  disableMotor();
+  for (int i = 0; i < config.feedAmount; i++) {
+    oneRev();
+  }
+  disableMotor();
+}
+
+void PetFeeder::handleButtonPress() {
+  if (digitalRead(config.buttonPin) == LOW) {
+    buttonPressed = true;
   }
 }
 
-void PetFeeder::refillFood(int amount) {
-  emptyWeight += amount;
+void PetFeeder::disableMotor() {
+  digitalWrite(config.enablePin, HIGH);
 }
 
-float PetFeeder::getCurrentFoodWeight() {
-  return currentWeight;
-}
-
-void PetFeeder::moveServo(int angle) {
-  servo.write(angle);
-  delay(15);
+void PetFeeder::oneRev() {
+  digitalWrite(config.dirPin, HIGH);
+  for (int i = 0; i < STEPS_FRW; i++) {
+    digitalWrite(config.stepPin, HIGH);
+    delayMicroseconds(FEED_SPEED);
+    digitalWrite(config.stepPin, LOW);
+    delayMicroseconds(FEED_SPEED);
+  }
+  digitalWrite(config.dirPin, LOW);
+  for (int i = 0; i < STEPS_BKW; i++) {
+    digitalWrite(config.stepPin, HIGH);
+    delayMicroseconds(FEED_SPEED);
+    digitalWrite(config.stepPin, LOW);
+    delayMicroseconds(FEED_SPEED);
+  }
 }

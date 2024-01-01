@@ -9,8 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ruby/setup-ruby@v1
-        # with:
-        #   ruby-version: 2.6
+        with:
+          ruby-version: 3.0.2
       - name: Check usage - PetFeeder
         run: |
           g++ -v

@@ -6,6 +6,8 @@ const int DIR_PIN = 3;
 const int STEP_PIN = 4;
 const int FEED_AMOUNT = 3;
 const int BUTTON_PIN = 5;
+const int STEPS_FRW = 19        // кроки вперед
+const int STEPS_BKW = 12        // кроки назад
 
 PetFeederConfig config = {
   .enablePin = ENABLE_PIN,

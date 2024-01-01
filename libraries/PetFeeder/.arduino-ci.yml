@@ -25,7 +25,6 @@ unittest:
     - uno
     - due
   libraries:
-    - "Servo"
     - "HX711"
     - "AccelStepper"
     - "TM1637"
@@ -36,7 +35,6 @@ compile:
     - uno
     - due
   libraries:
-    - "Servo"
     - "HX711"
     - "AccelStepper"
     - "TM1637"

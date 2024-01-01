@@ -9,6 +9,9 @@ struct PetFeederConfig {
   int stepPin;
   int feedAmount;
   int buttonPin;
+  int stepsFwr;
+  int stepsBkw;
+  int feedSpeed;
 };
 
 class PetFeeder {

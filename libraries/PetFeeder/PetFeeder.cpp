@@ -30,17 +30,17 @@ void PetFeeder::disableMotor() {
 
 void PetFeeder::oneRev() {
   digitalWrite(config.dirPin, HIGH);
-  for (int i = 0; i < STEPS_FRW; i++) {
+  for (int i = 0; i < config.stepsFwr; i++) {
     digitalWrite(config.stepPin, HIGH);
-    delayMicroseconds(FEED_SPEED);
+    delayMicroseconds(config.feedSpeed);
     digitalWrite(config.stepPin, LOW);
-    delayMicroseconds(FEED_SPEED);
+    delayMicroseconds(config.feedSpeed);
   }
   digitalWrite(config.dirPin, LOW);
-  for (int i = 0; i < STEPS_BKW; i++) {
+  for (int i = 0; i < config.stepsBkw; i++) {
     digitalWrite(config.stepPin, HIGH);
-    delayMicroseconds(FEED_SPEED);
+    delayMicroseconds(config.feedSpeed);
     digitalWrite(config.stepPin, LOW);
-    delayMicroseconds(FEED_SPEED);
+    delayMicroseconds(config.feedSpeed);
   }
 }

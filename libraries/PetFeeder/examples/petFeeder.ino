@@ -3,9 +3,12 @@
 // Create an instance of the PetFeeder class
 PetFeeder feeder;
 
+// #define STEPS_FRW 19        // кроки вперед
+// #define STEPS_BKW 12        // кроки назад
+
 void setup() {
   // Initialize the feeder
-  feeder.begin();
+  feeder.initialize();
 }
 
 void loop() {

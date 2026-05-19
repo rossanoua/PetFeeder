@@ -26,8 +26,9 @@ matters until this works.
 | 4 | Power supply | 12 V, ≥2 A DC for the stepper. Separate 5 V/USB for the ESP32. | 1 | 🧪 to validate (current draw under load is unknown) |
 | 5 | Auger (screw) | 3D printed, parametric — see `hardware/cad/openscad/`. Print several pitch/diameter variants. | 3–5 | 🧪 to validate |
 | 6 | Auger tube / barrel | 3D printed, parametric — same model. Inner Ø ≈ auger OD + clearance. | 1–2 | 🧪 to validate |
-| 7 | Motor → auger coupling | Either printed-in D-shaft bore (in the model) or a 5 mm flexible/rigid shaft coupler. | 1 | 🧪 to validate |
-| 8 | Test hopper | Simple printed funnel or a cut plastic bottle taped on top of the inlet. Throwaway. | 1 | ✅ decided |
+| 7 | Drive axle | Ø5 mm rod through the auger, D-flat keys it (model has the flat). **Steel rod preferred** — printed axles flex/wear. | 1 | 🧪 to validate |
+| 7b | Motor coupler | 5 mm rigid/flex coupler: axle rear stub → NEMA17 5 mm shaft. | 1 | 🧪 to validate |
+| 8 | Hopper / feed cone | 3D printed, parametric — round top → rectangular spout that plugs into the barrel socket collar. | 1 | ✅ decided |
 | 9 | Dry cat food | The actual food the cat eats. Kibble size/shape changes everything — test with the real thing. | — | ✅ decided |
 | 10 | Misc | M3 screws/heat-set inserts for motor mount, jumper wires, breadboard. | — | ✅ decided |
 

@@ -31,7 +31,8 @@ else matters until this works.
 | 3 | Microcontroller | ESP32 dev board (e.g. ESP32-WROOM DevKitC). Used only to spin the motor in Stage 1. | 1 | ✅ decided |
 | 4 | Power supply | 12 V, ≥2 A DC for the stepper. Separate 5 V/USB for the ESP32. | 1 | 🧪 to validate (current draw under load is unknown) |
 | 5a | **Paddle wheel** (primary) | 3D printed, parametric — `cad/openscad/paddle_wheel_module.scad`. N pockets, gravity-fed; no kibble shear → no jam. | 1–2 | 🧪 to validate (sweep N pockets, pocket volume) |
-| 5b | Paddle-wheel housing | 3D printed, same model. Closed cylinder w/ top inlet socket + bottom outlet chute. | 1 | 🧪 to validate |
+| 5b | Paddle-wheel housing | 3D printed, same model. Cup shape: closed bottom, OPEN top, top inlet socket + bottom outlet chute. Has a rim recess for the cap. | 1 | 🧪 to validate |
+| 5c | Paddle-wheel end cap | 3D printed, removable lid. Slip-fit register lip into the housing rim; carries the upper axle bore. Take it off to insert/swap the wheel. | 1 | 🧪 to validate |
 | 6a | Auger (benchmark) | 3D printed, parametric — `cad/openscad/feeder_test_module.scad`. Expected to jam per real-world experience; tested only to confirm. | 1 | 🧪 benchmark |
 | 6b | Auger barrel (benchmark) | 3D printed, paired with the auger. | 1 | 🧪 benchmark |
 | 7 | Drive axle | Ø5 mm rod, D-flat keys it (both wheel and auger have matching D-bore). **Steel rod preferred** — printed axles flex/wear. | 1 | 🧪 to validate |

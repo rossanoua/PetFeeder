@@ -42,7 +42,7 @@ benchmarks.
 
 ```sh
 cd hardware/cad/openscad
-for p in wheel axle housing hopper; do
+for p in wheel axle housing end_cap hopper; do
   openscad -o ../../stl/pw_$p.stl -D "part=\"$p\"" paddle_wheel_module.scad
   openscad -o ../../3mf/pw_$p.3mf -D "part=\"$p\"" paddle_wheel_module.scad
 done
@@ -52,6 +52,14 @@ Suggested orientation:
 
 - **pw_wheel** — flat on bed (axle bore vertical). 4 paddles self-support.
 - **pw_axle** — same advice as the auger axle (use a steel rod ideally).
-- **pw_housing** — bed-down on the end cap. Outlet chute will overhang;
-  add supports for the chute and the inlet-boss roof.
+- **pw_housing** — closed bottom on the bed (open top up). Outlet chute
+  will overhang downward; needs supports for the chute and the inlet-boss
+  roof.
+- **pw_end_cap** — flat on the bed, register lip pointing up; no supports
+  needed.
 - **pw_hopper** — upside down (wide opening on the bed).
+
+Assembly order: bottom axle stub through the housing's bottom bore →
+drop the wheel onto the axle inside the housing → drop the cap onto the
+rim (its lip seats in the recess; axle stub passes through the cap bore)
+→ slide the hopper spout into the boss socket.

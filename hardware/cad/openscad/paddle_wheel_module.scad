@@ -11,8 +11,13 @@
 //   part = "wheel"    -> paddle wheel (rotates inside the housing)
 //   part = "axle"     -> drive axle (round stubs + middle D-flat, like the
 //                        auger axle but sized for this housing)
-//   part = "housing"  -> closed cylinder around the wheel, with a top inlet
-//                        boss (hopper socket) and a bottom outlet chute
+//   part = "housing"  -> cylinder around the wheel — closed bottom, OPEN
+//                        TOP, with a top inlet boss (hopper socket) and a
+//                        bottom outlet chute. Has a rim recess for the cap.
+//   part = "end_cap"  -> removable disc that closes the top of the housing.
+//                        Drops a register lip into the rim recess (slip
+//                        fit, no screws for Stage 1). Carries the upper
+//                        axle bore. **Remove the cap to insert the wheel.**
 //   part = "hopper"   -> feed cone, spout plugs into the housing inlet boss
 //   part = "assembly" -> all together (fit check, do NOT export)
 //
@@ -22,7 +27,7 @@
 //              -> outlet chute -> bowl below.
 // ===========================================================================
 
-part = "assembly";   // wheel | axle | housing | hopper | assembly
+part = "assembly";   // wheel | axle | housing | end_cap | hopper | assembly
 
 /* [Wheel] */
 wheel_d        = 60;    // outer diameter (over paddle tips)
@@ -41,16 +46,21 @@ fit_clear      = 0.20;  // bore clearance for printer fit
 /* [Housing] */
 housing_clear  = 0.6;   // radial gap between wheel OD and housing bore
 housing_wall   = 3;     // housing wall thickness (radial)
-end_wall       = 3;     // end-cap thickness (axial, at each side)
-inlet_arc_deg  = 55;    // top opening arc width (degrees)
+end_wall       = 3;     // bottom end-cap thickness / removable cap thickness
+inlet_arc_deg  = 55;    // (legacy, unused after rect-cut refactor)
 inlet_w        = 26;    // top opening width along the axle (mm)
-outlet_arc_deg = 60;    // bottom opening arc width (degrees)
-outlet_w       = 28;    // bottom opening width along the axle (mm)
+outlet_arc_deg = 60;    // (legacy)
+outlet_w       = 24;    // bottom opening width along the axle (mm)
+
+/* [Removable end cap] (slip-fit lid so you can insert the wheel) */
+register_d     = 1.5;   // depth of cap register lip into the housing rim
+step_w         = 1.0;   // radial step width of the rim recess (mm)
 
 /* [Inlet boss / hopper joint] (raised rectangular socket on top) */
 boss_h         = 12;    // socket height above the housing surface
 boss_wall      = 2.5;   // socket wall thickness
-boss_flare     = 4;     // extra clearance around the inlet opening
+boss_flare     = 2;     // extra clearance around the inlet (kept small so
+                        //   the boss doesn't extend above the housing rim)
 join_clear     = 0.35;  // hopper-spout <-> boss-socket slip fit
 
 /* [Outlet chute] (a short downward funnel below the bottom opening) */
@@ -71,7 +81,8 @@ wheel_r        = wheel_d / 2;
 hub_r          = hub_d  / 2;
 hr_in          = wheel_r + housing_clear;          // housing inner radius
 hr_out         = hr_in + housing_wall;             // housing outer radius
-hlen           = wheel_width + 2 * end_wall;       // housing total length
+housing_h      = end_wall + wheel_width;           // housing alone (bottom + cavity)
+hlen           = housing_h + end_wall;             // total assembly (housing + cap)
 
 // inlet/outlet boss footprint (rectangular, on top/bottom of housing)
 boss_y         = (inlet_w + 2*boss_flare);
@@ -135,8 +146,10 @@ module housing() {
 
     difference() {
         union() {
-            // main body (closed cylinder w/ end caps)
-            cylinder(h = hlen, d = 2 * hr_out);
+            // main body — CLOSED BOTTOM, OPEN TOP (height = housing_h, not
+            // hlen). The top end_wall is removed; the cavity goes through
+            // to the rim. The removable end_cap closes it from above.
+            cylinder(h = housing_h, d = 2 * hr_out);
             // top inlet boss: rectangular pad overlapping into the housing
             // wall (starts inside the wall, ends boss_h above OD)
             translate([ -boss_x/2,
@@ -159,13 +172,20 @@ module housing() {
             }
         }
 
-        // wheel cavity between end caps
+        // wheel cavity — open at the top (extends past housing_h to ensure
+        // the rim is fully open for wheel insertion)
         translate([0, 0, end_wall])
-            cylinder(h = wheel_width, d = 2 * hr_in);
+            cylinder(h = wheel_width + 1, d = 2 * hr_in);
 
-        // axle bore through both end caps (slip fit)
+        // axle bore through the bottom end_wall (the cap carries the top
+        // half of the bore in its own module)
         translate([0, 0, -1])
-            cylinder(h = hlen + 2, d = axle_d + fit_clear * 2);
+            cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
+
+        // rim recess: the upper register_d mm of the cavity is widened by
+        // step_w so the cap's register lip can drop in and locate the cap
+        translate([0, 0, housing_h - register_d])
+            cylinder(h = register_d + 1, d = 2 * (hr_in + step_w));
 
         // INLET — single rectangular through-cut: spans from inside the
         // wheel cavity up through the housing wall and out the boss top.
@@ -191,6 +211,30 @@ module housing() {
                          outlet_z - boss_flare ])
                 cube([ cs_wbot, 0.1, cs_h ]);
         }
+    }
+}
+
+// ===========================================================================
+// END CAP  (removable lid for the open top of the housing)
+// Slip-fit: a register lip on the underside drops into the rim recess in
+// the housing. Carries the upper half of the axle bore. No screws for the
+// Stage 1 test rig — gravity + lip alignment is enough; a rubber band or
+// tape externally if it pops off during testing.
+// ===========================================================================
+module end_cap() {
+    lip_d = 2 * (hr_in + step_w - fit_clear);   // fits the housing recess
+    difference() {
+        union() {
+            // main disc, sits flush on the housing rim
+            cylinder(h = end_wall, d = 2 * hr_out);
+            // register lip on the underside
+            translate([0, 0, -register_d])
+                cylinder(h = register_d, d = lip_d);
+        }
+        // axle bore
+        translate([0, 0, -register_d - 1])
+            cylinder(h = end_wall + register_d + 2,
+                     d = axle_d + fit_clear * 2);
     }
 }
 
@@ -229,11 +273,14 @@ module hopper() {
 if (part == "wheel")   wheel();
 if (part == "axle")    axle();
 if (part == "housing") housing();
+if (part == "end_cap") end_cap();
 if (part == "hopper")  hopper();
 if (part == "assembly") {
     color("Silver")               translate([0, 0, end_wall]) wheel();
     color("DimGray")  translate([0, 0, -axle_stub_rear])    axle();
     color("LightBlue", 0.28)                                 housing();
+    // removable cap on top of the housing rim
+    color("LightSteelBlue", 0.55) translate([0, 0, housing_h]) end_cap();
     // hopper above the housing (+Y in this Z-up build, real-world "up"
     // when the assembly is mounted with the axle horizontal). Spout points
     // -Y into the boss socket; cone opens +Y away from the housing.

@@ -28,3 +28,29 @@ collar; funnel leads from the socket into the bore.
 
 Torque path: motor → axle round stub → D-flat → auger → food.
 Use a real 5 mm steel rod as the axle if possible (printed axles flex).
+
+---
+
+## Paddle wheel module (`pw_*` files)
+
+Alternative — and now primary — Stage 1 mechanism. Source:
+`../paddle_wheel_module.scad`. Regenerate:
+
+```sh
+xvfb-run -a openscad -o preview/pw_wheel.png    --imgsize=1000,700 --autocenter --viewall -D 'part="wheel"'    paddle_wheel_module.scad
+xvfb-run -a openscad -o preview/pw_axle.png     --imgsize=1000,500 --autocenter --viewall -D 'part="axle"'     paddle_wheel_module.scad
+xvfb-run -a openscad -o preview/pw_housing.png  --imgsize=1000,750 --autocenter --viewall -D 'part="housing"'  paddle_wheel_module.scad
+xvfb-run -a openscad -o preview/pw_hopper.png   --imgsize=1000,700 --autocenter --viewall -D 'part="hopper"'   paddle_wheel_module.scad
+xvfb-run -a openscad -o preview/pw_assembly.png --imgsize=1100,800 --autocenter --viewall -D 'part="assembly"' paddle_wheel_module.scad
+```
+
+- `pw_wheel.png`    — N-paddle wheel with through D-bore for the axle
+- `pw_axle.png`     — drive axle (round stubs + D-flat, same idea as auger axle)
+- `pw_housing.png`  — closed cylinder, top inlet boss + bottom outlet chute
+- `pw_hopper.png`   — feed cone, rectangular spout plugs into the inlet boss
+- `pw_assembly.png` — wheel inside housing, hopper plugged into top socket,
+  chute extending below
+
+Real-world mounting: rotate the whole assembly 90° so the axle is
+horizontal — then the hopper sits on top (gravity-fed), the chute drops
+kibble down to the bowl below.

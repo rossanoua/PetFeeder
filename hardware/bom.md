@@ -7,16 +7,22 @@ Status legend:
 - ❓ **open** — not yet decided, depends on test results
 
 This BOM is split into two stages. **Build Stage 1 first.** Do not buy
-Stage 2 parts until the auger mechanism is validated (see
+Stage 2 parts until a feeding mechanism is validated (see
 `docs/project-notes.md` → "Mechanical concept").
+
+> **Stage 1 mechanism — decision 2026-05-20:** the **paddle wheel** is now
+> the primary candidate. The auger remains as a **benchmark** to confirm
+> (against real-world experience) that screw-and-kibble is unreliable for
+> this application; both are printed and tested. Whichever wins on jam
+> rate + portion repeatability survives into Stage 2.
 
 ---
 
-## Stage 1 — Auger mechanical test module
+## Stage 1 — Mechanism test modules
 
-Goal: prove that the auger actually moves dry cat food reliably,
-without jamming, with a roughly repeatable portion. Nothing else
-matters until this works.
+Goal: prove that the chosen mechanism actually moves dry cat food
+reliably, without jamming, with a roughly repeatable portion. Nothing
+else matters until this works.
 
 | # | Part | Spec / note | Qty | Status |
 |---|------|-------------|-----|--------|
@@ -24,11 +30,13 @@ matters until this works.
 | 2 | Stepper driver | A4988 or DRV8825 on a breakout. TMC2208 optional if noise matters. | 1 | 🧪 to validate |
 | 3 | Microcontroller | ESP32 dev board (e.g. ESP32-WROOM DevKitC). Used only to spin the motor in Stage 1. | 1 | ✅ decided |
 | 4 | Power supply | 12 V, ≥2 A DC for the stepper. Separate 5 V/USB for the ESP32. | 1 | 🧪 to validate (current draw under load is unknown) |
-| 5 | Auger (screw) | 3D printed, parametric — see `hardware/cad/openscad/`. Print several pitch/diameter variants. | 3–5 | 🧪 to validate |
-| 6 | Auger tube / barrel | 3D printed, parametric — same model. Inner Ø ≈ auger OD + clearance. | 1–2 | 🧪 to validate |
-| 7 | Drive axle | Ø5 mm rod through the auger, D-flat keys it (model has the flat). **Steel rod preferred** — printed axles flex/wear. | 1 | 🧪 to validate |
+| 5a | **Paddle wheel** (primary) | 3D printed, parametric — `cad/openscad/paddle_wheel_module.scad`. N pockets, gravity-fed; no kibble shear → no jam. | 1–2 | 🧪 to validate (sweep N pockets, pocket volume) |
+| 5b | Paddle-wheel housing | 3D printed, same model. Closed cylinder w/ top inlet socket + bottom outlet chute. | 1 | 🧪 to validate |
+| 6a | Auger (benchmark) | 3D printed, parametric — `cad/openscad/feeder_test_module.scad`. Expected to jam per real-world experience; tested only to confirm. | 1 | 🧪 benchmark |
+| 6b | Auger barrel (benchmark) | 3D printed, paired with the auger. | 1 | 🧪 benchmark |
+| 7 | Drive axle | Ø5 mm rod, D-flat keys it (both wheel and auger have matching D-bore). **Steel rod preferred** — printed axles flex/wear. | 1 | 🧪 to validate |
 | 7b | Motor coupler | 5 mm rigid/flex coupler: axle rear stub → NEMA17 5 mm shaft. | 1 | 🧪 to validate |
-| 8 | Hopper / feed cone | 3D printed, parametric — round top → rectangular spout that plugs into the barrel socket collar. | 1 | ✅ decided |
+| 8 | Hopper / feed cone | 3D printed, parametric — round top → rectangular spout that plugs into the mechanism's socket (separate hoppers for wheel vs auger; both in the .scad files). | 1–2 | ✅ decided |
 | 9 | Dry cat food | The actual food the cat eats. Kibble size/shape changes everything — test with the real thing. | — | ✅ decided |
 | 10 | Misc | M3 screws/heat-set inserts for motor mount, jumper wires, breadboard. | — | ✅ decided |
 
@@ -60,9 +68,12 @@ Optional for Stage 1:
 
 ## Open questions to resolve via Stage 1 test
 
-- Auger outer diameter and pitch that move food reliably?
+- **Paddle wheel:** pocket count and pocket volume that give one
+  acceptable portion per fraction of a rotation? Does any kibble jam
+  in the inlet boss, the wheel cavity, or the chute?
+- **Auger (benchmark):** does it confirm the expected jam behaviour
+  (or surprise us)? Anti-jam reverse stepping needed?
 - Portion repeatability good enough for open-loop, or is the HX711
-  weight loop mandatory?
-- Is the vibration motor actually needed, or does geometry alone solve jams?
+  weight loop mandatory anyway?
 - Is NEMA17 17HS4401 overkill → can we downsize (cost, size, power)?
-- Reverse-rotation anti-jam / anti-dribble: how many steps back per portion?
+  (Paddle wheel torque requirement is much lower than auger.)

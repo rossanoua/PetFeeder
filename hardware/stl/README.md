@@ -33,3 +33,25 @@ All exported manifold (OpenSCAD `Simple: yes`). Fit clearances
 (`fit_clear`, `join_clear`, `barrel_clear`) are guesses — adjust in the
 .scad and reprint test coupons until the slip fits feel right on your
 printer. Record results in `docs/mechanical-tests.md`.
+
+## Paddle wheel parts (`pw_*`)
+
+Source: `../cad/openscad/paddle_wheel_module.scad`. Same axle interface
+(Ø5 mm with D-flat) as the auger, so one printed axle works for both
+benchmarks.
+
+```sh
+cd hardware/cad/openscad
+for p in wheel axle housing hopper; do
+  openscad -o ../../stl/pw_$p.stl -D "part=\"$p\"" paddle_wheel_module.scad
+  openscad -o ../../3mf/pw_$p.3mf -D "part=\"$p\"" paddle_wheel_module.scad
+done
+```
+
+Suggested orientation:
+
+- **pw_wheel** — flat on bed (axle bore vertical). 4 paddles self-support.
+- **pw_axle** — same advice as the auger axle (use a steel rod ideally).
+- **pw_housing** — bed-down on the end cap. Outlet chute will overhang;
+  add supports for the chute and the inlet-boss roof.
+- **pw_hopper** — upside down (wide opening on the bed).

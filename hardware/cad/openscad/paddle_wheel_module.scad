@@ -41,16 +41,37 @@ axle_d         = 5.0;   // axle diameter (use a Ø5 mm steel rod ideally)
 axle_flat      = 0.8;   // D-flat depth — torque key wheel <-> axle
 axle_stub_rear = 22;    // length sticking out the rear (motor side)
 axle_stub_front= 12;    // length sticking out the front (support side)
-fit_clear      = 0.20;  // bore clearance for printer fit
+fit_clear      = 0.30;  // bore clearance for printer fit (axle, cap lip,
+                        //   etc.). Bumped from 0.20 after first print: the
+                        //   cap lip was too tight to seat by hand.
 
 /* [Housing] */
-housing_clear  = 0.6;   // radial gap between wheel OD and housing bore
-housing_wall   = 3;     // housing wall thickness (radial)
-end_wall       = 3;     // bottom end-cap thickness / removable cap thickness
-inlet_arc_deg  = 55;    // (legacy, unused after rect-cut refactor)
-inlet_w        = 26;    // top opening width along the axle (mm)
-outlet_arc_deg = 60;    // (legacy)
-outlet_w       = 24;    // bottom opening width along the axle (mm)
+housing_clear      = 0.8;  // radial gap wheel OD <-> housing bore. Was 0.6
+                           // — bumped after first print so the wheel
+                           // doesn't bind against the cavity walls.
+wheel_axial_clear  = 0.5;  // axial play between wheel top and the start of
+                           // the cap recess. Was 0 (wheel filled cavity
+                           // exactly → wheel sat proud → cap couldn't
+                           // seat). 0.5 mm is enough slack for print
+                           // tolerance without letting the wheel rattle.
+housing_wall       = 3;    // housing wall thickness (radial)
+end_wall           = 3;    // bottom end-cap thickness / cap thickness
+inlet_arc_deg      = 55;   // (legacy, unused after rect-cut refactor)
+inlet_w            = 26;   // top opening width along the axle (mm)
+outlet_arc_deg     = 60;   // (legacy)
+outlet_w           = 24;   // bottom opening width along the axle (mm)
+
+/* [Angular layout — where the inlet/outlet sit around the wheel axis] */
+// Angles in the XY plane, CCW from +X. 90° = +Y; 270° = -Y. When the
+// assembly is physically mounted with the axle HORIZONTAL, +Y is "up".
+// Inlet stays on top so the hopper drops kibble in by gravity.
+// Outlet is offset from straight-down on purpose: with a coaxial 90/270
+// layout, a kibble piece that misses a pocket can slide along the housing
+// wall and fall straight through the outlet unmetered. Offsetting the
+// outlet forces every piece to be carried by a pocket — cleaner dosing.
+inlet_angle_deg    = 90;
+outlet_angle_deg   = 240;  // 30° offset from coaxial; bump up to e.g. 220
+                           //   or 260 to suit motor rotation direction
 
 /* [Removable end cap] (slip-fit lid so you can insert the wheel) */
 register_d     = 1.5;   // depth of cap register lip into the housing rim
@@ -81,7 +102,11 @@ wheel_r        = wheel_d / 2;
 hub_r          = hub_d  / 2;
 hr_in          = wheel_r + housing_clear;          // housing inner radius
 hr_out         = hr_in + housing_wall;             // housing outer radius
-housing_h      = end_wall + wheel_width;           // housing alone (bottom + cavity)
+// housing_h = bottom end_wall + wheel + axial slack + cap recess depth.
+// Was just (end_wall + wheel_width); the wheel was binding into the
+// recess so the cap couldn't seat.
+housing_h      = end_wall + wheel_width
+               + wheel_axial_clear + register_d;
 hlen           = housing_h + end_wall;             // total assembly (housing + cap)
 
 // inlet/outlet boss footprint (rectangular, on top/bottom of housing)
@@ -144,38 +169,47 @@ module housing() {
     cs_wbot   = chute_x + chute_taper - 2 * boss_wall;  // chute interior bottom X
     cs_h      = outlet_w + 2 * boss_flare;     // chute interior Z
 
+    // Both the inlet and the outlet are built first at their "natural"
+    // orientations (boss at +Y, chute at -Y), then rotated to their final
+    // angular positions around Z. Keep these rotations identical for the
+    // boss-outer/inlet-cut pair and the chute-outer/outlet-cut pair so the
+    // material and the cavity stay aligned.
+    inlet_rot  = inlet_angle_deg  - 90;
+    outlet_rot = outlet_angle_deg - 270;
+
     difference() {
         union() {
-            // main body — CLOSED BOTTOM, OPEN TOP (height = housing_h, not
-            // hlen). The top end_wall is removed; the cavity goes through
-            // to the rim. The removable end_cap closes it from above.
+            // main body — CLOSED BOTTOM, OPEN TOP. The top end_wall is
+            // removed; the cavity goes through to the rim. The removable
+            // end_cap closes it from above.
             cylinder(h = housing_h, d = 2 * hr_out);
-            // top inlet boss: rectangular pad overlapping into the housing
-            // wall (starts inside the wall, ends boss_h above OD)
-            translate([ -boss_x/2,
-                         hr_in - 1,
-                         inlet_z - boss_flare ])
-                cube([ boss_x,
-                       (hr_out - hr_in + 1) + boss_h,
-                       socket_h ]);
-            // bottom outlet chute: frustum widening downward. Top slab is
-            // 3 mm INSIDE the cylinder so the union overlaps cleanly.
-            hull() {
-                translate([ -chute_x/2,
-                            -hr_out + 3,
-                             outlet_z - boss_flare ])
-                    cube([ chute_x, 0.1, cs_h ]);
-                translate([ -(chute_x + chute_taper)/2,
-                            -(hr_out + chute_h),
-                             outlet_z - boss_flare ])
-                    cube([ chute_x + chute_taper, 0.1, cs_h ]);
-            }
+            // inlet boss at inlet_angle_deg
+            rotate([0, 0, inlet_rot])
+                translate([ -boss_x/2,
+                             hr_in - 1,
+                             inlet_z - boss_flare ])
+                    cube([ boss_x,
+                           (hr_out - hr_in + 1) + boss_h,
+                           socket_h ]);
+            // outlet chute at outlet_angle_deg (frustum widening outward)
+            rotate([0, 0, outlet_rot])
+                hull() {
+                    translate([ -chute_x/2,
+                                -hr_out + 3,
+                                 outlet_z - boss_flare ])
+                        cube([ chute_x, 0.1, cs_h ]);
+                    translate([ -(chute_x + chute_taper)/2,
+                                -(hr_out + chute_h),
+                                 outlet_z - boss_flare ])
+                        cube([ chute_x + chute_taper, 0.1, cs_h ]);
+                }
         }
 
-        // wheel cavity — open at the top (extends past housing_h to ensure
-        // the rim is fully open for wheel insertion)
+        // wheel cavity — extends past the wheel top by wheel_axial_clear
+        // so the wheel doesn't crash into the cap recess above
         translate([0, 0, end_wall])
-            cylinder(h = wheel_width + 1, d = 2 * hr_in);
+            cylinder(h = wheel_width + wheel_axial_clear + 1,
+                     d = 2 * hr_in);
 
         // axle bore through the bottom end_wall (the cap carries the top
         // half of the bore in its own module)
@@ -187,30 +221,27 @@ module housing() {
         translate([0, 0, housing_h - register_d])
             cylinder(h = register_d + 1, d = 2 * (hr_in + step_w));
 
-        // INLET — single rectangular through-cut: spans from inside the
-        // wheel cavity up through the housing wall and out the boss top.
-        // (Replaces the earlier arc-extrude wedge, which left ledge
-        // artifacts where the wedge angle was narrower than the boss
-        // chord.)
-        translate([ -socket_w/2,
-                     hr_in - 2,
-                     inlet_z - boss_flare ])
-            cube([ socket_w,
-                   (hr_out - hr_in + 1) + boss_h + 4,
-                   socket_h ]);
+        // INLET — rectangular through-cut, at inlet_angle_deg
+        rotate([0, 0, inlet_rot])
+            translate([ -socket_w/2,
+                         hr_in - 2,
+                         inlet_z - boss_flare ])
+                cube([ socket_w,
+                       (hr_out - hr_in + 1) + boss_h + 4,
+                       socket_h ]);
 
-        // OUTLET — chute interior, a single hulled frustum from inside
-        // the wheel cavity down through the chute exit.
-        hull() {
-            translate([ -cs_w/2,
-                        -hr_in + 1,
-                         outlet_z - boss_flare ])
-                cube([ cs_w, 0.1, cs_h ]);
-            translate([ -cs_wbot/2,
-                        -(hr_out + chute_h + 1),
-                         outlet_z - boss_flare ])
-                cube([ cs_wbot, 0.1, cs_h ]);
-        }
+        // OUTLET — chute interior frustum, at outlet_angle_deg
+        rotate([0, 0, outlet_rot])
+            hull() {
+                translate([ -cs_w/2,
+                            -hr_in + 1,
+                             outlet_z - boss_flare ])
+                    cube([ cs_w, 0.1, cs_h ]);
+                translate([ -cs_wbot/2,
+                            -(hr_out + chute_h + 1),
+                             outlet_z - boss_flare ])
+                    cube([ cs_wbot, 0.1, cs_h ]);
+            }
     }
 }
 
@@ -284,6 +315,9 @@ if (part == "assembly") {
     // hopper above the housing (+Y in this Z-up build, real-world "up"
     // when the assembly is mounted with the axle horizontal). Spout points
     // -Y into the boss socket; cone opens +Y away from the housing.
+    // Wrapped in the same Z-rotation as the inlet boss so they track each
+    // other when inlet_angle_deg changes.
+    rotate([0, 0, inlet_angle_deg - 90])
     color("Khaki", 0.55)
         translate([0,
                    hr_out - 1,

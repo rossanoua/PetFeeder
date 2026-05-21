@@ -43,15 +43,22 @@ done
 xvfb-run -a openscad -o preview/pw_assembly.png --imgsize=1100,800 --autocenter --viewall -D 'part="assembly"' paddle_wheel_module.scad
 ```
 
-- `pw_wheel.png`    — N-paddle wheel with through D-bore for the axle
-- `pw_axle.png`     — drive axle (round stubs + D-flat, same idea as auger axle)
-- `pw_housing.png`  — cup-shaped, OPEN at the top; closed bottom; rim has
-  a recess for the cap's register lip
-- `pw_end_cap.png`  — removable lid; slip-fit lip drops into the rim
-  recess; carries the upper axle bore. Take it off to insert the wheel.
-- `pw_hopper.png`   — feed cone, rectangular spout plugs into the inlet boss
-- `pw_assembly.png` — wheel inside housing, cap closing the top, hopper
-  plugged into the boss, chute extending below
+- `pw_wheel.png`    — full-height hub + half-height paddles + D-bore
+- `pw_axle.png`     — drive axle (round stubs + middle D-flat)
+- `pw_housing.png`  — cup-shaped, closed floor with the rectangular
+  OUTLET hole, OPEN top, rim recess for the cap
+- `pw_housing_top.png` — top-down view; the outlet rectangle in the
+  floor is clearly visible at 180° (left side of the disc) and the
+  central axle bore at the centre
+- `pw_end_cap.png`  — removable lid with the central axle bore + the
+  radial-offset inlet hole, and the rectangular boss-socket on top
+- `pw_hopper.png`   — feed cone; rectangular spout plugs into the cap
+  boss-socket
+- `pw_assembly.png` — wheel inside the housing, cap closing the top,
+  hopper sitting above the cap with its spout in the boss; axle
+  through everything (stubs visible top and bottom)
+- `pw_assembly_top.png` — top-down view; inlet (cap boss) at +X / 0°,
+  outlet (in the floor below) at 180°; non-coaxial offset = 180°
 
 Real-world mounting: rotate the whole assembly 90° so the axle is
 horizontal — then the hopper sits on top (gravity-fed), the chute drops

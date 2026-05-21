@@ -50,16 +50,30 @@ done
 
 Suggested orientation:
 
-- **pw_wheel** — flat on bed (axle bore vertical). 4 paddles self-support.
-- **pw_axle** — same advice as the auger axle (use a steel rod ideally).
-- **pw_housing** — closed bottom on the bed (open top up). Outlet chute
-  will overhang downward; needs supports for the chute and the inlet-boss
-  roof.
-- **pw_end_cap** — flat on the bed, register lip pointing up; no supports
-  needed.
+- **pw_wheel** — flat on bed, hub axis vertical. Paddles on the bottom
+  half (closer to the bed) self-support; no supports needed.
+- **pw_axle** — use a Ø5 mm steel rod if possible.
+- **pw_housing** — bed-down on the closed floor (open top facing up).
+  No overhangs to support — the floor is flat and the outlet is a clean
+  through-hole in the floor.
+- **pw_end_cap** — flat on the bed, register lip pointing UP, boss
+  pointing up. Boss has a flat overhanging roof — needs light supports
+  if you print it cap-down. Or print boss-down (boss touching the bed)
+  to avoid supports inside the socket. Pick whichever your slicer
+  handles better.
 - **pw_hopper** — upside down (wide opening on the bed).
 
-Assembly order: bottom axle stub through the housing's bottom bore →
-drop the wheel onto the axle inside the housing → drop the cap onto the
-rim (its lip seats in the recess; axle stub passes through the cap bore)
-→ slide the hopper spout into the boss socket.
+Assembly order:
+1. Slide the axle up through the housing's bottom bore (motor stub
+   exits below the floor).
+2. Drop the wheel onto the axle inside the housing (D-flat keys it).
+3. Drop the cap onto the rim — the register lip seats in the recess,
+   and the upper axle stub passes through the cap bore.
+4. Slide the hopper spout into the boss-socket on top of the cap.
+
+**Mounting note for Stage 1 tests:** the housing rests on its flat
+floor BUT the outlet is in that floor. Prop the housing up on small
+blocks under the rim (or place it over the bowl on a piece of cardboard
+with a hole cut) so kibble can fall through the outlet into the bowl.
+The motor coupler attached to the bottom axle stub also works as a
+built-in standoff if the motor is mounted below the housing.

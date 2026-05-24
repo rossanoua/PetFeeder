@@ -51,13 +51,18 @@
 part = "assembly";   // wheel | axle | housing | end_cap | hopper | assembly
 
 /* [Wheel] */
-wheel_d         = 60;    // outer diameter (over paddle tips)
+// Sized 2026-05-24 from real-kibble test: previous 60 mm wheel had
+// 16×12 mm inlet/outlet holes — too small for the user's kibble
+// (~10–12 mm pieces wedged at the opening). Scaled up to 80 mm wheel
+// to make the rectangular hole 20×22 mm so two kibble pieces can pass
+// without binding. See vault decision 2026-05-24-upscale-wheel-d-60-to-80.
+wheel_d         = 80;    // outer diameter (over paddle tips)
 wheel_thickness = 26;    // axial extent of the wheel hub (full cavity height)
 n_paddles       = 4;     // number of paddles
 paddle_thick    = 2.4;   // paddle wall thickness
 paddle_fraction = 0.5;   // paddles occupy this fraction of wheel_thickness
                          //   from the bottom (per user spec: half)
-hub_d           = 16;    // central hub diameter
+hub_d           = 20;    // central hub diameter (kept proportional to wheel_d)
 
 /* [Axle] */
 axle_d          = 5.0;
@@ -81,9 +86,12 @@ step_w         = 1.0;
 // Hole is rectangular and aligned RADIALLY (long axis runs from near the
 // axle outward toward the housing wall). It must fit inside one pocket
 // sector (so only one pocket dispenses at a time).
-hole_radial_in   = 10;   // inner edge from axle center (just outside hub_r)
-hole_radial_out  = 26;   // outer edge (just inside wheel_r)
-hole_w           = 12;   // tangential width
+hole_radial_in   = 18;   // inner edge from axle center
+hole_radial_out  = 38;   // outer edge (just inside wheel_r=40)
+hole_w           = 22;   // tangential width — sized so that 2 kibble
+                         //   pieces (~10–12 mm each) can fit side by
+                         //   side. Margin against pocket chord at r=18,
+                         //   n=4: ~0.85 mm per side for paddle clearance.
 inlet_angle_deg  = 0;    // angular position of the cap inlet (CCW from +X)
 outlet_angle_deg = 180;  // floor outlet — 180° = half rotation transit
 

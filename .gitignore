@@ -1,1 +1,5 @@
 /hardware/gcode/
+
+# Claude Code per-user accumulated allows (do not share).
+# Team-wide policy lives in .claude/settings.json and IS committed.
+.claude/settings.local.json

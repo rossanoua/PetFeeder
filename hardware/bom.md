@@ -37,7 +37,10 @@ else matters until this works.
 | 6b | Auger barrel (benchmark) | 3D printed, paired with the auger. | 1 | 🧪 benchmark |
 | 7 | Drive axle | Ø5 mm rod, D-flat keys it (both wheel and auger have matching D-bore). **Steel rod preferred** — printed axles flex/wear. | 1 | 🧪 to validate |
 | 7b | Motor coupler | 5 mm rigid/flex coupler: axle rear stub → NEMA17 5 mm shaft. | 1 | 🧪 to validate |
-| 8 | Hopper / feed cone | 3D printed, parametric — round top → rectangular spout that plugs into the mechanism's socket (separate hoppers for wheel vs auger; both in the .scad files). | 1–2 | ✅ decided |
+| 8a | Test hopper (small) | 3D printed, parametric — `paddle_wheel_module.scad part="hopper"`. Round top Ø70 → rectangular spout. Used for early bench testing of the dispensing mechanism. | 1 | ✅ decided |
+| 8b | **Bulk hopper — funnel** | 3D printed, parametric — `bulk_hopper_module.scad part="funnel"`. Ø160 × 153 mm. Mass-flow 65° walls + integrated anti-bridge cone (4 ribs). Rectangular spout matches the paddle-wheel cap socket. | 1 | 🧪 to validate (printed but not flow-tested) |
+| 8c | **Bulk hopper — storage ring** | 3D printed, parametric — `bulk_hopper_module.scad part="ring"`. Ø160 × 170 mm modular. Print **1** for ~1.7 kg total capacity, **2** for ~2.9 kg. Stackable slip-fit lip. | 1+ | 🧪 to validate |
+| 8d | **Bulk hopper — lid** | 3D printed, parametric — `bulk_hopper_module.scad part="lid"`. Wraps the topmost ring lip; finger pad on top. | 1 | 🧪 to validate |
 | 9 | Dry cat food | The actual food the cat eats. Kibble size/shape changes everything — test with the real thing. | — | ✅ decided |
 | 10 | Misc | M3 screws/heat-set inserts for motor mount, jumper wires, breadboard. | — | ✅ decided |
 

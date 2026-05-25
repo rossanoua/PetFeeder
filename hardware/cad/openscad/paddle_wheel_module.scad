@@ -1,117 +1,100 @@
-// AiPetFeeder — Stage 1 paddle-wheel rotary-disc dispenser
+// AiPetFeeder — Paddle-wheel rotary-disc dispenser
 // ---------------------------------------------------------------------------
-// REVISED ARCHITECTURE (2026-05-21) — user feedback after first physical
-// test: the radial inlet/outlet layout was wrong. The correct layout is
-// AXIAL: housing rests on its flat circular floor, the wheel axis is
-// vertical, inlet is a hole through the top end_cap, outlet is the same
-// shape hole through the floor. Paddles fill only the BOTTOM HALF of the
-// cavity so they can sweep kibble along the floor from inlet position to
-// outlet position; food drops into a pocket through the cap, rides
-// around in the pocket, and falls out through the floor outlet.
+// Rewrite 2026-05-25: COLLAR-MOUNT hopper redesign per ADR
+// `2026-05-25-collar-mount-hopper-redesign`. Hopper no longer plugs INTO a
+// socket — it sits ON TOP of the cap, retained laterally by a low collar
+// (fence) that surrounds its outer bottom edge. Kibble flow pipe has no
+// wall narrowing and no shelf — the cap inlet hole IS the narrowest cross-
+// section in the entire pipe.
 //
-//        ┌────────────────────────┐
-//        │      hopper cone       │
-//        └───────────┬────────────┘
-//                    │ spout
-//             ┌──────┴───────┐         (inlet boss on the cap)
-//             │              │
-//        ╞════╧══════════════╧═════╡   ← end_cap rim (removable)
-//        │     ░░░░░░░░░░░░░         ░ │   open space (top half)
-//        │                          │
-//        │  ┌──┐  ┌──┐  ┌──┐  ┌──┐  │   ← paddles, bottom half only
-//        │  │  │  │  │  │  │  │  │  │       (sweep kibble along floor)
-//        ├──┤  ├──┤  ├──┤  ├──┤  ├──┤   ← housing floor
-//                    │
-//                    ▼ outlet
-//                   bowl
+// Architecture summary (unchanged from previous revision):
+// Housing rests on its FLAT circular floor (axle vertical in operation).
+// Inlet through the cap (rounded-rect hole at a radial offset). Outlet
+// through the floor (same shape hole, 180° apart angularly). Paddles fill
+// only the BOTTOM half of the cavity — they sweep kibble along the floor
+// from inlet position to outlet position.
+//
+//        ┌──────────────────────────┐
+//        │     hopper / funnel      │     (sits ON TOP of cap;
+//        │     (open bottom)        │      no spout into a socket)
+//        └────────────┬─────────────┘
+//                     │ flow area = hole size (no walls)
+//                     │
+//        ╔═══╦════════│════════════╦══╗   ← collar walls (fence)
+//        ║   ╠════════╧════════════╣  ║      surrounding the hopper
+//        ╞═══╧═══════════════════════╡   ← end_cap rim (removable)
+//        │     ░░░░░░░░░░░░░░░░░░   │      cavity
+//        │  ┌──┐  ┌──┐  ┌──┐ (3×)   │      paddles (bottom half only)
+//        ├──┤  ├──┤  ├──┤           │      n_paddles = 3, sweep floor
+//        ├──┘  └──┴──┘  └───────────┤      housing floor
+//                  │  outlet hole
+//                  ▼ → chute → bowl
 //
 // Parts:
-//   part = "wheel"    -> full-height hub + half-height paddles + D-bore
-//   part = "axle"     -> through axle (motor below, retention above)
-//   part = "housing"  -> cylindrical wall + closed floor with outlet
-//                        hole. OPEN top for cap insertion.
-//   part = "end_cap"  -> removable lid: axle bore + inlet hole +
-//                        boss-socket on top for the hopper spout
-//   part = "hopper"   -> feed cone (round → rectangular spout)
-//   part = "assembly" -> all together
-//
-// Torque path: motor → axle bottom stub → axle D-flat → wheel hub
-//              → paddles → kibble.
-// Food path:   hopper → spout → cap boss-socket → cap inlet hole →
-//              pocket between paddles → wheel rotates → pocket arrives
-//              over the floor outlet hole → kibble falls into the bowl.
-//
-// MOUNTING NOTE: the housing rests on its flat floor BUT the outlet is in
-// that floor. For the Stage 1 test rig you need to prop the housing up
-// (small blocks under the rim, or a future bracket) so kibble can clear
-// the outlet. The motor coupler attached to the bottom axle stub also
-// works as a built-in standoff if the motor is mounted below.
+//   part = "wheel"    -> hub + half-height paddles + D-bore
+//   part = "axle"     -> through axle
+//   part = "housing"  -> cup, floor with outlet hole (rounded corners)
+//   part = "end_cap"  -> lid with axle bore + inlet hole (rounded corners)
+//                        + COLLAR (rectangular fence) on top, around the
+//                        hole, retaining the hopper laterally
+//   part = "hopper"   -> small test hopper, open-bottom rect-to-round cone
+//   part = "assembly" -> all stacked together for fit check
 // ===========================================================================
 
 part = "assembly";   // wheel | axle | housing | end_cap | hopper | assembly
 
 /* [Wheel] */
-// Sized 2026-05-24 from real-kibble test: previous 60 mm wheel had
-// 16×12 mm inlet/outlet holes — too small for the user's kibble
-// (~10–12 mm pieces wedged at the opening). Scaled up to 80 mm wheel
-// to make the rectangular hole 20×22 mm so two kibble pieces can pass
-// without binding. See vault decision 2026-05-24-upscale-wheel-d-60-to-80.
 wheel_d         = 80;    // outer diameter (over paddle tips)
-wheel_thickness = 26;    // axial extent of the wheel hub (full cavity height)
-n_paddles       = 4;     // number of paddles
-paddle_thick    = 2.4;   // paddle wall thickness
-paddle_fraction = 0.5;   // paddles occupy this fraction of wheel_thickness
-                         //   from the bottom (per user spec: half)
-hub_d           = 20;    // central hub diameter (kept proportional to wheel_d)
+wheel_thickness = 18;    // axial extent of wheel hub
+                         //   18 × pocket area (n=3) gives ~28 mL ≈ 11 g
+n_paddles       = 3;     // sector 120° (was 4; needed for wider hole)
+paddle_thick    = 2.4;
+paddle_fraction = 0.5;
+hub_d           = 20;
 
 /* [Axle] */
-axle_d          = 5.0;
-axle_flat       = 0.8;
-axle_stub_top   = 8;     // sticks above the cap (helps retain the cap)
-axle_stub_bot   = 22;    // sticks below the housing floor (motor side)
-fit_clear       = 0.30;  // bore clearance for printer fit
+axle_d         = 5.0;
+axle_flat      = 0.8;
+axle_stub_top  = 8;
+axle_stub_bot  = 22;
+fit_clear      = 0.30;
 
 /* [Housing] */
-housing_clear      = 0.8;   // radial gap wheel OD <-> housing bore
-wheel_axial_clear  = 0.5;   // axial play between wheel top and cap recess
-floor_clear        = 0.5;   // gap between paddle bottom and housing floor
+housing_clear      = 0.8;
+wheel_axial_clear  = 0.5;
+floor_clear        = 0.5;
 housing_wall       = 3;
-end_wall           = 3;     // bottom floor thickness; cap thickness
+end_wall           = 3;
 
-/* [Removable end cap — slip-fit lid] */
+/* [Removable end cap] */
 register_d     = 1.5;
 step_w         = 1.0;
 
-/* [Inlet / outlet rectangular hole] (in cap and floor respectively) */
-// Hole is rectangular and aligned RADIALLY (long axis runs from near the
-// axle outward toward the housing wall). It must fit inside one pocket
-// sector (so only one pocket dispenses at a time).
-hole_radial_in   = 18;   // inner edge from axle center
-hole_radial_out  = 38;   // outer edge (just inside wheel_r=40)
-hole_w           = 22;   // tangential width — sized so that 2 kibble
-                         //   pieces (~10–12 mm each) can fit side by
-                         //   side. Margin against pocket chord at r=18,
-                         //   n=4: ~0.85 mm per side for paddle clearance.
-inlet_angle_deg  = 180;  // -X side of cap (BACK of feeder; hopper above is on the back/centre column)
-outlet_angle_deg = 0;    // +X side of floor (FRONT of feeder; over the bowl niche / chute)
-                         //   inlet and outlet 180° apart = half-rotation transit
+/* [Inlet / outlet rectangular hole] */
+// Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
+// the entire kibble pipe (cone narrows down to it directly; no wall
+// constriction above or below).
+hole_radial_in   = 18;
+hole_radial_out  = 40;   // length 22 mm
+hole_w           = 28;   // tangential width
+hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
+inlet_angle_deg  = 180;
+outlet_angle_deg = 0;
 
-/* [Inlet boss / hopper joint] (raised socket on top of the cap) */
-boss_h         = 12;     // socket height above the cap surface
-boss_wall      = 2.5;    // socket wall thickness
-boss_flare     = 2;      // socket clearance around the hole (creates shelf)
-join_clear     = 0.35;   // hopper-spout <-> socket slip fit
+/* [Hopper collar on the cap] (replaces the old boss-socket) */
+collar_h     = 10;     // collar wall height above the cap surface
+collar_wall  = 2.0;    // collar wall thickness
+collar_clear = 0.5;    // hopper outer <-> collar inner slip-fit clearance
+hopper_wall  = 2;      // wall thickness of the test/bulk hopper
 
-/* [Hopper] */
+/* [Test hopper] (the small bench hopper; bulk hopper is a separate file) */
 hopper_top_d   = 70;
 hopper_h       = 55;
-hopper_wall    = 2;
-spout_h        = 9;
 
 /* [Quality] */
 $fn = 96;
 
-// --- derived ------------------------------------------------------------
+// --- derived ----------------------------------------------------------------
 wheel_r    = wheel_d / 2;
 hub_r      = hub_d   / 2;
 hr_in      = wheel_r + housing_clear;
@@ -124,13 +107,28 @@ paddle_h   = wheel_thickness * paddle_fraction;
 hole_len   = hole_radial_out - hole_radial_in;
 hole_mid_r = (hole_radial_in + hole_radial_out) / 2;
 
-socket_x   = hole_len + 2 * boss_flare;       // socket inner (radial)
-socket_y   = hole_w   + 2 * boss_flare;       // socket inner (tangential)
-boss_bx    = socket_x + 2 * boss_wall;        // boss outer (radial)
-boss_by    = socket_y + 2 * boss_wall;        // boss outer (tangential)
+// Hopper outer bottom (sits on the cap, around the hole)
+hopper_outer_w     = hole_w + 2 * hopper_wall;
+hopper_outer_len   = hole_len + 2 * hopper_wall;
 
-// D-profile solid: cylinder with one +X side flattened (axle cross-section
-// and matching bore).
+// Collar inner outline (surrounds the hopper outer bottom)
+collar_inner_w     = hopper_outer_w + 2 * collar_clear;
+collar_inner_len   = hopper_outer_len + 2 * collar_clear;
+collar_outer_w     = collar_inner_w + 2 * collar_wall;
+collar_outer_len   = collar_inner_len + 2 * collar_wall;
+
+// --- helpers ----------------------------------------------------------------
+// Rounded rectangle extruded along z (centered on origin in X/Y)
+module rounded_rect(x, y, r, h) {
+    hull() {
+        for (dx = [-1, 1])
+            for (dy = [-1, 1])
+                translate([dx * (x/2 - r), dy * (y/2 - r), 0])
+                    cylinder(r = r, h = h);
+    }
+}
+
+// D-shape (axle + matching bore)
 module d_solid(d, flat, len) {
     difference() {
         cylinder(h = len, d = d);
@@ -144,9 +142,7 @@ module d_solid(d, flat, len) {
 module wheel() {
     difference() {
         union() {
-            // hub spans the full cavity height for axle support
             cylinder(h = wheel_thickness, d = hub_d);
-            // paddles only on the bottom half — they sweep the floor
             for (i = [0 : n_paddles - 1])
                 rotate([0, 0, 360 * i / n_paddles])
                     translate([hub_r - 0.1, -paddle_thick/2, 0])
@@ -154,18 +150,16 @@ module wheel() {
                               paddle_thick,
                               paddle_h]);
         }
-        // through D-bore
         translate([0, 0, -1])
             d_solid(axle_d + fit_clear, axle_flat, wheel_thickness + 2);
     }
 }
 
 // ===========================================================================
-// AXLE  long enough to span motor stub + floor + cavity + cap + retention
+// AXLE
 // ===========================================================================
 module axle() {
     total = axle_stub_bot + housing_h + end_wall + axle_stub_top;
-    // D-flat over the wheel engagement region only (middle section)
     engage_z0 = axle_stub_bot + end_wall + floor_clear;
     difference() {
         cylinder(h = total, d = axle_d);
@@ -175,93 +169,112 @@ module axle() {
 }
 
 // ===========================================================================
-// HOUSING  cylindrical wall + closed floor (outlet hole) + open top
+// HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
 // ===========================================================================
 module housing() {
     difference() {
-        // main body — closed floor, open top
         cylinder(h = housing_h, d = 2 * hr_out);
 
-        // wheel cavity (open at the top — extends past housing_h)
+        // wheel cavity
         translate([0, 0, end_wall])
             cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
 
-        // central axle bore through the floor
+        // central axle bore
         translate([0, 0, -1])
             cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
 
-        // rim recess for the cap register lip
+        // rim recess for cap lip
         translate([0, 0, housing_h - register_d])
             cylinder(h = register_d + 1, d = 2 * (hr_in + step_w));
 
-        // OUTLET — rectangular hole through the floor, at outlet_angle_deg
+        // OUTLET — rounded-rect hole through floor
         rotate([0, 0, outlet_angle_deg])
-            translate([hole_radial_in, -hole_w/2, -1])
-                cube([hole_len, hole_w, end_wall + 2]);
+            translate([hole_mid_r, 0, -1])
+                rounded_rect(hole_len, hole_w, hole_corner_r,
+                             end_wall + 2);
     }
 }
 
 // ===========================================================================
-// END_CAP  disc + register lip + axle bore + inlet hole + boss-socket
+// END_CAP  disc + lip + axle bore + inlet ROUNDED-RECT hole +
+//          rectangular COLLAR (fence) around the hole on top
+//
+// Collar replaces the old boss-socket. The hopper sits ON the cap top
+// surface (around the hole), with the collar surrounding its outer edge.
+// No socket, no shelf, no wall narrowing of the kibble flow.
+// Collar is intersected with the cap disc so its corners cannot overhang
+// the cap OD.
 // ===========================================================================
 module end_cap() {
     lip_d = 2 * (hr_in + step_w - fit_clear);
     difference() {
         union() {
-            // disc body (sits flush on the housing rim)
+            // disc body
             cylinder(h = end_wall, d = 2 * hr_out);
-            // register lip on the underside
+            // register lip on underside
             translate([0, 0, -register_d])
                 cylinder(h = register_d, d = lip_d);
-            // hopper-socket boss on top, around the inlet hole
-            rotate([0, 0, inlet_angle_deg])
-                translate([hole_mid_r - boss_bx/2, -boss_by/2, end_wall])
-                    cube([boss_bx, boss_by, boss_h]);
+            // collar on top, around the hole — clipped to the cap OD so
+            // its tangential corners never overhang the disc edge
+            intersection() {
+                rotate([0, 0, inlet_angle_deg])
+                    translate([hole_mid_r, 0, end_wall])
+                        rounded_rect(collar_outer_len, collar_outer_w,
+                                     hole_corner_r + collar_wall + collar_clear,
+                                     collar_h);
+                // limit collar to within cap OD
+                cylinder(h = end_wall + collar_h + 1, d = 2 * hr_out);
+            }
         }
+
         // central axle bore
         translate([0, 0, -register_d - 1])
             cylinder(h = end_wall + register_d + 2,
                      d = axle_d + fit_clear * 2);
 
-        // inlet hole + socket cavity (rotated to inlet_angle_deg)
-        rotate([0, 0, inlet_angle_deg]) {
-            // through-hole (narrower → forms a shelf at cap-top surface
-            // that the hopper spout sits on)
-            translate([hole_radial_in, -hole_w/2, -register_d - 1])
-                cube([hole_len, hole_w, end_wall + register_d + 2]);
-            // socket cavity above the cap (wider — receives the spout)
-            translate([hole_mid_r - socket_x/2,
-                       -socket_y/2,
-                       end_wall])
-                cube([socket_x, socket_y, boss_h + 1]);
-        }
+        // INLET — rounded-rect hole through cap, AND collar interior cavity
+        // (same outline above the cap: cavity that accepts the hopper outer
+        // bottom edge with collar_clear clearance)
+        rotate([0, 0, inlet_angle_deg])
+            translate([hole_mid_r, 0, -register_d - 1]) {
+                // through-hole (cap thickness): exactly the flow area
+                rounded_rect(hole_len, hole_w, hole_corner_r,
+                             end_wall + register_d + 2);
+                // collar interior above cap top — wider, accepts hopper
+                translate([0, 0, end_wall + register_d + 0.5])
+                    rounded_rect(collar_inner_len, collar_inner_w,
+                                 hole_corner_r + collar_clear,
+                                 collar_h + 1);
+            }
     }
 }
 
 // ===========================================================================
-// HOPPER  cone (round opening) → rectangular spout plug
+// HOPPER  small test hopper — open-bottom rect-to-round cone.
+//         Bottom inner = hole size (= flow area). Sits ON the cap, inside
+//         the collar. No spout cube below.
 // ===========================================================================
 module hopper() {
-    sx = socket_x - join_clear;
-    sy = socket_y - join_clear;
-    ix = sx - 2 * hopper_wall;
-    iy = sy - 2 * hopper_wall;
+    // outer bottom = hopper outer dims; inner bottom = hole dims (= flow)
+    // Inner cavity is hulled from positions BELOW z=0 and ABOVE z=hopper_h
+    // so that after the difference both ends are open (no rim cap).
+    overshoot = 2;
     difference() {
-        union() {
-            translate([-sx/2, -sy/2, 0]) cube([sx, sy, spout_h]);
-            hull() {
-                translate([-sx/2, -sy/2, spout_h]) cube([sx, sy, 0.01]);
-                translate([0, 0, spout_h + hopper_h - 0.01])
-                    cylinder(h = 0.01, d = hopper_top_d);
-            }
+        // outer cone: hull from rect bottom to round top
+        hull() {
+            translate([0, 0, 0])
+                rounded_rect(hopper_outer_len, hopper_outer_w,
+                             hole_corner_r + hopper_wall, 0.5);
+            translate([0, 0, hopper_h - 0.5])
+                cylinder(d = hopper_top_d, h = 0.5);
         }
-        translate([-ix/2, -iy/2, -1]) cube([ix, iy, spout_h + 1]);
-        translate([0, 0, spout_h])
-            hull() {
-                translate([-ix/2, -iy/2, -0.01]) cube([ix, iy, 0.01]);
-                translate([0, 0, hopper_h + 1])
-                    cylinder(h = 0.01, d = hopper_top_d - 2 * hopper_wall);
-            }
+        // inner cone (cavity): extends past outer at both ends
+        hull() {
+            translate([0, 0, -overshoot])
+                rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
+            translate([0, 0, hopper_h + overshoot - 0.5])
+                cylinder(d = hopper_top_d - 2 * hopper_wall, h = 0.5);
+        }
     }
 }
 
@@ -282,15 +295,16 @@ if (part == "assembly") {
         housing();
     color("LightSteelBlue", 0.55)
         translate([0, 0, housing_h]) end_cap();
-    // Hopper sits on top of the cap boss. Spout enters the cap socket
-    // at angular position inlet_angle_deg, radial offset hole_mid_r.
+    // hopper sits ON the cap (z = housing_h + end_wall = cap top),
+    // offset to inlet_angle_deg, radial offset hole_mid_r
     color("Khaki", 0.55)
         rotate([0, 0, inlet_angle_deg])
             translate([hole_mid_r, 0, housing_h + end_wall])
                 hopper();
 }
 
-echo(str("housing_h=", housing_h, " hlen=", hlen,
-         " paddle_h=", paddle_h,
-         " hole=", hole_len, "x", hole_w, " at r=", hole_mid_r,
-         " axle_total=", axle_stub_bot + housing_h + end_wall + axle_stub_top));
+echo(str("hole=", hole_len, "x", hole_w, " r=", hole_corner_r,
+         " at r_mid=", hole_mid_r,
+         " collar_outer=", collar_outer_len, "x", collar_outer_w,
+         " hopper_outer=", hopper_outer_len, "x", hopper_outer_w,
+         " pocket_mL~", round((wheel_r*wheel_r - hub_r*hub_r) * 3.14159 / n_paddles * wheel_thickness / 1000)));

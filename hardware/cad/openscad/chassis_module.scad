@@ -50,9 +50,10 @@ recess_depth     = 4;
 
 /* [Internal chute] (catches kibble from housing outlet -> front exit) */
 // The housing outlet is at (+X-relative-to-housing-center, y=0) at radial
-// distance hole_mid_r ≈ 28 mm. Inlet of the chute is directly below.
-chute_inlet_w_x  = 24;    // axial extent of the hole, in chassis +X dir
-chute_inlet_w_y  = 26;    // tangential extent
+// distance hole_mid_r ≈ 29 mm. Inlet of the chute is directly below.
+// Updated 2026-05-25 for the new rounded-rect 22×28 hole + collar redesign.
+chute_inlet_w_x  = 28;    // radial extent of the chute inlet (catch margin)
+chute_inlet_w_y  = 34;    // tangential extent (= hole_w + margin)
 chute_outlet_w_y = 50;    // chute mouth width at the front exit
 chute_outlet_w_z = 40;    // chute mouth height at the front exit
 chute_outlet_top_above_bowl = 12;  // gap above bowl niche top for the chute mouth
@@ -67,7 +68,7 @@ $fn = 64;
 
 // --- derived ----------------------------------------------------------------
 // Housing outlet position in chassis frame (housing center = chassis (0,0,top))
-housing_outlet_x = 28;   // ≈ hole_mid_r in paddle_wheel_module.scad
+housing_outlet_x = 29;   // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (18+40)/2
 housing_outlet_z = chassis_h;  // kibble enters chassis from above at top
 
 // Chute outlet position (front face)
@@ -148,23 +149,22 @@ module assembly() {
     translate([0, 0, z_housing_bottom + housing_height])
         color("LightSteelBlue", 0.75) end_cap();
 
-    // Bulk hopper: funnel sits on cap (spout into boss-socket at -X side)
-    // Hopper boss is centered at (-hole_mid_r, 0) = (-28, 0) at the cap.
-    // The funnel module has spout at its centre, so we offset the funnel
-    // to align with the inlet position.
+    // Bulk hopper: funnel sits ON the cap (collar-mount; no socket).
+    // Funnel bottom is offset to (-hole_mid_r, 0) so its rect bottom
+    // aligns with the cap inlet hole. The cap collar surrounds the
+    // funnel outer bottom edge.
     z_cap_top = z_housing_bottom + housing_height + 3 /*end_wall*/;
-    z_boss_top = z_cap_top + 12 /*boss_h in paddle_wheel*/;
-    translate([-28, 0, z_boss_top])
+    translate([-29, 0, z_cap_top])
         color("LightBlue", 0.5) funnel();
 
-    // Storage ring on top of funnel
-    z_funnel_top = z_boss_top + 153;  // = z_cone_top in bulk_hopper
-    translate([-28, 0, z_funnel_top])
+    // Storage ring on top of funnel (funnel_h = 140 mm in new design)
+    z_funnel_top = z_cap_top + 140;
+    translate([-29, 0, z_funnel_top])
         color("LightSteelBlue", 0.5) ring();
 
-    // Lid on top of ring
+    // Lid on top of ring (ring_h = 170 mm)
     z_ring_top = z_funnel_top + 170;
-    translate([-28, 0, z_ring_top])
+    translate([-29, 0, z_ring_top])
         color("Khaki", 0.6) lid();
 }
 

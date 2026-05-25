@@ -41,6 +41,7 @@ else matters until this works.
 | 8b | **Bulk hopper — funnel** | 3D printed, parametric — `bulk_hopper_module.scad part="funnel"`. Ø160 × 153 mm. Mass-flow 65° walls + integrated anti-bridge cone (4 ribs). Rectangular spout matches the paddle-wheel cap socket. | 1 | 🧪 to validate (printed but not flow-tested) |
 | 8c | **Bulk hopper — storage ring** | 3D printed, parametric — `bulk_hopper_module.scad part="ring"`. Ø160 × 170 mm modular. Print **1** for ~1.7 kg total capacity, **2** for ~2.9 kg. Stackable slip-fit lip. | 1+ | 🧪 to validate |
 | 8d | **Bulk hopper — lid** | 3D printed, parametric — `bulk_hopper_module.scad part="lid"`. Wraps the topmost ring lip; finger pad on top. | 1 | 🧪 to validate |
+| 9a | **Lower body chassis** | 3D printed, `chassis_module.scad`. 220×200×160 mm. C-shape: bowl niche at front (130×160×80 mm), top recess seating the rotary housing (Ø88), internal slanted chute redirecting kibble from floor outlet to a front-face exit above the bowl, electronics-bay cavity carved from the back. | 1 | 🧪 to model further (next: motor mount, panel cutouts, load-cell mount) |
 | 9 | Dry cat food | The actual food the cat eats. Kibble size/shape changes everything — test with the real thing. | — | ✅ decided |
 | 10 | Misc | M3 screws/heat-set inserts for motor mount, jumper wires, breadboard. | — | ✅ decided |
 

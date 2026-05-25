@@ -92,8 +92,9 @@ hole_w           = 22;   // tangential width — sized so that 2 kibble
                          //   pieces (~10–12 mm each) can fit side by
                          //   side. Margin against pocket chord at r=18,
                          //   n=4: ~0.85 mm per side for paddle clearance.
-inlet_angle_deg  = 0;    // angular position of the cap inlet (CCW from +X)
-outlet_angle_deg = 180;  // floor outlet — 180° = half rotation transit
+inlet_angle_deg  = 180;  // -X side of cap (BACK of feeder; hopper above is on the back/centre column)
+outlet_angle_deg = 0;    // +X side of floor (FRONT of feeder; over the bowl niche / chute)
+                         //   inlet and outlet 180° apart = half-rotation transit
 
 /* [Inlet boss / hopper joint] (raised socket on top of the cap) */
 boss_h         = 12;     // socket height above the cap surface

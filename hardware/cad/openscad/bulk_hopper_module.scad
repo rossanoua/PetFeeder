@@ -111,52 +111,73 @@ module stacking_lip(z_base) {
 
 // ===========================================================================
 // FUNNEL  rect bottom → round top, with integrated anti-bridge cone
+// ---------------------------------------------------------------------------
+// 2026-05-26 rev:
+//   • Anti-bridge cone is now TIP-UP (wide base at bottom, point at top).
+//     All exposed surfaces are sloped — kibble cannot rest on a flat top.
+//   • Radial ribs are CLIPPED to the funnel outer surface via intersection,
+//     so they no longer protrude past the funnel exterior.
 // ===========================================================================
-module funnel() {
-    rib_outer_r = bulk_r_in - 2;  // ribs reach into the wall material
 
+// Outer funnel shape — reused for the cavity carve AND for the rib clip
+module funnel_outer() {
+    hull() {
+        translate([0, 0, 0])
+            rounded_rect(hopper_outer_len, hopper_outer_w,
+                         hole_corner_r + hopper_wall, 0.5);
+        translate([0, 0, funnel_h - 0.5])
+            cylinder(d = bulk_d, h = 0.5);
+    }
+}
+
+// Inner cavity shape — extends past top and bottom for fully open ends
+module funnel_cavity() {
+    hull() {
+        translate([0, 0, -2])
+            rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
+        translate([0, 0, funnel_h + joint_lip_h + 2])
+            cylinder(r = bulk_r_in, h = 0.5);
+    }
+}
+
+module funnel() {
     union() {
         // ===== Hollowed funnel body =====
         difference() {
             union() {
-                // Outer: hull from rect bottom (outer) to round top
-                hull() {
-                    translate([0, 0, 0])
-                        rounded_rect(hopper_outer_len, hopper_outer_w,
-                                     hole_corner_r + hopper_wall, 0.5);
-                    translate([0, 0, funnel_h - 0.5])
-                        cylinder(d = bulk_d, h = 0.5);
-                }
-                // Top stacking lip
+                funnel_outer();
                 stacking_lip(z_funnel_top);
             }
-            // Inner cavity: hull from rect bottom (= hole) to round inner
-            // (= bulk_r_in). Extends past funnel top and bottom to fully
-            // open both ends.
-            hull() {
-                translate([0, 0, -2])
-                    rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
-                translate([0, 0, funnel_h + joint_lip_h + 2])
-                    cylinder(r = bulk_r_in, h = 0.5);
-            }
+            funnel_cavity();
         }
 
         // ===== Anti-bridge cone + radial ribs =====
-        // Sits inside the cavity; ribs span from cone center out into the
-        // wall material (cavity_r < r < bulk_r_out) where they fuse with
-        // the wall. The cone+ribs are added OUTSIDE the difference so the
-        // cavity carving doesn't subtract them.
-        translate([0, 0, cone_z_base])
-            union() {
-                // Inverted cone (tip down)
-                cylinder(h = bridge_cone_h,
-                         r1 = 1, r2 = bridge_cone_d / 2);
-                // Radial ribs
-                for (i = [0 : n_ribs - 1])
-                    rotate([0, 0, 360 * i / n_ribs + 45])
-                        translate([0, -rib_thick / 2, 0])
-                            cube([rib_outer_r, rib_thick, bridge_cone_h]);
-            }
+        // Cone is TIP-UP (wide base at z=cone_z_base, tip at top). All
+        // exposed surfaces are sloped: kibble falling from above hits the
+        // slanted sides and slides outward into the annular channels
+        // between the ribs.
+        //
+        // Ribs extend FAR outward but are clipped by intersection() with
+        // the funnel outer shape — they end EXACTLY at the outer surface,
+        // never beyond it. Inside the wall material, they fuse with the
+        // wall (structural). Inside the cavity, they're visible spokes
+        // attaching cone to wall.
+        intersection() {
+            funnel_outer();
+            translate([0, 0, cone_z_base])
+                union() {
+                    // TIP-UP cone (was tip-down, flipped per 2026-05-26)
+                    cylinder(h = bridge_cone_h,
+                             r1 = bridge_cone_d / 2, r2 = 1);
+                    // Ribs — extend past outer; clipped by intersection
+                    for (i = [0 : n_ribs - 1])
+                        rotate([0, 0, 360 * i / n_ribs + 45])
+                            translate([0, -rib_thick / 2, 0])
+                                cube([bulk_r_out + 5,
+                                      rib_thick,
+                                      bridge_cone_h]);
+                }
+        }
     }
 }
 

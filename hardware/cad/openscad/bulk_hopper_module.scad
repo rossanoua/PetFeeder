@@ -22,7 +22,7 @@
 //   part = "assembly" -> all stacked for visual fit check
 // ===========================================================================
 
-part = "assembly";   // funnel | ring | lid | assembly
+part = "assembly";   // funnel | spider | ring | lid | assembly
 
 /* [Hopper outer geometry] */
 bulk_d        = 160;    // outer diameter of every section (mm)
@@ -66,6 +66,13 @@ hole_corner_r    = 2;
 // The collar inner outline = hopper outer + 2 × collar_clear.
 hopper_wall     = 2;
 collar_clear    = 0.5;
+
+/* [Spider insert] (separate printable part — anti-bridge cone + ribs) */
+// 2026-05-27: split out from the funnel so both parts print without
+// supports. The spider drops INTO the funnel from above and settles by
+// friction at the z where the cavity equals its outer envelope.
+spider_clear    = 0.5;   // radial clearance between spider envelope and
+                         //   the funnel cavity wall (slide-in fit)
 
 /* [Quality] */
 $fn = 96;
@@ -141,43 +148,65 @@ module funnel_cavity() {
 }
 
 module funnel() {
-    union() {
-        // ===== Hollowed funnel body =====
-        difference() {
-            union() {
-                funnel_outer();
-                stacking_lip(z_funnel_top);
-            }
-            funnel_cavity();
-        }
-
-        // ===== Anti-bridge cone + radial ribs =====
-        // Cone is TIP-UP (wide base at z=cone_z_base, tip at top). All
-        // exposed surfaces are sloped: kibble falling from above hits the
-        // slanted sides and slides outward into the annular channels
-        // between the ribs.
-        //
-        // Ribs extend FAR outward but are clipped by intersection() with
-        // the funnel outer shape — they end EXACTLY at the outer surface,
-        // never beyond it. Inside the wall material, they fuse with the
-        // wall (structural). Inside the cavity, they're visible spokes
-        // attaching cone to wall.
-        intersection() {
+    // ===== Hollowed funnel body only =====
+    // 2026-05-27: anti-bridge cone + ribs split out into the separate
+    // `spider` part so the funnel prints without supports (round opening
+    // on the bed → walls slope inward → no overhangs).
+    difference() {
+        union() {
             funnel_outer();
-            translate([0, 0, cone_z_base])
-                union() {
-                    // TIP-UP cone (was tip-down, flipped per 2026-05-26)
-                    cylinder(h = bridge_cone_h,
-                             r1 = bridge_cone_d / 2, r2 = 1);
-                    // Ribs — extend past outer; clipped by intersection
-                    for (i = [0 : n_ribs - 1])
-                        rotate([0, 0, 360 * i / n_ribs + 45])
-                            translate([0, -rib_thick / 2, 0])
-                                cube([bulk_r_out + 5,
-                                      rib_thick,
-                                      bridge_cone_h]);
-                }
+            stacking_lip(z_funnel_top);
         }
+        funnel_cavity();
+    }
+}
+
+// Shrunk cavity (0.5 mm radial clearance) — used to clip the spider so it
+// has slide-in clearance with the real funnel cavity.
+module spider_envelope() {
+    hull() {
+        translate([0, 0, -2])
+            rounded_rect(hole_len - 2 * spider_clear,
+                         hole_w - 2 * spider_clear,
+                         max(hole_corner_r - spider_clear, 0.5), 0.5);
+        translate([0, 0, funnel_h + joint_lip_h + 2])
+            cylinder(r = bulk_r_in - spider_clear, h = 0.5);
+    }
+}
+
+// ===========================================================================
+// SPIDER  separate insert — anti-bridge cone + 4 ribs, no outer ring.
+// Ribs extend radially past the cavity walls; the intersection with
+// `spider_envelope` clips the rib outer ends to match the funnel cavity
+// shape (minus spider_clear). Spider drops into the funnel from above
+// and settles at the z where the cavity equals its envelope.
+//
+// When rendered as `part = "spider"`, the spider is translated so its
+// bottom sits at z = 0, ready for printing flat (wide cone base on bed).
+// Prints without supports because all surfaces slope inward going up
+// (cone narrows; rib outer ends follow the gentle cavity taper).
+// ===========================================================================
+module spider() {
+    intersection() {
+        // Envelope (clipped cavity) — limits the spider's outer extent
+        spider_envelope();
+        // Vertical z clip — restrict spider to its design height
+        translate([0, 0, cone_z_base])
+            cylinder(h = bridge_cone_h, r = bulk_d);
+        // Cone + ribs structure (extending past cavity; clipped above)
+        translate([0, 0, cone_z_base])
+            union() {
+                // Tip-up cone: wide base at z=cone_z_base, tip at top
+                cylinder(h = bridge_cone_h,
+                         r1 = bridge_cone_d / 2, r2 = 1);
+                // 4 radial ribs (over-extended; clipped to envelope)
+                for (i = [0 : n_ribs - 1])
+                    rotate([0, 0, 360 * i / n_ribs + 45])
+                        translate([0, -rib_thick / 2, 0])
+                            cube([bulk_r_out + 5,
+                                  rib_thick,
+                                  bridge_cone_h]);
+            }
     }
 }
 
@@ -223,10 +252,15 @@ module lid() {
 // RENDER
 // ===========================================================================
 if (part == "funnel")   funnel();
+if (part == "spider")
+    // Translate to z=0 for printing (bottom of spider on the bed)
+    translate([0, 0, -cone_z_base]) spider();
 if (part == "ring")     ring();
 if (part == "lid")      lid();
 if (part == "assembly") {
     color("LightBlue", 0.6)         funnel();
+    // Spider sits at its functional z inside the funnel
+    color("DimGray", 0.85)          spider();
     color("LightSteelBlue", 0.55)   translate([0, 0, z_funnel_top]) ring();
     color("Khaki", 0.7)             translate([0, 0, z_funnel_top + ring_h]) lid();
 }

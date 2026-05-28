@@ -66,6 +66,9 @@ hole_corner_r    = 2;
 // The collar inner outline = hopper outer + 2 × collar_clear.
 hopper_wall     = 2;
 collar_clear    = 0.5;
+cap_collar_h    = 10;   // MUST match collar_h in paddle_wheel_module.scad
+                        //   funnel has a straight rect plug at the bottom
+                        //   that fits into this collar (taper starts ABOVE)
 
 /* [Spider insert] (separate printable part — anti-bridge cone + ribs) */
 // 2026-05-27: split out from the funnel so both parts print without
@@ -126,24 +129,42 @@ module stacking_lip(z_base) {
 //     so they no longer protrude past the funnel exterior.
 // ===========================================================================
 
-// Outer funnel shape — reused for the cavity carve AND for the rib clip
+// Outer funnel shape — straight rect plug at the bottom that fits into
+// the cap collar, then a tapered mass-flow cone above (round at the top).
+// 2026-05-28 fix: the taper used to start at z=0, immediately conflicting
+// with the cap collar's straight vertical walls. Now the first cap_collar_h
+// mm is a straight rect tube; taper begins above the collar height.
 module funnel_outer() {
-    hull() {
-        translate([0, 0, 0])
-            rounded_rect(hopper_outer_len, hopper_outer_w,
-                         hole_corner_r + hopper_wall, 0.5);
-        translate([0, 0, funnel_h - 0.5])
-            cylinder(d = bulk_d, h = 0.5);
+    union() {
+        // Straight rect plug (fits into the cap collar)
+        rounded_rect(hopper_outer_len, hopper_outer_w,
+                     hole_corner_r + hopper_wall, cap_collar_h);
+        // Tapered mass-flow cone above the straight section
+        hull() {
+            translate([0, 0, cap_collar_h])
+                rounded_rect(hopper_outer_len, hopper_outer_w,
+                             hole_corner_r + hopper_wall, 0.5);
+            translate([0, 0, funnel_h - 0.5])
+                cylinder(d = bulk_d, h = 0.5);
+        }
     }
 }
 
-// Inner cavity shape — extends past top and bottom for fully open ends
+// Inner cavity shape — straight bottom matching the cap hole, tapered top
 module funnel_cavity() {
-    hull() {
+    union() {
+        // Straight inner bottom (= cap hole shape), extends below z=0
+        // for clean cut-through
         translate([0, 0, -2])
-            rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
-        translate([0, 0, funnel_h + joint_lip_h + 2])
-            cylinder(r = bulk_r_in, h = 0.5);
+            rounded_rect(hole_len, hole_w, hole_corner_r,
+                         cap_collar_h + 2 + 0.5);
+        // Tapered inner above the straight section
+        hull() {
+            translate([0, 0, cap_collar_h])
+                rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
+            translate([0, 0, funnel_h + joint_lip_h + 2])
+                cylinder(r = bulk_r_in, h = 0.5);
+        }
     }
 }
 

@@ -255,25 +255,38 @@ module end_cap() {
 //         the collar. No spout cube below.
 // ===========================================================================
 module hopper() {
-    // outer bottom = hopper outer dims; inner bottom = hole dims (= flow)
-    // Inner cavity is hulled from positions BELOW z=0 and ABOVE z=hopper_h
-    // so that after the difference both ends are open (no rim cap).
+    // 2026-05-28 fix: added a straight rect plug at the bottom that fits
+    // INTO the cap collar (which has straight vertical walls of height
+    // collar_h). The taper used to start at z=0, conflicting with the
+    // collar geometry immediately above z=0.
     overshoot = 2;
     difference() {
-        // outer cone: hull from rect bottom to round top
-        hull() {
-            translate([0, 0, 0])
-                rounded_rect(hopper_outer_len, hopper_outer_w,
-                             hole_corner_r + hopper_wall, 0.5);
-            translate([0, 0, hopper_h - 0.5])
-                cylinder(d = hopper_top_d, h = 0.5);
+        union() {
+            // Straight rect plug (height = collar_h) — slides into the cap collar
+            rounded_rect(hopper_outer_len, hopper_outer_w,
+                         hole_corner_r + hopper_wall, collar_h);
+            // Tapered cone above the collar height
+            hull() {
+                translate([0, 0, collar_h])
+                    rounded_rect(hopper_outer_len, hopper_outer_w,
+                                 hole_corner_r + hopper_wall, 0.5);
+                translate([0, 0, hopper_h - 0.5])
+                    cylinder(d = hopper_top_d, h = 0.5);
+            }
         }
-        // inner cone (cavity): extends past outer at both ends
-        hull() {
+        // Inner cavity (open at both ends)
+        union() {
+            // Straight inner bottom (= cap hole shape)
             translate([0, 0, -overshoot])
-                rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
-            translate([0, 0, hopper_h + overshoot - 0.5])
-                cylinder(d = hopper_top_d - 2 * hopper_wall, h = 0.5);
+                rounded_rect(hole_len, hole_w, hole_corner_r,
+                             collar_h + overshoot + 0.5);
+            // Tapered inner above
+            hull() {
+                translate([0, 0, collar_h])
+                    rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
+                translate([0, 0, hopper_h + overshoot - 0.5])
+                    cylinder(d = hopper_top_d - 2 * hopper_wall, h = 0.5);
+            }
         }
     }
 }

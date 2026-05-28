@@ -55,9 +55,10 @@ join_clear      = 0.3;
 /* [Cap hole — MUST match paddle_wheel_module.scad] */
 // Bulk hopper bottom opens directly to this rectangular hole. No spout
 // in between (the old spout cube is gone in this revision).
-hole_radial_in   = 18;
-hole_radial_out  = 40;
-hole_w           = 28;
+// 2026-05-28: scaled to 35×35 (was 22×28) per Ø120 wheel upscale.
+hole_radial_in   = 22;
+hole_radial_out  = 57;   // length 35 mm
+hole_w           = 35;   // tangential — 3× kibble for much less bridging
 hole_corner_r    = 2;
 
 /* [Cap collar — MUST match paddle_wheel_module.scad] */

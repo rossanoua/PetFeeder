@@ -32,7 +32,9 @@ use <bulk_hopper_module.scad>
 part = "chassis";   // chassis | assembly
 
 /* [Chassis envelope] */
-chassis_d   = 220;   // depth (X dimension, front-to-back)
+// 2026-05-28: depth grew 220→240 because the bulk hopper top (Ø160)
+// centered at x=-39.5 would otherwise overhang the back by ~10 mm.
+chassis_d   = 240;   // depth (X dimension, front-to-back)
 chassis_w   = 200;   // width (Y dimension, side-to-side)
 chassis_h   = 160;   // height (Z dimension)
 
@@ -43,19 +45,22 @@ bowl_niche_h = 80;   // height (Z, from bottom of chassis)
 
 /* [Rotary-disc housing seat] (carved into TOP face, centered) */
 // Recess that locates the housing — housing OD slips into it.
-housing_outer_d  = 87.6;  // = 2 × hr_out in paddle_wheel_module.scad
-housing_height   = 31.5;  // = housing_h in paddle_wheel_module.scad
+// 2026-05-28: scaled up to Ø127.6 with wheel_d=120 (was Ø87.6 with wheel_d=80).
+housing_outer_d  = 127.6; // = 2 × hr_out in paddle_wheel_module.scad
+housing_height   = 15.5;  // = housing_h in paddle_wheel_module.scad
+                          //   (shorter because wheel_thickness 18→10)
 recess_clear     = 0.5;
 recess_depth     = 4;
 
 /* [Internal chute] (catches kibble from housing outlet -> front exit) */
 // The housing outlet is at (+X-relative-to-housing-center, y=0) at radial
-// distance hole_mid_r ≈ 29 mm. Inlet of the chute is directly below.
-// Updated 2026-05-25 for the new rounded-rect 22×28 hole + collar redesign.
-chute_inlet_w_x  = 28;    // radial extent of the chute inlet (catch margin)
-chute_inlet_w_y  = 34;    // tangential extent (= hole_w + margin)
-chute_outlet_w_y = 50;    // chute mouth width at the front exit
-chute_outlet_w_z = 40;    // chute mouth height at the front exit
+// distance hole_mid_r ≈ 39.5 mm. Inlet of the chute is directly below.
+// 2026-05-28: chute inlet enlarged for the new 35×35 rounded-rect hole.
+chute_inlet_w_x  = 40;    // radial extent (= hole_len 35 + 5 catch margin)
+chute_inlet_w_y  = 40;    // tangential extent (= hole_w 35 + 5 catch margin)
+chute_outlet_w_y = 55;    // chute mouth width at the front exit
+chute_outlet_w_z = 45;    // chute mouth height at the front exit (kibble
+                          //   stream got wider with the bigger outlet)
 chute_outlet_top_above_bowl = 12;  // gap above bowl niche top for the chute mouth
 
 /* [Electronics bay opening] (carved from BACK face) — outline only this iter */
@@ -68,7 +73,7 @@ $fn = 64;
 
 // --- derived ----------------------------------------------------------------
 // Housing outlet position in chassis frame (housing center = chassis (0,0,top))
-housing_outlet_x = 29;   // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (18+40)/2
+housing_outlet_x = 39.5; // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (22+57)/2
 housing_outlet_z = chassis_h;  // kibble enters chassis from above at top
 
 // Chute outlet position (front face)
@@ -154,17 +159,17 @@ module assembly() {
     // aligns with the cap inlet hole. The cap collar surrounds the
     // funnel outer bottom edge.
     z_cap_top = z_housing_bottom + housing_height + 3 /*end_wall*/;
-    translate([-29, 0, z_cap_top])
+    translate([-39.5, 0, z_cap_top])
         color("LightBlue", 0.5) funnel();
 
     // Storage ring on top of funnel (funnel_h = 140 mm in new design)
     z_funnel_top = z_cap_top + 140;
-    translate([-29, 0, z_funnel_top])
+    translate([-39.5, 0, z_funnel_top])
         color("LightSteelBlue", 0.5) ring();
 
     // Lid on top of ring (ring_h = 170 mm)
     z_ring_top = z_funnel_top + 170;
-    translate([-29, 0, z_ring_top])
+    translate([-39.5, 0, z_ring_top])
         color("Khaki", 0.6) lid();
 }
 

@@ -44,13 +44,16 @@
 part = "assembly";   // wheel | axle | housing | end_cap | hopper | assembly
 
 /* [Wheel] */
-wheel_d         = 80;    // outer diameter (over paddle tips)
-wheel_thickness = 18;    // axial extent of wheel hub
-                         //   18 × pocket area (n=3) gives ~28 mL ≈ 11 g
-n_paddles       = 3;     // sector 120° (was 4; needed for wider hole)
+// 2026-05-28: scaled to wheel_d=120 (was 80) per the bigger-wheel anti-
+// bridge approach (ADR pending). Goal: hole 35×35 mm gives a 3:1
+// kibble:hole ratio (was ~2:1), much less prone to static bridging.
+wheel_d         = 120;   // outer diameter (over paddle tips)
+wheel_thickness = 10;    // shorter wheel because the pocket area grew —
+                         //   10 × pocket area (n=3) gives ~35 mL ≈ 14 g
+n_paddles       = 3;     // sector 120°
 paddle_thick    = 2.4;
 paddle_fraction = 0.5;
-hub_d           = 20;
+hub_d           = 30;    // scaled proportionally (was 20 with wheel_d=80)
 
 /* [Axle] */
 axle_d         = 5.0;
@@ -74,9 +77,10 @@ step_w         = 1.0;
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 18;
-hole_radial_out  = 40;   // length 22 mm
-hole_w           = 28;   // tangential width
+hole_radial_in   = 22;
+hole_radial_out  = 57;   // length 35 mm
+hole_w           = 35;   // tangential width — 3× kibble (~12 mm), much
+                         //   bigger margin than the 28 mm in the Ø80 wheel
 hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
 inlet_angle_deg  = 180;
 outlet_angle_deg = 0;

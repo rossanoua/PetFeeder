@@ -144,24 +144,38 @@ module d_solid(d, flat, len) {
 // WHEEL  full-height hub + N radial paddles on the bottom half
 // ===========================================================================
 module wheel() {
-    // 2026-05-28: paddle tip rounded (semicircle in plan view, r =
-    // paddle_thick/2 = 1.2 mm). The old 90° tip+housing-wall corner
-    // formed a wedge that caught kibble pieces — user reported jams
-    // across every wheel/housing version. Outer radius unchanged
-    // (paddle still sweeps to wheel_r).
-    paddle_body_len = wheel_r - hub_r - paddle_thick/2 + 0.1;
+    // 2026-05-28 v2: paddle tip rounded in BOTH plan view AND side view.
+    // v1 (earlier today) rounded only the plan-view tip with a Z-axis
+    // cylinder — but the top-outer and bottom-outer edges (sharp 90°
+    // when seen from the side) were still wedge points for kibble.
+    //
+    // Now: hull of a hub-side slab + 2 spheres at the outer tip's top
+    // and bottom centers. Result:
+    //   plan view  — rectangle with semicircular outer cap (r=1.2 mm)
+    //   side view  — rectangle with rounded outer-top and outer-bottom
+    //                fillets (r=1.2 mm)
+    // Outer envelope unchanged: paddle still sweeps to wheel_r at the
+    // sphere tangent points.
+    rp = paddle_thick / 2;
     difference() {
         union() {
             cylinder(h = wheel_thickness, d = hub_d);
             for (i = [0 : n_paddles - 1])
-                rotate([0, 0, 360 * i / n_paddles]) {
-                    // straight paddle body (stops short of wheel_r)
-                    translate([hub_r - 0.1, -paddle_thick/2, 0])
-                        cube([paddle_body_len, paddle_thick, paddle_h]);
-                    // rounded tip — semicircle in plan view, tip apex at wheel_r
-                    translate([wheel_r - paddle_thick/2, 0, 0])
-                        cylinder(d = paddle_thick, h = paddle_h, $fn = 24);
-                }
+                rotate([0, 0, 360 * i / n_paddles])
+                    hull() {
+                        // Hub-side slab — overlaps INTO the hub for a
+                        // solid join. No rounding at this end so the
+                        // root keeps full paddle_h height against the
+                        // hub cylinder.
+                        translate([hub_r - 0.5, -paddle_thick/2, 0])
+                            cube([0.5, paddle_thick, paddle_h]);
+                        // Outer-tip: 2 spheres at the 4 tip corners
+                        // (top-outer + bottom-outer get rounded in 3D).
+                        translate([wheel_r - rp, 0, rp])
+                            sphere(r = rp, $fn = 16);
+                        translate([wheel_r - rp, 0, paddle_h - rp])
+                            sphere(r = rp, $fn = 16);
+                    }
         }
         translate([0, 0, -1])
             d_solid(axle_d + fit_clear, axle_flat, wheel_thickness + 2);

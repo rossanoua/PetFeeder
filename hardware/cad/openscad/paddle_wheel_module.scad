@@ -68,6 +68,13 @@ wheel_axial_clear  = 0.5;
 floor_clear        = 0.5;
 housing_wall       = 3;
 end_wall           = 3;
+// 2026-05-29: kibble settling buffer between the wheel TOP and the cap
+// INLET. Before this was implicit 0 mm — kibble dropping through the
+// cap inlet had no room to spread before hitting the wheel. 15 mm =
+// one full kibble (~12 mm) plus clearance; multiple pieces can
+// pre-stack in the buffer and settle into pockets as they pass under
+// the inlet.
+housing_buffer_h   = 15;
 
 /* [Removable end cap] */
 register_d     = 1.5;
@@ -104,7 +111,7 @@ hub_r      = hub_d   / 2;
 hr_in      = wheel_r + housing_clear;
 hr_out     = hr_in + housing_wall;
 housing_h  = end_wall + floor_clear + wheel_thickness
-           + wheel_axial_clear + register_d;
+           + wheel_axial_clear + housing_buffer_h + register_d;
 hlen       = housing_h + end_wall;
 
 paddle_h   = wheel_thickness * paddle_fraction;

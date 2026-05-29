@@ -47,8 +47,9 @@ bowl_niche_h = 80;   // height (Z, from bottom of chassis)
 // Recess that locates the housing — housing OD slips into it.
 // 2026-05-28: scaled up to Ø127.6 with wheel_d=120 (was Ø87.6 with wheel_d=80).
 housing_outer_d  = 127.6; // = 2 × hr_out in paddle_wheel_module.scad
-housing_height   = 15.5;  // = housing_h in paddle_wheel_module.scad
-                          //   (shorter because wheel_thickness 18→10)
+housing_height   = 30.5;  // = housing_h in paddle_wheel_module.scad
+                          //   (wheel_thickness 10 + housing_buffer_h 15
+                          //    + 0.5+0.5+3+1.5 clearances and walls)
 recess_clear     = 0.5;
 recess_depth     = 4;
 

@@ -76,9 +76,24 @@ end_wall           = 3;
 // the inlet.
 housing_buffer_h   = 15;
 
-/* [Removable end cap] */
-register_d     = 1.5;
-step_w         = 1.0;
+/* [Anti-rotation pins — replaces the old register lip + rim recess] */
+// 2026-05-29: the old register-lip-on-cap forced the cap to print with
+// an 8.3 mm radial unsupported overhang at the disc/lip step. Replaced
+// by 4 small pins on the housing top rim + 4 through-holes in the cap.
+//   • Cap prints flat (disc-bottom on the bed, collar pointing up) —
+//     NO supports needed anywhere
+//   • Cap fixes in 4 rotational positions (90° apart) — pick the one
+//     that points the hopper collar where you want it on the chassis
+n_pins             = 4;
+pin_d              = 2.0;   // pin diameter
+pin_h              = 3.0;   // pin height above the housing top rim
+                            //   (= end_wall, so the pin top sits flush
+                            //    with the cap top through the hole)
+pin_clear          = 0.2;   // radial clearance pin↔hole (slip-fit)
+pin_angle_offset   = 45;    // angular offset of the first pin
+                            //   (45° puts pins between the outlet at 0°
+                            //    and the inlet at 180°, away from the
+                            //    collar footprint)
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -111,7 +126,9 @@ hub_r      = hub_d   / 2;
 hr_in      = wheel_r + housing_clear;
 hr_out     = hr_in + housing_wall;
 housing_h  = end_wall + floor_clear + wheel_thickness
-           + wheel_axial_clear + housing_buffer_h + register_d;
+           + wheel_axial_clear + housing_buffer_h;
+                            // no register_d any more — cap sits flat on
+                            // top rim, located by axle + 4 pins
 hlen       = housing_h + end_wall;
 
 paddle_h   = wheel_thickness * paddle_fraction;
@@ -206,8 +223,19 @@ module axle() {
 // HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
 // ===========================================================================
 module housing() {
+    // 2026-05-29: rim recess removed (was the female side of the cap's
+    // register lip — caused the cap to overhang at its disc/lip step).
+    // 4 anti-rotation pins added on the top rim instead.
+    pin_radial = (hr_in + hr_out) / 2;
     difference() {
-        cylinder(h = housing_h, d = 2 * hr_out);
+        union() {
+            cylinder(h = housing_h, d = 2 * hr_out);
+            // Anti-rotation pins on the top rim
+            for (i = [0 : n_pins - 1])
+                rotate([0, 0, pin_angle_offset + 360 * i / n_pins])
+                    translate([pin_radial, 0, housing_h])
+                        cylinder(d = pin_d, h = pin_h);
+        }
 
         // wheel cavity
         translate([0, 0, end_wall])
@@ -216,10 +244,6 @@ module housing() {
         // central axle bore
         translate([0, 0, -1])
             cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
-
-        // rim recess for cap lip
-        translate([0, 0, housing_h - register_d])
-            cylinder(h = register_d + 1, d = 2 * (hr_in + step_w));
 
         // OUTLET — rounded-rect hole through floor
         rotate([0, 0, outlet_angle_deg])
@@ -240,14 +264,16 @@ module housing() {
 // the cap OD.
 // ===========================================================================
 module end_cap() {
-    lip_d = 2 * (hr_in + step_w - fit_clear);
+    // 2026-05-29: register lip on underside REMOVED (was the source of
+    // the 8.3 mm radial overhang at disc/lip step). 4 through-holes
+    // added at pin_angle_offset + i*90° matching the housing's top-rim
+    // pins. Result: cap prints flat (disc bottom on the bed, collar
+    // pointing up) with no supports anywhere.
+    pin_radial = (hr_in + hr_out) / 2;
     difference() {
         union() {
             // disc body
             cylinder(h = end_wall, d = 2 * hr_out);
-            // register lip on underside
-            translate([0, 0, -register_d])
-                cylinder(h = register_d, d = lip_d);
             // collar on top, around the hole — clipped to the cap OD so
             // its tangential corners never overhang the disc edge
             intersection() {
@@ -262,24 +288,31 @@ module end_cap() {
         }
 
         // central axle bore
-        translate([0, 0, -register_d - 1])
-            cylinder(h = end_wall + register_d + 2,
+        translate([0, 0, -1])
+            cylinder(h = end_wall + 2,
                      d = axle_d + fit_clear * 2);
 
         // INLET — rounded-rect hole through cap, AND collar interior cavity
         // (same outline above the cap: cavity that accepts the hopper outer
         // bottom edge with collar_clear clearance)
         rotate([0, 0, inlet_angle_deg])
-            translate([hole_mid_r, 0, -register_d - 1]) {
+            translate([hole_mid_r, 0, -1]) {
                 // through-hole (cap thickness): exactly the flow area
                 rounded_rect(hole_len, hole_w, hole_corner_r,
-                             end_wall + register_d + 2);
+                             end_wall + 2);
                 // collar interior above cap top — wider, accepts hopper
-                translate([0, 0, end_wall + register_d + 0.5])
+                translate([0, 0, end_wall + 0.5])
                     rounded_rect(collar_inner_len, collar_inner_w,
                                  hole_corner_r + collar_clear,
                                  collar_h + 1);
             }
+
+        // 4 anti-rotation through-holes — engage the housing's top pins.
+        // 4 angular positions = 4 valid rotational orientations 90° apart.
+        for (i = [0 : n_pins - 1])
+            rotate([0, 0, pin_angle_offset + 360 * i / n_pins])
+                translate([pin_radial, 0, -1])
+                    cylinder(d = pin_d + 2 * pin_clear, h = end_wall + 2);
     }
 }
 

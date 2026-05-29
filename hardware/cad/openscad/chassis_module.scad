@@ -163,8 +163,8 @@ module assembly() {
     translate([-39.5, 0, z_cap_top])
         color("LightBlue", 0.5) funnel();
 
-    // Storage ring on top of funnel (funnel_h = 110 mm in new design)
-    z_funnel_top = z_cap_top + 110;
+    // Storage ring on top of funnel (funnel_h = 115 mm in new design)
+    z_funnel_top = z_cap_top + 115;
     translate([-39.5, 0, z_funnel_top])
         color("LightSteelBlue", 0.5) ring();
 

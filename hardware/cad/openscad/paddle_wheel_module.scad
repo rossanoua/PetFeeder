@@ -76,28 +76,34 @@ end_wall           = 3;
 // the inlet.
 housing_buffer_h   = 15;
 
-/* [Anti-rotation pins — robust v2] */
-// 2026-05-29 v2: previous Ø2 × 3 mm pins on a thin 3 mm rim looked
-// fragile in OrcaSlicer (user feedback: "не надійно"). Beefed up:
-//   • Upper 6 mm of the rim is locally thickened INWARD by 2 mm (the
-//     buffer zone above the wheel is otherwise empty, no kibble there
-//     during normal flow). Rim is 5 mm wide at the top instead of 3 mm.
-//   • Pin Ø3 × 2.5 mm (was Ø2 × 3 mm) — 2.25× cross-section, lower
-//     aspect ratio, much harder to snap.
-//   • Pin base CHAMFER: flares from Ø4 at the very base down to Ø3
-//     over 0.5 mm. Stress concentrates at the base; the flare resists
-//     bending failure there.
-//   • Cap hole Ø3.4 through-hole — surrounded by 2.5 mm of disc
-//     material on the cap-edge side and ample disc material elsewhere.
-n_pins              = 4;
-pin_d               = 3.0;   // pin Ø (was 2.0)
-pin_h               = 2.5;   // pin straight section height (was 3.0)
-pin_clear           = 0.2;
-pin_angle_offset    = 45;
-pin_chamfer_h       = 0.5;   // chamfer flare height at pin base
-pin_chamfer_extra_r = 0.5;   // extra radius at pin base — flares to (pin_d + 1)
-rim_thicken         = 2.0;   // upper rim extends INWARD by this
-rim_thicken_h       = 6.0;   // height of thickened upper rim section
+/* [Anti-rotation lock — outward TABS (cap) + slotted EARS (housing)] */
+// 2026-05-29 v3: replaced the Ø3 anti-rotation pins. The pins looked
+// fragile, and the alternative of downward cap features hit the same
+// "floating region" print problem we just fixed on the funnel lip.
+// New scheme (user's idea): the lock features run HORIZONTAL, in the
+// cap's bottom plane, so BOTH parts print support-free.
+//   • CAP: 4 stubby TABS that stick radially OUTWARD from the disc
+//     edge, in the disc-bottom plane. Printed disc-down they are just
+//     in-plane extensions of the first layers → flat on the bed, no
+//     overhang, and as chunky as we like (far stronger than Ø3 pins).
+//   • HOUSING: 4 outboard EARS (buttressed ribs) rising past the rim;
+//     each ear has a vertical SLOT splitting it into two prongs. The
+//     cap tab drops into the slot → rotation blocked.
+//   • The ear underside is CHAMFERED (~55°, self-supporting) and starts
+//     just ABOVE the 4 mm chassis recess, so the ears live in the free
+//     air over the chassis top face → NO chassis recess relief needed.
+//   • 4 positions @ 90° = 4 valid mounting orientations (as before).
+n_lock          = 4;
+lock_angle_off  = 45;     // diagonal — clear of inlet (180) / outlet (0)
+lock_clear      = 0.3;    // tab <-> slot / disc slip clearance
+lock_tab_out    = 3.0;    // tab radial protrusion beyond hr_out
+lock_tab_w      = 8.0;    // tab tangential width (chunky)
+lock_prong_w    = 3.0;    // each ear prong tangential thickness
+lock_ear_out    = 3.5;    // ear radial protrusion beyond hr_out
+lock_ear_rise   = 4.0;    // prongs rise above the housing rim
+lock_ear_z0     = 5.0;    // ear starts here (just above the 4 mm chassis
+                          //   recess) so it never enters the recess
+lock_ear_chamfer_h = 5.0; // chamfered underside ramp height (~55°)
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -132,7 +138,7 @@ hr_out     = hr_in + housing_wall;
 housing_h  = end_wall + floor_clear + wheel_thickness
            + wheel_axial_clear + housing_buffer_h;
                             // no register_d any more — cap sits flat on
-                            // top rim, located by axle + 4 pins
+                            // top rim, located by axle + 4 tab/ear locks
 hlen       = housing_h + end_wall;
 
 paddle_h   = wheel_thickness * paddle_fraction;
@@ -143,9 +149,12 @@ hole_mid_r = (hole_radial_in + hole_radial_out) / 2;
 hopper_outer_w     = hole_w + 2 * hopper_wall;
 hopper_outer_len   = hole_len + 2 * hopper_wall;
 
-// Anti-rotation pin radial position — at the center of the thickened
-// upper rim (between r=hr_in-rim_thicken and r=hr_out)
-pin_radial = ((hr_in - rim_thicken) + hr_out) / 2;
+// Anti-rotation lock — derived radii / sizes
+lock_tab_or   = hr_out + lock_tab_out;            // tab outer radius
+lock_ear_or   = hr_out + lock_ear_out;            // ear outer radius
+lock_slot_w   = lock_tab_w + 2 * lock_clear;      // slot tangential width
+lock_ear_tang = lock_slot_w + 2 * lock_prong_w;   // full ear tangential width
+lock_ear_h    = (housing_h + lock_ear_rise) - lock_ear_z0; // ear total height
 
 // Collar inner outline (surrounds the hopper outer bottom)
 collar_inner_w     = hopper_outer_w + 2 * collar_clear;
@@ -231,39 +240,37 @@ module axle() {
 // HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
 // ===========================================================================
 module housing() {
-    // 2026-05-29 v2: rim locally thickened inward (top rim_thicken_h
-    // mm) so the 4 anti-rotation pins have ample material around them.
-    // Pins are bigger (Ø3 × 2.5 mm) with chamfered bases for strength.
+    // 2026-05-29 v3: 4 outboard slotted EARS (tab/ear lock) replace the
+    // old anti-rotation pins. The rim is back to a plain 3 mm wall (the
+    // earlier inward thickening existed only to give the pins material).
     difference() {
         union() {
             cylinder(h = housing_h, d = 2 * hr_out);
-            // 4 anti-rotation pins on the top rim, each with a chamfered
-            // base flare for strength at the high-stress base.
-            for (i = [0 : n_pins - 1])
-                rotate([0, 0, pin_angle_offset + 360 * i / n_pins]) {
-                    // chamfer base: cone from (pin_d+1) at the rim top
-                    // down to pin_d at chamfer_h above
-                    translate([pin_radial, 0, housing_h])
-                        cylinder(d1 = pin_d + 2 * pin_chamfer_extra_r,
-                                 d2 = pin_d,
-                                 h = pin_chamfer_h);
-                    // straight pin section above the chamfer
-                    translate([pin_radial, 0, housing_h + pin_chamfer_h])
-                        cylinder(d = pin_d, h = pin_h);
-                }
+            // 4 outboard anti-rotation EARS. Each is a buttressed rib
+            // with a chamfered underside that starts above the chassis
+            // recess and rises lock_ear_rise past the rim. The vertical
+            // slot that splits it into 2 prongs is cut below.
+            for (i = [0 : n_lock - 1])
+                rotate([0, 0, lock_angle_off + 360 * i / n_lock])
+                    hull() {
+                        // inboard strip — full height, overlaps the wall
+                        translate([hr_out - 1, -lock_ear_tang/2, lock_ear_z0])
+                            cube([1, lock_ear_tang, lock_ear_h]);
+                        // outboard strip — raised by the chamfer height
+                        // (gives the self-supporting ramp underneath)
+                        translate([lock_ear_or - 1,
+                                   -lock_ear_tang/2,
+                                   lock_ear_z0 + lock_ear_chamfer_h])
+                            cube([1, lock_ear_tang,
+                                  lock_ear_h - lock_ear_chamfer_h]);
+                    }
         }
 
-        // wheel cavity — wider (r=hr_in) in the lower portion, narrower
-        // (r=hr_in-rim_thicken) in the upper portion. The top rim
-        // thickens INWARD by rim_thicken into the buffer zone (which
-        // is empty above the wheel during normal flow). Bridge at the
-        // step = 2 mm radial — easy for FDM at 0.2 mm layer height.
+        // wheel cavity — plain full-width cylinder (no rim thickening:
+        // the tab/ear lock needs no extra rim material, so the kibble
+        // buffer above the wheel is full-width again).
         translate([0, 0, end_wall])
-            cylinder(h = housing_h - rim_thicken_h - end_wall + 1,
-                     d = 2 * hr_in);
-        translate([0, 0, housing_h - rim_thicken_h])
-            cylinder(h = rim_thicken_h + 1,
-                     d = 2 * (hr_in - rim_thicken));
+            cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
 
         // central axle bore
         translate([0, 0, -1])
@@ -274,6 +281,21 @@ module housing() {
             translate([hole_mid_r, 0, -1])
                 rounded_rect(hole_len, hole_w, hole_corner_r,
                              end_wall + 2);
+
+        // Lock SLOTS — remove the central tangential band of each ear
+        // (from the rim up past the ear top) to leave 2 prongs that
+        // flank the cap tab.
+        for (i = [0 : n_lock - 1])
+            rotate([0, 0, lock_angle_off + 360 * i / n_lock])
+                translate([hr_out - 1.5, -lock_slot_w/2, housing_h])
+                    cube([lock_ear_out + 3, lock_slot_w,
+                          lock_ear_rise + 2]);
+
+        // Trim every prong INBOARD face clear of the seated cap disc rim:
+        // remove all ear material inboard of (hr_out + clearance) above
+        // the rim, so the disc (r = hr_out) drops in without interference.
+        translate([0, 0, housing_h])
+            cylinder(h = lock_ear_rise + 2, r = hr_out + lock_clear);
     }
 }
 
@@ -288,16 +310,20 @@ module housing() {
 // the cap OD.
 // ===========================================================================
 module end_cap() {
-    // 2026-05-29 v2: 4 anti-rotation through-holes at the same radial
-    // position as the housing's pin_radial (= center of the upper
-    // thickened rim). Hole Ø is pin_d + 2*pin_clear = 3.4 mm; the cap's
-    // disc has ~2.5 mm of material between the hole's outer edge and the
-    // cap's outer edge (pin_radial + hole_r = 61.3 + 1.7 = 63.0 vs cap
-    // edge at hr_out=63.8).
+    // 2026-05-29 v3: 4 outward anti-rotation TABS at the disc edge (in
+    // the disc-bottom plane) replace the old pin holes. They drop into
+    // the housing ear slots. All in-plane → the cap still prints
+    // disc-down with zero supports.
     difference() {
         union() {
             // disc body
             cylinder(h = end_wall, d = 2 * hr_out);
+            // 4 anti-rotation TABS — stubby radial bulges at the disc
+            // edge, full disc thickness, in the disc-bottom plane.
+            for (i = [0 : n_lock - 1])
+                rotate([0, 0, lock_angle_off + 360 * i / n_lock])
+                    translate([hr_out - 1, -lock_tab_w/2, 0])
+                        cube([lock_tab_out + 1, lock_tab_w, end_wall]);
             // collar on top, around the hole — clipped to the cap OD so
             // its tangential corners never overhang the disc edge
             intersection() {
@@ -330,13 +356,6 @@ module end_cap() {
                                  hole_corner_r + collar_clear,
                                  collar_h + 1);
             }
-
-        // 4 anti-rotation through-holes — engage the housing's top pins.
-        // 4 angular positions = 4 valid rotational orientations 90° apart.
-        for (i = [0 : n_pins - 1])
-            rotate([0, 0, pin_angle_offset + 360 * i / n_pins])
-                translate([pin_radial, 0, -1])
-                    cylinder(d = pin_d + 2 * pin_clear, h = end_wall + 2);
     }
 }
 

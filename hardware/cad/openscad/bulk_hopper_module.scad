@@ -152,6 +152,24 @@ module funnel_outer() {
 }
 
 // Inner cavity shape — straight bottom matching the cap hole, tapered top
+// 2026-05-29: redesigned for UNIFORM cone wall thickness.
+// Previously the cavity hull's top was at z=funnel_h+joint_lip_h+2 (=152)
+// with r=bulk_r_in (=77), while the outer hull's top was at z=funnel_h
+// (=140) with r=bulk_d/2 (=80). The two hulls had top points at different
+// z heights, so the wall thickness was NOT uniform:
+//   • z=10 (plug top):  2 mm (rect outer 39×39, rect inner 35×35)
+//   • z=140 (cone top): ~7 mm (outer r=80, cavity at t=0.91 only r=72)
+//   • Wall thickened linearly + cavity carved through the lip too.
+// Now:
+//   • Cone cavity hull top is at z=funnel_h (=140) with r=(bulk_d/2 -
+//     hopper_wall) (=78), so the wall stays UNIFORM hopper_wall (2 mm)
+//     everywhere in the cone.
+//   • Above z=funnel_h, the cavity becomes a cylinder of r=lip_ir so
+//     the lip's 3 mm wall is preserved INTACT.
+//   • At z=funnel_h there is a shelf inside the cavity where the cone
+//     (r=78) meets the lip (r=lip_ir=73.7). Kibble falling DOWN sees
+//     this as a 4.3 mm radial WIDENING — no constriction, no bridging.
+//     Wall thickening localized to the lip (3 mm), AT THE END only.
 module funnel_cavity() {
     union() {
         // Straight inner bottom (= cap hole shape), extends below z=0
@@ -159,13 +177,20 @@ module funnel_cavity() {
         translate([0, 0, -2])
             rounded_rect(hole_len, hole_w, hole_corner_r,
                          cap_collar_h + 2 + 0.5);
-        // Tapered inner above the straight section
+        // Cone cavity — top reaches r=(bulk_d/2 - hopper_wall) at
+        // z=funnel_h so the wall is uniformly hopper_wall everywhere.
         hull() {
             translate([0, 0, cap_collar_h])
                 rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
-            translate([0, 0, funnel_h + joint_lip_h + 2])
-                cylinder(r = bulk_r_in, h = 0.5);
+            translate([0, 0, funnel_h - 0.5])
+                cylinder(r = bulk_d/2 - hopper_wall, h = 0.5);
         }
+        // Lip cavity — cylinder through the lip region. Radius=lip_ir,
+        // so the stacking lip retains its full 3 mm wall (not carved).
+        // Starts 0.5 mm BELOW funnel_h to overlap with the cone hull
+        // and avoid Z-fighting between coincident face pairs at z=140.
+        translate([0, 0, funnel_h - 0.5])
+            cylinder(r = lip_ir, h = joint_lip_h + 2.5);
     }
 }
 
@@ -185,14 +210,17 @@ module funnel() {
 
 // Shrunk cavity (0.5 mm radial clearance) — used to clip the spider so it
 // has slide-in clearance with the real funnel cavity.
+// 2026-05-29: envelope top synced with the new funnel_cavity geometry
+// (top at z=funnel_h with r=(bulk_d/2 - hopper_wall)) so the spider
+// matches the new wider cone and keeps friction-fit.
 module spider_envelope() {
     hull() {
         translate([0, 0, -2])
             rounded_rect(hole_len - 2 * spider_clear,
                          hole_w - 2 * spider_clear,
                          max(hole_corner_r - spider_clear, 0.5), 0.5);
-        translate([0, 0, funnel_h + joint_lip_h + 2])
-            cylinder(r = bulk_r_in - spider_clear, h = 0.5);
+        translate([0, 0, funnel_h - 0.5])
+            cylinder(r = bulk_d/2 - hopper_wall - spider_clear, h = 0.5);
     }
 }
 

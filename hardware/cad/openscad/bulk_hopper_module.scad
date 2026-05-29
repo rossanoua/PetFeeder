@@ -29,8 +29,14 @@ bulk_d        = 160;    // outer diameter of every section (mm)
 bulk_wall     = 3;      // wall thickness (mm)
 
 /* [Funnel section] */
-funnel_h        = 140;  // total funnel height (was derived; now fixed so we
-                        //   keep the same overall envelope as v1)
+// 2026-05-29: 140 → 110 for a more open cone. The previous 140 mm gave
+// walls at ~25° from vertical (very steep, kibble flows fine but cone
+// felt "aggressive" and tall). 110 mm gives ~31° from vertical — still
+// well below the mass-flow critical angle (~33° for typical kibble),
+// but the funnel is shorter and walls open up more. Tradeoff: cone
+// capacity drops from ~1.17 L to ~0.90 L (one ring still ≈ 1.62 kg
+// total, was 1.73 kg).
+funnel_h        = 110;
 
 /* [Anti-bridge cone] */
 bridge_cone_d   = 40;   // cone top diameter; tip down

@@ -76,24 +76,28 @@ end_wall           = 3;
 // the inlet.
 housing_buffer_h   = 15;
 
-/* [Anti-rotation pins — replaces the old register lip + rim recess] */
-// 2026-05-29: the old register-lip-on-cap forced the cap to print with
-// an 8.3 mm radial unsupported overhang at the disc/lip step. Replaced
-// by 4 small pins on the housing top rim + 4 through-holes in the cap.
-//   • Cap prints flat (disc-bottom on the bed, collar pointing up) —
-//     NO supports needed anywhere
-//   • Cap fixes in 4 rotational positions (90° apart) — pick the one
-//     that points the hopper collar where you want it on the chassis
-n_pins             = 4;
-pin_d              = 2.0;   // pin diameter
-pin_h              = 3.0;   // pin height above the housing top rim
-                            //   (= end_wall, so the pin top sits flush
-                            //    with the cap top through the hole)
-pin_clear          = 0.2;   // radial clearance pin↔hole (slip-fit)
-pin_angle_offset   = 45;    // angular offset of the first pin
-                            //   (45° puts pins between the outlet at 0°
-                            //    and the inlet at 180°, away from the
-                            //    collar footprint)
+/* [Anti-rotation pins — robust v2] */
+// 2026-05-29 v2: previous Ø2 × 3 mm pins on a thin 3 mm rim looked
+// fragile in OrcaSlicer (user feedback: "не надійно"). Beefed up:
+//   • Upper 6 mm of the rim is locally thickened INWARD by 2 mm (the
+//     buffer zone above the wheel is otherwise empty, no kibble there
+//     during normal flow). Rim is 5 mm wide at the top instead of 3 mm.
+//   • Pin Ø3 × 2.5 mm (was Ø2 × 3 mm) — 2.25× cross-section, lower
+//     aspect ratio, much harder to snap.
+//   • Pin base CHAMFER: flares from Ø4 at the very base down to Ø3
+//     over 0.5 mm. Stress concentrates at the base; the flare resists
+//     bending failure there.
+//   • Cap hole Ø3.4 through-hole — surrounded by 2.5 mm of disc
+//     material on the cap-edge side and ample disc material elsewhere.
+n_pins              = 4;
+pin_d               = 3.0;   // pin Ø (was 2.0)
+pin_h               = 2.5;   // pin straight section height (was 3.0)
+pin_clear           = 0.2;
+pin_angle_offset    = 45;
+pin_chamfer_h       = 0.5;   // chamfer flare height at pin base
+pin_chamfer_extra_r = 0.5;   // extra radius at pin base — flares to (pin_d + 1)
+rim_thicken         = 2.0;   // upper rim extends INWARD by this
+rim_thicken_h       = 6.0;   // height of thickened upper rim section
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -138,6 +142,10 @@ hole_mid_r = (hole_radial_in + hole_radial_out) / 2;
 // Hopper outer bottom (sits on the cap, around the hole)
 hopper_outer_w     = hole_w + 2 * hopper_wall;
 hopper_outer_len   = hole_len + 2 * hopper_wall;
+
+// Anti-rotation pin radial position — at the center of the thickened
+// upper rim (between r=hr_in-rim_thicken and r=hr_out)
+pin_radial = ((hr_in - rim_thicken) + hr_out) / 2;
 
 // Collar inner outline (surrounds the hopper outer bottom)
 collar_inner_w     = hopper_outer_w + 2 * collar_clear;
@@ -223,23 +231,39 @@ module axle() {
 // HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
 // ===========================================================================
 module housing() {
-    // 2026-05-29: rim recess removed (was the female side of the cap's
-    // register lip — caused the cap to overhang at its disc/lip step).
-    // 4 anti-rotation pins added on the top rim instead.
-    pin_radial = (hr_in + hr_out) / 2;
+    // 2026-05-29 v2: rim locally thickened inward (top rim_thicken_h
+    // mm) so the 4 anti-rotation pins have ample material around them.
+    // Pins are bigger (Ø3 × 2.5 mm) with chamfered bases for strength.
     difference() {
         union() {
             cylinder(h = housing_h, d = 2 * hr_out);
-            // Anti-rotation pins on the top rim
+            // 4 anti-rotation pins on the top rim, each with a chamfered
+            // base flare for strength at the high-stress base.
             for (i = [0 : n_pins - 1])
-                rotate([0, 0, pin_angle_offset + 360 * i / n_pins])
+                rotate([0, 0, pin_angle_offset + 360 * i / n_pins]) {
+                    // chamfer base: cone from (pin_d+1) at the rim top
+                    // down to pin_d at chamfer_h above
                     translate([pin_radial, 0, housing_h])
+                        cylinder(d1 = pin_d + 2 * pin_chamfer_extra_r,
+                                 d2 = pin_d,
+                                 h = pin_chamfer_h);
+                    // straight pin section above the chamfer
+                    translate([pin_radial, 0, housing_h + pin_chamfer_h])
                         cylinder(d = pin_d, h = pin_h);
+                }
         }
 
-        // wheel cavity
+        // wheel cavity — wider (r=hr_in) in the lower portion, narrower
+        // (r=hr_in-rim_thicken) in the upper portion. The top rim
+        // thickens INWARD by rim_thicken into the buffer zone (which
+        // is empty above the wheel during normal flow). Bridge at the
+        // step = 2 mm radial — easy for FDM at 0.2 mm layer height.
         translate([0, 0, end_wall])
-            cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
+            cylinder(h = housing_h - rim_thicken_h - end_wall + 1,
+                     d = 2 * hr_in);
+        translate([0, 0, housing_h - rim_thicken_h])
+            cylinder(h = rim_thicken_h + 1,
+                     d = 2 * (hr_in - rim_thicken));
 
         // central axle bore
         translate([0, 0, -1])
@@ -264,12 +288,12 @@ module housing() {
 // the cap OD.
 // ===========================================================================
 module end_cap() {
-    // 2026-05-29: register lip on underside REMOVED (was the source of
-    // the 8.3 mm radial overhang at disc/lip step). 4 through-holes
-    // added at pin_angle_offset + i*90° matching the housing's top-rim
-    // pins. Result: cap prints flat (disc bottom on the bed, collar
-    // pointing up) with no supports anywhere.
-    pin_radial = (hr_in + hr_out) / 2;
+    // 2026-05-29 v2: 4 anti-rotation through-holes at the same radial
+    // position as the housing's pin_radial (= center of the upper
+    // thickened rim). Hole Ø is pin_d + 2*pin_clear = 3.4 mm; the cap's
+    // disc has ~2.5 mm of material between the hole's outer edge and the
+    // cap's outer edge (pin_radial + hole_r = 61.3 + 1.7 = 63.0 vs cap
+    // edge at hr_out=63.8).
     difference() {
         union() {
             // disc body

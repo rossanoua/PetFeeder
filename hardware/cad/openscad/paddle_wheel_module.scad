@@ -44,16 +44,18 @@
 part = "assembly";   // wheel | axle | housing | end_cap | hopper | assembly
 
 /* [Wheel] */
-// 2026-05-28: scaled to wheel_d=120 (was 80) per the bigger-wheel anti-
-// bridge approach (ADR pending). Goal: hole 35×35 mm gives a 3:1
-// kibble:hole ratio (was ~2:1), much less prone to static bridging.
-wheel_d         = 120;   // outer diameter (over paddle tips)
-wheel_thickness = 10;    // shorter wheel because the pocket area grew —
-                         //   10 × pocket area (n=3) gives ~35 mL ≈ 14 g
+// 2026-06-03: scaled BACK to wheel_d=80 (was 120). The Ø120 upscale
+// existed only to fight bridging passively; we're switching to an ACTIVE
+// anti-bridge (vibromotor on the funnel) + HX711 closed-loop, so the big
+// wheel is no longer needed and the whole mechanism shrinks. Portion is
+// now set by rotation count, not pocket volume.
+wheel_d         = 80;    // outer diameter (over paddle tips)
+wheel_thickness = 18;    // axial extent of wheel hub (taller again — the
+                         //   pocket area shrank with the smaller wheel)
 n_paddles       = 3;     // sector 120°
 paddle_thick    = 2.4;
 paddle_fraction = 0.5;
-hub_d           = 30;    // scaled proportionally (was 20 with wheel_d=80)
+hub_d           = 20;    // proportional to wheel_d=80
 
 /* [Axle] */
 axle_d         = 5.0;
@@ -109,10 +111,10 @@ lock_ear_chamfer_h = 5.0; // chamfered underside ramp height (~55°)
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 22;
-hole_radial_out  = 57;   // length 35 mm
-hole_w           = 35;   // tangential width — 3× kibble (~12 mm), much
-                         //   bigger margin than the 28 mm in the Ø80 wheel
+hole_radial_in   = 18;
+hole_radial_out  = 40;   // length 22 mm (Ø80 wheel)
+hole_w           = 28;   // tangential width — active anti-bridge
+                         //   (vibromotor) covers the smaller-hole risk
 hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
 inlet_angle_deg  = 180;
 outlet_angle_deg = 0;

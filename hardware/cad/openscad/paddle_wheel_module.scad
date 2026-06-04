@@ -78,34 +78,21 @@ end_wall           = 3;
 // the inlet.
 housing_buffer_h   = 15;
 
-/* [Anti-rotation lock — outward TABS (cap) + slotted EARS (housing)] */
-// 2026-05-29 v3: replaced the Ø3 anti-rotation pins. The pins looked
-// fragile, and the alternative of downward cap features hit the same
-// "floating region" print problem we just fixed on the funnel lip.
-// New scheme (user's idea): the lock features run HORIZONTAL, in the
-// cap's bottom plane, so BOTH parts print support-free.
-//   • CAP: 4 stubby TABS that stick radially OUTWARD from the disc
-//     edge, in the disc-bottom plane. Printed disc-down they are just
-//     in-plane extensions of the first layers → flat on the bed, no
-//     overhang, and as chunky as we like (far stronger than Ø3 pins).
-//   • HOUSING: 4 outboard EARS (buttressed ribs) rising past the rim;
-//     each ear has a vertical SLOT splitting it into two prongs. The
-//     cap tab drops into the slot → rotation blocked.
-//   • The ear underside is CHAMFERED (~55°, self-supporting) and starts
-//     just ABOVE the 4 mm chassis recess, so the ears live in the free
-//     air over the chassis top face → NO chassis recess relief needed.
-//   • 4 positions @ 90° = 4 valid mounting orientations (as before).
-n_lock          = 4;
-lock_angle_off  = 45;     // diagonal — clear of inlet (180) / outlet (0)
-lock_clear      = 0.3;    // tab <-> slot / disc slip clearance
-lock_tab_out    = 3.0;    // tab radial protrusion beyond hr_out
-lock_tab_w      = 8.0;    // tab tangential width (chunky)
-lock_prong_w    = 3.0;    // each ear prong tangential thickness
-lock_ear_out    = 3.5;    // ear radial protrusion beyond hr_out
-lock_ear_rise   = 4.0;    // prongs rise above the housing rim
-lock_ear_z0     = 5.0;    // ear starts here (just above the 4 mm chassis
-                          //   recess) so it never enters the recess
-lock_ear_chamfer_h = 5.0; // chamfered underside ramp height (~55°)
+/* [Anti-rotation lock — flush rim MERLONS (housing) + cap NOTCHES] */
+// 2026-06-04 v4: the v3 outward ears/tabs stuck out past the wall (user:
+// they "випирають"). New scheme keeps EVERYTHING WITHIN the existing wall
+// thickness — nothing protrudes radially:
+//   • HOUSING: the rim wall is raised by lock_rise at 4 spots (MERLONS),
+//     staying inside the wall band (hr_in..hr_out) — just "more wall".
+//   • CAP: 4 matching radial NOTCHES (bites) in the disc edge. The
+//     merlons poke up through the notches → rotation blocked, 4 index
+//     positions. Both print support-free (raised wall = vertical lines;
+//     notch = a full-thickness gap, nothing bridges over it).
+n_lock         = 4;
+lock_angle_off = 45;    // diagonal — clear of inlet (180) / outlet (0)
+lock_clear     = 0.3;   // merlon <-> notch slip clearance
+lock_w         = 8.0;   // merlon / notch tangential width
+lock_rise      = 5.0;   // merlon height above the rim (pokes through cap)
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -140,7 +127,7 @@ hr_out     = hr_in + housing_wall;
 housing_h  = end_wall + floor_clear + wheel_thickness
            + wheel_axial_clear + housing_buffer_h;
                             // no register_d any more — cap sits flat on
-                            // top rim, located by axle + 4 tab/ear locks
+                            // top rim, located by axle + 4 merlon/notch locks
 hlen       = housing_h + end_wall;
 
 paddle_h   = wheel_thickness * paddle_fraction;
@@ -150,13 +137,6 @@ hole_mid_r = (hole_radial_in + hole_radial_out) / 2;
 // Hopper outer bottom (sits on the cap, around the hole)
 hopper_outer_w     = hole_w + 2 * hopper_wall;
 hopper_outer_len   = hole_len + 2 * hopper_wall;
-
-// Anti-rotation lock — derived radii / sizes
-lock_tab_or   = hr_out + lock_tab_out;            // tab outer radius
-lock_ear_or   = hr_out + lock_ear_out;            // ear outer radius
-lock_slot_w   = lock_tab_w + 2 * lock_clear;      // slot tangential width
-lock_ear_tang = lock_slot_w + 2 * lock_prong_w;   // full ear tangential width
-lock_ear_h    = (housing_h + lock_ear_rise) - lock_ear_z0; // ear total height
 
 // Collar inner outline (surrounds the hopper outer bottom)
 collar_inner_w     = hopper_outer_w + 2 * collar_clear;
@@ -242,35 +222,32 @@ module axle() {
 // HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
 // ===========================================================================
 module housing() {
-    // 2026-05-29 v3: 4 outboard slotted EARS (tab/ear lock) replace the
-    // old anti-rotation pins. The rim is back to a plain 3 mm wall (the
-    // earlier inward thickening existed only to give the pins material).
+    // 2026-06-04 v4: 4 rim MERLONS (raised wall sections) replace the v3
+    // outboard ears. They stay WITHIN the wall band (hr_in..hr_out) — no
+    // radial protrusion. The cap's notches drop over them.
     difference() {
         union() {
             cylinder(h = housing_h, d = 2 * hr_out);
-            // 4 outboard anti-rotation EARS. Each is a buttressed rib
-            // with a chamfered underside that starts above the chassis
-            // recess and rises lock_ear_rise past the rim. The vertical
-            // slot that splits it into 2 prongs is cut below.
+            // 4 rim MERLONS — the wall raised lock_rise at 4 spots,
+            // confined to the wall band (hr_in..hr_out) by intersecting a
+            // raised annular ring with a lock_w-wide angular wedge.
             for (i = [0 : n_lock - 1])
                 rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                    hull() {
-                        // inboard strip — full height, overlaps the wall
-                        translate([hr_out - 1, -lock_ear_tang/2, lock_ear_z0])
-                            cube([1, lock_ear_tang, lock_ear_h]);
-                        // outboard strip — raised by the chamfer height
-                        // (gives the self-supporting ramp underneath)
-                        translate([lock_ear_or - 1,
-                                   -lock_ear_tang/2,
-                                   lock_ear_z0 + lock_ear_chamfer_h])
-                            cube([1, lock_ear_tang,
-                                  lock_ear_h - lock_ear_chamfer_h]);
+                    intersection() {
+                        // raised annular wall ring (hr_in..hr_out)
+                        difference() {
+                            cylinder(h = housing_h + lock_rise, d = 2 * hr_out);
+                            translate([0, 0, -1])
+                                cylinder(h = housing_h + lock_rise + 2,
+                                         d = 2 * hr_in);
+                        }
+                        // keep only a lock_w-wide arc, only the raised part
+                        translate([0, -lock_w/2, housing_h - 1])
+                            cube([hr_out + 1, lock_w, lock_rise + 1]);
                     }
         }
 
-        // wheel cavity — plain full-width cylinder (no rim thickening:
-        // the tab/ear lock needs no extra rim material, so the kibble
-        // buffer above the wheel is full-width again).
+        // wheel cavity — plain full-width cylinder (full-width buffer)
         translate([0, 0, end_wall])
             cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
 
@@ -283,21 +260,6 @@ module housing() {
             translate([hole_mid_r, 0, -1])
                 rounded_rect(hole_len, hole_w, hole_corner_r,
                              end_wall + 2);
-
-        // Lock SLOTS — remove the central tangential band of each ear
-        // (from the rim up past the ear top) to leave 2 prongs that
-        // flank the cap tab.
-        for (i = [0 : n_lock - 1])
-            rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                translate([hr_out - 1.5, -lock_slot_w/2, housing_h])
-                    cube([lock_ear_out + 3, lock_slot_w,
-                          lock_ear_rise + 2]);
-
-        // Trim every prong INBOARD face clear of the seated cap disc rim:
-        // remove all ear material inboard of (hr_out + clearance) above
-        // the rim, so the disc (r = hr_out) drops in without interference.
-        translate([0, 0, housing_h])
-            cylinder(h = lock_ear_rise + 2, r = hr_out + lock_clear);
     }
 }
 
@@ -312,20 +274,14 @@ module housing() {
 // the cap OD.
 // ===========================================================================
 module end_cap() {
-    // 2026-05-29 v3: 4 outward anti-rotation TABS at the disc edge (in
-    // the disc-bottom plane) replace the old pin holes. They drop into
-    // the housing ear slots. All in-plane → the cap still prints
-    // disc-down with zero supports.
+    // 2026-06-04 v4: 4 radial NOTCHES in the disc edge replace the v3
+    // outward tabs. The housing's rim merlons poke up through them → no
+    // protruding feature on either part; everything within the wall OD.
+    // Notches are full-thickness edge gaps → print disc-down, no overhang.
     difference() {
         union() {
             // disc body
             cylinder(h = end_wall, d = 2 * hr_out);
-            // 4 anti-rotation TABS — stubby radial bulges at the disc
-            // edge, full disc thickness, in the disc-bottom plane.
-            for (i = [0 : n_lock - 1])
-                rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                    translate([hr_out - 1, -lock_tab_w/2, 0])
-                        cube([lock_tab_out + 1, lock_tab_w, end_wall]);
             // collar on top, around the hole — clipped to the cap OD so
             // its tangential corners never overhang the disc edge
             intersection() {
@@ -358,6 +314,14 @@ module end_cap() {
                                  hole_corner_r + collar_clear,
                                  collar_h + 1);
             }
+
+        // 4 anti-rotation NOTCHES in the disc edge — full-thickness radial
+        // gaps over the wall band; the housing merlons poke up through.
+        for (i = [0 : n_lock - 1])
+            rotate([0, 0, lock_angle_off + 360 * i / n_lock])
+                translate([hr_in - 1, -(lock_w/2 + lock_clear), -1])
+                    cube([(hr_out + 1) - (hr_in - 1),
+                          lock_w + 2 * lock_clear, end_wall + 2]);
     }
 }
 

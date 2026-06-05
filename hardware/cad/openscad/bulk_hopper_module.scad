@@ -46,16 +46,15 @@ cavity_taper_h  = 5;    // top chamfer that supports the lip's first layer
 // the cradle/holes once the motor (coin ERM Ø/thickness, or cylindrical)
 // is known. Pad face is flat & vertical for an adhesive/screw mount.
 vibro_angle    = 90;    // which side of the cone (deg)
-vibro_z        = 12;    // pad bottom height (just above the cap collar)
-vibro_h        = 24;    // pad height
-vibro_w        = 14;    // pad width (tangential) — lighter
-vibro_face_r   = 33;    // radius of the flat outer mounting face (less proud)
-vibro_foot_r   = 21;    // ramp foot radius (≈ cone OD at vibro_z; self-support)
-vibro_ramp     = 1.4;   // underside ramp steepness ×Δr (>1 = steeper than 45°)
-vibro_light_d  = 8;     // central lightening / motor-clearance hole
-vibro_screw_d  = 2.5;   // pilot holes (M2.x self-tap)
-vibro_screw_dx = 9;     // pilot hole spacing (tangential)
-vibro_screw_dz = 0;     // pilot holes at pad mid-height (0 = centered)
+vibro_z        = 16;    // shelf height (above the cap collar; bridge room)
+vibro_face_r   = 33;    // shelf outer radius
+vibro_w        = 16;    // shelf width (tangential)
+vibro_shelf_t  = 4;     // shelf thickness — motor mounts on the flat TOP
+vibro_sup_t    = 1.2;   // BREAKAWAY support wall thickness (snap off)
+vibro_hole_r   = 27;    // radial position of the mount holes
+vibro_light_d  = 9;     // central clearance / lightening hole (vertical)
+vibro_screw_d  = 2.5;   // 2 pilot holes
+vibro_screw_dy = 9;     // pilot hole tangential spacing
 
 /* [Storage ring] */
 ring_h          = 170;  // height per ring; stack as needed
@@ -241,39 +240,34 @@ module funnel() {
 }
 
 // ===========================================================================
-// VIBROMOTOR PAD  external flat mount on the cone near the throat.
-// Built as a radial slab from inside the cone wall out to vibro_face_r,
-// with a self-supporting chamfered underside (foot at vibro_foot_r ≈ the
-// cone OD at vibro_z, so the bottom doesn't overhang). funnel_cavity()
-// carves the inner side, leaving a solid wall-thickening + external pad.
-// Placeholder geometry — finalize cradle once the motor is known.
+// VIBROMOTOR PAD  flat shelf near the throat + BREAKAWAY support.
+// The shelf is a flat plate (motor mounts on its top face). In the print
+// orientation (plug down) the shelf underside would overhang, so a thin
+// vertical SUPPORT WALL runs from the bed up to the shelf's outer edge —
+// the underside then prints as a ~9 mm bridge (cone → wall). Snap the wall
+// off after printing. funnel_cavity() carves the shelf's inner side.
+// Hole pattern is a placeholder — finalize once the motor is known.
 // ===========================================================================
 module vibro_pad() {
-    raise = (vibro_face_r - vibro_foot_r) * vibro_ramp;  // steeper underside
-    rotate([0, 0, vibro_angle])
-        hull() {
-            // flat outer slab (raised by the steeper ramp)
-            translate([0, -vibro_w/2, vibro_z + raise])
-                cube([vibro_face_r, vibro_w, vibro_h - raise]);
-            // ramp foot — narrower, at the pad bottom (self-supporting)
-            translate([0, -vibro_w/2, vibro_z])
-                cube([vibro_foot_r, vibro_w, 0.1]);
-        }
+    rotate([0, 0, vibro_angle]) {
+        // flat shelf (motor mounts on the flat TOP face)
+        translate([0, -vibro_w/2, vibro_z])
+            cube([vibro_face_r, vibro_w, vibro_shelf_t]);
+        // BREAKAWAY support: thin wall, bed → shelf outer edge (snap off)
+        translate([vibro_face_r - vibro_sup_t, -vibro_w/2, 0])
+            cube([vibro_sup_t, vibro_w, vibro_z + 0.01]);
+    }
 }
 
 module vibro_holes() {
     rotate([0, 0, vibro_angle]) {
-        // 2 pilot holes for the motor / its bracket
+        // 2 pilot holes (vertical, through the shelf)
         for (s = [-1, 1])
-            translate([vibro_face_r + 1,
-                       s * vibro_screw_dx / 2,
-                       vibro_z + vibro_h/2 + vibro_screw_dz])
-                rotate([0, -90, 0])
-                    cylinder(d = vibro_screw_d, h = 7);
-        // central lightening / motor-clearance hole (less material to print)
-        translate([vibro_face_r + 1, 0, vibro_z + vibro_h/2 + vibro_screw_dz])
-            rotate([0, -90, 0])
-                cylinder(d = vibro_light_d, h = vibro_face_r);
+            translate([vibro_hole_r, s * vibro_screw_dy / 2, vibro_z - 1])
+                cylinder(d = vibro_screw_d, h = vibro_shelf_t + 2);
+        // central clearance / lightening hole (vertical)
+        translate([vibro_hole_r, 0, vibro_z - 1])
+            cylinder(d = vibro_light_d, h = vibro_shelf_t + 2);
     }
 }
 

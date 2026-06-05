@@ -29,13 +29,14 @@ bulk_d        = 160;    // outer diameter of every section (mm)
 bulk_wall     = 3;      // wall thickness (mm)
 
 /* [Funnel section] */
-// 2026-06-05: height stays 115, but the cone now reaches Ø160 EARLY (at
-// cone_top_z) and runs as a STRAIGHT Ø160 cylinder above it. With the
-// bigger 26×34 throat, that makes the cone wall MORE OPEN (~36° from
-// vertical, was ~33°) per the user's choice — kibble approaches a wider
-// throat instead of a tight converging V. Active anti-bridge = vibromotor.
+// 2026-06-05b: the more-open cone (cone_top_z=98, ~36°) printed worse on
+// the overhangs (user test). Reverted to the STEEPEST possible at this
+// height — cone runs the full height to Ø160 (cone_top_z = funnel_h -
+// cavity_taper_h), giving ~31-33° from vertical = least overhang. The
+// bigger 26×34 throat (kept) is the real anti-arch lever; the vibromotor
+// finishes it. To go steeper still would need a taller funnel.
 funnel_h        = 115;
-cone_top_z      = 98;   // z where the cone reaches Ø160 (straight above)
+cone_top_z      = 110;  // cone reaches Ø160 at the top (steepest at h=115)
 cavity_taper_h  = 5;    // top chamfer that supports the lip's first layer
 
 /* [Vibromotor mount] (active anti-bridge — replaces the old spider/cone) */
@@ -45,13 +46,15 @@ cavity_taper_h  = 5;    // top chamfer that supports the lip's first layer
 // the cradle/holes once the motor (coin ERM Ø/thickness, or cylindrical)
 // is known. Pad face is flat & vertical for an adhesive/screw mount.
 vibro_angle    = 90;    // which side of the cone (deg)
-vibro_z        = 13;    // pad bottom height (just above the cap collar)
-vibro_h        = 22;    // pad height
-vibro_w        = 18;    // pad width (tangential)
-vibro_face_r   = 42;    // radius of the flat outer mounting face
-vibro_foot_r   = 22;    // ramp foot radius (≈ cone OD at vibro_z; self-support)
-vibro_screw_d  = 2.2;   // pilot holes (M2 self-tap)
-vibro_screw_dx = 11;    // pilot hole spacing (tangential)
+vibro_z        = 12;    // pad bottom height (just above the cap collar)
+vibro_h        = 24;    // pad height
+vibro_w        = 14;    // pad width (tangential) — lighter
+vibro_face_r   = 33;    // radius of the flat outer mounting face (less proud)
+vibro_foot_r   = 21;    // ramp foot radius (≈ cone OD at vibro_z; self-support)
+vibro_ramp     = 1.4;   // underside ramp steepness ×Δr (>1 = steeper than 45°)
+vibro_light_d  = 8;     // central lightening / motor-clearance hole
+vibro_screw_d  = 2.5;   // pilot holes (M2.x self-tap)
+vibro_screw_dx = 9;     // pilot hole spacing (tangential)
 vibro_screw_dz = 0;     // pilot holes at pad mid-height (0 = centered)
 
 /* [Storage ring] */
@@ -246,26 +249,32 @@ module funnel() {
 // Placeholder geometry — finalize cradle once the motor is known.
 // ===========================================================================
 module vibro_pad() {
+    raise = (vibro_face_r - vibro_foot_r) * vibro_ramp;  // steeper underside
     rotate([0, 0, vibro_angle])
         hull() {
-            // flat outer slab (raised by the chamfer)
-            translate([0, -vibro_w/2, vibro_z + (vibro_face_r - vibro_foot_r)])
-                cube([vibro_face_r, vibro_w,
-                      vibro_h - (vibro_face_r - vibro_foot_r)]);
-            // ramp foot — narrower, at the pad bottom (self-supporting ~45°)
+            // flat outer slab (raised by the steeper ramp)
+            translate([0, -vibro_w/2, vibro_z + raise])
+                cube([vibro_face_r, vibro_w, vibro_h - raise]);
+            // ramp foot — narrower, at the pad bottom (self-supporting)
             translate([0, -vibro_w/2, vibro_z])
                 cube([vibro_foot_r, vibro_w, 0.1]);
         }
 }
 
 module vibro_holes() {
-    rotate([0, 0, vibro_angle])
+    rotate([0, 0, vibro_angle]) {
+        // 2 pilot holes for the motor / its bracket
         for (s = [-1, 1])
             translate([vibro_face_r + 1,
                        s * vibro_screw_dx / 2,
                        vibro_z + vibro_h/2 + vibro_screw_dz])
                 rotate([0, -90, 0])
                     cylinder(d = vibro_screw_d, h = 7);
+        // central lightening / motor-clearance hole (less material to print)
+        translate([vibro_face_r + 1, 0, vibro_z + vibro_h/2 + vibro_screw_dz])
+            rotate([0, -90, 0])
+                cylinder(d = vibro_light_d, h = vibro_face_r);
+    }
 }
 
 // ===========================================================================

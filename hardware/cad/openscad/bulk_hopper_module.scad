@@ -29,17 +29,14 @@ bulk_d        = 160;    // outer diameter of every section (mm)
 bulk_wall     = 3;      // wall thickness (mm)
 
 /* [Funnel section] */
-// 2026-05-29 v2: 110 → 115 mm. The +5 mm compensates for the new
-// `cavity_taper_h = 5` at the top, which narrows the cavity from
-// r=(bulk_d/2 - hopper_wall) to r=lip_ir to give the lip's first
-// print layer solid support. With the chamfer eating 5 mm, the main
-// mass-flow cone is z=10 to z=110 (100 mm) → wall ≈ 31° from vertical
-// (well below the kibble mass-flow critical ~33°). Without this
-// taper, the lip's first layer printed over empty space (slicer
-// flagged it as "floating regions" — confirmed by user with PrusaSlicer/
-// OrcaSlicer warning + the first-layer cross-section preview).
+// 2026-06-05: height stays 115, but the cone now reaches Ø160 EARLY (at
+// cone_top_z) and runs as a STRAIGHT Ø160 cylinder above it. With the
+// bigger 26×34 throat, that makes the cone wall MORE OPEN (~36° from
+// vertical, was ~33°) per the user's choice — kibble approaches a wider
+// throat instead of a tight converging V. Active anti-bridge = vibromotor.
 funnel_h        = 115;
-cavity_taper_h  = 5;
+cone_top_z      = 98;   // z where the cone reaches Ø160 (straight above)
+cavity_taper_h  = 5;    // top chamfer that supports the lip's first layer
 
 /* [Vibromotor mount] (active anti-bridge — replaces the old spider/cone) */
 // 2026-06-03: the passive anti-bridge spider was the bridge SOURCE and is
@@ -73,12 +70,12 @@ join_clear      = 0.3;
 /* [Cap hole — MUST match paddle_wheel_module.scad] */
 // Bulk hopper bottom opens directly to this rectangular hole. No spout
 // in between (the old spout cube is gone in this revision).
-// 2026-06-03: scaled BACK to 22×28 (Ø80 wheel). Cone is a bit steeper
-// now (smaller bottom, same Ø160 top) — acceptable because the vibromotor
-// is the active anti-bridge. MUST match paddle_wheel_module.scad.
-hole_radial_in   = 18;
-hole_radial_out  = 40;   // length 22 mm
-hole_w           = 28;   // tangential
+// 2026-06-05: throat enlarged to 26×34 (max on the Ø80 wheel: out=40 is
+// the wheel rim, in=14 keeps 4 mm off the hub). Bigger opening = less
+// arching. MUST match paddle_wheel_module.scad.
+hole_radial_in   = 14;
+hole_radial_out  = 40;   // length 26 mm (out = wheel rim)
+hole_w           = 34;   // tangential (max on Ø80)
 hole_corner_r    = 2;
 
 /* [Cap collar — MUST match paddle_wheel_module.scad] */
@@ -150,22 +147,19 @@ module funnel_outer() {
         // Straight rect plug (fits into the cap collar)
         rounded_rect(hopper_outer_len, hopper_outer_w,
                      hole_corner_r + hopper_wall, cap_collar_h);
-        // Tapered mass-flow cone — from rect plug to Ø bulk_d at
-        // z=(funnel_h - cavity_taper_h). Above this z the outer stays
-        // constant at Ø bulk_d (vertical cylinder).
+        // More-open mass-flow cone — from rect plug to Ø bulk_d at
+        // z=cone_top_z (reached early). Above cone_top_z the outer is a
+        // straight Ø bulk_d cylinder all the way to the top.
         hull() {
             translate([0, 0, cap_collar_h])
                 rounded_rect(hopper_outer_len, hopper_outer_w,
                              hole_corner_r + hopper_wall, 0.5);
-            translate([0, 0, funnel_h - cavity_taper_h - 0.5])
+            translate([0, 0, cone_top_z - 0.5])
                 cylinder(d = bulk_d, h = 0.5);
         }
-        // Straight Ø bulk_d cylinder over the cavity-taper region.
-        // This section is the THICKER wall at the top (up to 6.3 mm)
-        // that supports the lip — the outer is constant Ø bulk_d while
-        // the cavity below tapers in to r=lip_ir.
-        translate([0, 0, funnel_h - cavity_taper_h])
-            cylinder(d = bulk_d, h = cavity_taper_h);
+        // Straight Ø bulk_d cylinder from cone_top_z to the top.
+        translate([0, 0, cone_top_z])
+            cylinder(d = bulk_d, h = funnel_h - cone_top_z);
     }
 }
 
@@ -198,14 +192,18 @@ module funnel_cavity() {
             rounded_rect(hole_len, hole_w, hole_corner_r,
                          cap_collar_h + 2 + 0.5);
         // 2. Cone cavity — top reaches r=(bulk_d/2 - hopper_wall) at
-        //    z=(funnel_h - cavity_taper_h) so the wall is uniformly
-        //    hopper_wall (= 2 mm) everywhere in the main cone.
+        //    z=cone_top_z (more-open cone, uniform 2 mm wall).
         hull() {
             translate([0, 0, cap_collar_h])
                 rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
-            translate([0, 0, funnel_h - cavity_taper_h - 0.5])
+            translate([0, 0, cone_top_z - 0.5])
                 cylinder(r = bulk_d/2 - hopper_wall, h = 0.5);
         }
+        // 2b. Straight cavity cylinder r=78 from cone_top_z up to the
+        //     chamfer start (keeps the 2 mm wall in the straight section).
+        translate([0, 0, cone_top_z])
+            cylinder(r = bulk_d/2 - hopper_wall,
+                     h = (funnel_h - cavity_taper_h) - cone_top_z + 0.01);
         // 3. Top chamfer — cavity narrows from r=78 to r=lip_ir over
         //    cavity_taper_h. Slope ≈ 41° from vertical = 49° from
         //    horizontal — within FDM's self-supporting overhang range

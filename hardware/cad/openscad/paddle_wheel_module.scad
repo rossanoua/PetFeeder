@@ -98,10 +98,9 @@ lock_rise      = 5.0;   // merlon height above the rim (pokes through cap)
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 18;
-hole_radial_out  = 40;   // length 22 mm (Ø80 wheel)
-hole_w           = 28;   // tangential width — active anti-bridge
-                         //   (vibromotor) covers the smaller-hole risk
+hole_radial_in   = 14;   // 2026-06-05: throat enlarged to 26×34 (max on
+hole_radial_out  = 40;   //   the Ø80 wheel) to reduce arching. out=40 is
+hole_w           = 34;   //   the wheel rim; in=14 keeps 4 mm off the hub.
 hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
 inlet_angle_deg  = 180;
 outlet_angle_deg = 0;

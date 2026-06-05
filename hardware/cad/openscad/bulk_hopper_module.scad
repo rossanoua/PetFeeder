@@ -2,8 +2,8 @@
 // ---------------------------------------------------------------------------
 // REWRITE 2026-05-25 per ADR `2026-05-25-collar-mount-hopper-redesign`:
 //
-// Mass-flow funnel (active anti-bridge = external vibromotor pad near the
-// throat) + modular stackable storage rings + lid. Sits on the cap COLLAR
+// Mass-flow funnel (active anti-bridge = a vibromotor, mount TBD once the
+// motor is known) + modular stackable storage rings + lid. On the cap COLLAR
 // (no longer plugs into a socket — no more spout walls narrowing the kibble
 // pipe). Bulk hopper bottom outline matches the cap collar inner outline;
 // hopper inner bottom opening = cap inlet hole exactly.
@@ -15,8 +15,8 @@
 // First-iteration target unchanged: funnel + 1 ring + lid ≈ 4.2 L ≈ 1.7 kg.
 //
 // Parts:
-//   part = "funnel"   -> rect-bottom mass-flow funnel + vibromotor pad
-//                        + top stacking lip
+//   part = "funnel"   -> rect-bottom mass-flow funnel + top stacking lip
+//                        (vibromotor mount TBD — re-added with the motor)
 //   part = "ring"     -> storage ring (stackable; print N copies)
 //   part = "lid"      -> top cover with finger handle
 //   part = "assembly" -> all stacked for visual fit check
@@ -29,32 +29,18 @@ bulk_d        = 160;    // outer diameter of every section (mm)
 bulk_wall     = 3;      // wall thickness (mm)
 
 /* [Funnel section] */
-// 2026-06-05b: the more-open cone (cone_top_z=98, ~36°) printed worse on
-// the overhangs (user test). Reverted to the STEEPEST possible at this
-// height — cone runs the full height to Ø160 (cone_top_z = funnel_h -
-// cavity_taper_h), giving ~31-33° from vertical = least overhang. The
-// bigger 26×34 throat (kept) is the real anti-arch lever; the vibromotor
-// finishes it. To go steeper still would need a taller funnel.
+// 2026-06-05c: user wants to TRY the more-open (shallower) cone — it
+// reaches Ø160 early (at cone_top_z) and runs as a straight Ø160 cylinder
+// above, giving ~36° from vertical. Wider approach to the bigger 26×34
+// throat. (Trade-off vs the steeper ~31° version: more overhang on the
+// print, but a more open funnel.)
 funnel_h        = 115;
-cone_top_z      = 110;  // cone reaches Ø160 at the top (steepest at h=115)
+cone_top_z      = 98;   // cone reaches Ø160 at z≈98, straight Ø160 above
 cavity_taper_h  = 5;    // top chamfer that supports the lip's first layer
 
-/* [Vibromotor mount] (active anti-bridge — replaces the old spider/cone) */
-// 2026-06-03: the passive anti-bridge spider was the bridge SOURCE and is
-// gone. A small vibration motor on the cone near the throat breaks arches
-// actively. This is a flat external mounting pad placeholder — finalize
-// the cradle/holes once the motor (coin ERM Ø/thickness, or cylindrical)
-// is known. Pad face is flat & vertical for an adhesive/screw mount.
-vibro_angle    = 90;    // which side of the cone (deg)
-vibro_z        = 16;    // shelf height (above the cap collar; bridge room)
-vibro_face_r   = 33;    // shelf outer radius
-vibro_w        = 16;    // shelf width (tangential)
-vibro_shelf_t  = 4;     // shelf thickness — motor mounts on the flat TOP
-vibro_sup_t    = 1.2;   // BREAKAWAY support wall thickness (snap off)
-vibro_hole_r   = 27;    // radial position of the mount holes
-vibro_light_d  = 9;     // central clearance / lightening hole (vertical)
-vibro_screw_d  = 2.5;   // 2 pilot holes
-vibro_screw_dy = 9;     // pilot hole tangential spacing
+// [Vibromotor mount] removed 2026-06-05 — will be re-added as its own
+// feature once the specific motor's dimensions are known. The active
+// anti-bridge is still a vibromotor; only the mounting geometry is TBD.
 
 /* [Storage ring] */
 ring_h          = 170;  // height per ring; stack as needed
@@ -222,52 +208,18 @@ module funnel_cavity() {
 }
 
 module funnel() {
-    // ===== Hollowed funnel body + external vibromotor pad =====
-    // 2026-06-03: no anti-bridge insert any more (the spider caused the
-    // very bridging it was meant to break). Active anti-bridge = a small
-    // vibration motor on the external pad near the throat. The funnel
-    // still prints without supports (round opening on the bed → walls
-    // slope inward; the vibro pad has a self-supporting chamfered foot).
+    // ===== Hollowed funnel body =====
+    // No anti-bridge insert (the spider caused the very bridging it was
+    // meant to break). Active anti-bridge will be a vibromotor on an
+    // external mount — to be re-added once the motor's dims are known.
+    // The funnel prints without supports (round opening on the bed →
+    // walls slope inward → no overhangs).
     difference() {
         union() {
             funnel_outer();
             stacking_lip(z_funnel_top);
-            vibro_pad();
         }
-        funnel_cavity();   // also hollows the pad's inner side → leaves a boss
-        vibro_holes();     // pilot holes drilled into the flat pad face
-    }
-}
-
-// ===========================================================================
-// VIBROMOTOR PAD  flat shelf near the throat + BREAKAWAY support.
-// The shelf is a flat plate (motor mounts on its top face). In the print
-// orientation (plug down) the shelf underside would overhang, so a thin
-// vertical SUPPORT WALL runs from the bed up to the shelf's outer edge —
-// the underside then prints as a ~9 mm bridge (cone → wall). Snap the wall
-// off after printing. funnel_cavity() carves the shelf's inner side.
-// Hole pattern is a placeholder — finalize once the motor is known.
-// ===========================================================================
-module vibro_pad() {
-    rotate([0, 0, vibro_angle]) {
-        // flat shelf (motor mounts on the flat TOP face)
-        translate([0, -vibro_w/2, vibro_z])
-            cube([vibro_face_r, vibro_w, vibro_shelf_t]);
-        // BREAKAWAY support: thin wall, bed → shelf outer edge (snap off)
-        translate([vibro_face_r - vibro_sup_t, -vibro_w/2, 0])
-            cube([vibro_sup_t, vibro_w, vibro_z + 0.01]);
-    }
-}
-
-module vibro_holes() {
-    rotate([0, 0, vibro_angle]) {
-        // 2 pilot holes (vertical, through the shelf)
-        for (s = [-1, 1])
-            translate([vibro_hole_r, s * vibro_screw_dy / 2, vibro_z - 1])
-                cylinder(d = vibro_screw_d, h = vibro_shelf_t + 2);
-        // central clearance / lightening hole (vertical)
-        translate([vibro_hole_r, 0, vibro_z - 1])
-            cylinder(d = vibro_light_d, h = vibro_shelf_t + 2);
+        funnel_cavity();
     }
 }
 

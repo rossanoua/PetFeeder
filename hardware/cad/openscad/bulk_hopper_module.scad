@@ -58,12 +58,11 @@ join_clear      = 0.3;
 /* [Cap hole — MUST match paddle_wheel_module.scad] */
 // Bulk hopper bottom opens directly to this rectangular hole. No spout
 // in between (the old spout cube is gone in this revision).
-// 2026-06-05: throat enlarged to 26×34 (max on the Ø80 wheel: out=40 is
-// the wheel rim, in=14 keeps 4 mm off the hub). Bigger opening = less
-// arching. MUST match paddle_wheel_module.scad.
-hole_radial_in   = 14;
-hole_radial_out  = 40;   // length 26 mm (out = wheel rim)
-hole_w           = 34;   // tangential (max on Ø80)
+// 2026-06-05b: throat extended inward toward the axle (in 14→7) to feed
+// the wheel's stirrer cone. Now 33×34. MUST match paddle_wheel_module.scad.
+hole_radial_in   = 7;
+hole_radial_out  = 40;   // length 33 mm (out = wheel rim)
+hole_w           = 34;   // tangential
 hole_corner_r    = 2;
 
 /* [Cap collar — MUST match paddle_wheel_module.scad] */

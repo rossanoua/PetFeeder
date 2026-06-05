@@ -55,9 +55,9 @@ recess_depth     = 4;
 
 /* [Internal chute] (catches kibble from housing outlet -> front exit) */
 // The housing outlet is at (+X-relative-to-housing-center, y=0) at radial
-// distance hole_mid_r ≈ 27 mm. Inlet of the chute is directly below.
-// 2026-06-05: chute follows the enlarged 26×34 hole (Ø80 wheel).
-chute_inlet_w_x  = 32;    // radial extent (= hole_len 26 + 6 catch margin)
+// distance hole_mid_r ≈ 23.5 mm. Inlet of the chute is directly below.
+// 2026-06-05b: chute follows the 33×34 hole (extended toward the axle).
+chute_inlet_w_x  = 39;    // radial extent (= hole_len 33 + 6 catch margin)
 chute_inlet_w_y  = 40;    // tangential extent (= hole_w 34 + 6 catch margin)
 chute_outlet_w_y = 52;    // chute mouth width at the front exit
 chute_outlet_w_z = 42;    // chute mouth height at the front exit
@@ -73,7 +73,7 @@ $fn = 64;
 
 // --- derived ----------------------------------------------------------------
 // Housing outlet position in chassis frame (housing center = chassis (0,0,top))
-housing_outlet_x = 27;   // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (14+40)/2
+housing_outlet_x = 23.5; // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (7+40)/2
 housing_outlet_z = chassis_h;  // kibble enters chassis from above at top
 
 // Chute outlet position (front face)
@@ -159,17 +159,17 @@ module assembly() {
     // aligns with the cap inlet hole. The cap collar surrounds the
     // funnel outer bottom edge.
     z_cap_top = z_housing_bottom + housing_height + 3 /*end_wall*/;
-    translate([-27, 0,z_cap_top])
+    translate([-23.5, 0,z_cap_top])
         color("LightBlue", 0.5) funnel();
 
     // Storage ring on top of funnel (funnel_h = 115 mm in new design)
     z_funnel_top = z_cap_top + 115;
-    translate([-27, 0,z_funnel_top])
+    translate([-23.5, 0,z_funnel_top])
         color("LightSteelBlue", 0.5) ring();
 
     // Lid on top of ring (ring_h = 170 mm)
     z_ring_top = z_funnel_top + 170;
-    translate([-27, 0,z_ring_top])
+    translate([-23.5, 0,z_ring_top])
         color("Khaki", 0.6) lid();
 }
 

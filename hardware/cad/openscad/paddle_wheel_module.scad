@@ -57,6 +57,16 @@ paddle_thick    = 2.4;
 paddle_fraction = 0.5;
 hub_d           = 20;    // proportional to wheel_d=80
 
+/* [Active stirrer cone] (2026-06-05, replaces the dead static spider) */
+// A frustum on the hub TOP, under the (now bigger, axle-ward) cap inlet.
+// 3 proud VANES (continuations of the paddles) ride the cone — because
+// they ROTATE with the wheel, they poke/break any arch forming over the
+// centre. Kibble also can't rest on a flat top: it slides into pockets.
+cone_h        = 11;      // cone height above the hub (clears the cap ~4.5 mm)
+cone_top_d    = 8;       // truncated tip Ø (solid above the axle)
+vane_proud    = 2.5;     // how far the vanes stand proud of the cone
+vane_t        = paddle_thick;  // vane thickness = paddle thickness
+
 /* [Axle] */
 axle_d         = 5.0;
 axle_flat      = 0.8;
@@ -98,9 +108,9 @@ lock_rise      = 5.0;   // merlon height above the rim (pokes through cap)
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 14;   // 2026-06-05: throat enlarged to 26×34 (max on
-hole_radial_out  = 40;   //   the Ø80 wheel) to reduce arching. out=40 is
-hole_w           = 34;   //   the wheel rim; in=14 keeps 4 mm off the hub.
+hole_radial_in   = 7;    // 2026-06-05: extended inward toward the axle so
+hole_radial_out  = 40;   //   kibble drops onto the stirrer cone. r=7 leaves
+hole_w           = 34;   //   ~4 mm to the axle bore. out=40 is the wheel rim.
 hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
 inlet_angle_deg  = 180;
 outlet_angle_deg = 0;
@@ -179,6 +189,7 @@ module wheel() {
     // Outer envelope unchanged: paddle still sweeps to wheel_r at the
     // sphere tangent points.
     rp = paddle_thick / 2;
+    cone_top_r = cone_top_d / 2;
     difference() {
         union() {
             cylinder(h = wheel_thickness, d = hub_d);
@@ -198,9 +209,31 @@ module wheel() {
                         translate([wheel_r - rp, 0, paddle_h - rp])
                             sphere(r = rp, $fn = 16);
                     }
+            // Active stirrer: frustum on the hub top (base = hub_d).
+            translate([0, 0, wheel_thickness])
+                cylinder(h = cone_h, r1 = hub_r, r2 = cone_top_r);
+            // 3 proud VANES on the cone (aligned with the paddles). Each
+            // is a thin radial wall clipped to a cone vane_proud larger
+            // than the core cone → a fin that hugs the cone and stands
+            // vane_proud above it. Prints support-free (leans in going up).
+            for (i = [0 : n_paddles - 1])
+                rotate([0, 0, 360 * i / n_paddles])
+                    intersection() {
+                        // start at r=2 (not the axis) so the 3 vanes never
+                        // overlap at the centre (that made it non-manifold)
+                        translate([2, -vane_t/2, wheel_thickness])
+                            cube([hub_r + vane_proud - 2, vane_t, cone_h]);
+                        translate([0, 0, wheel_thickness])
+                            cylinder(h = cone_h,
+                                     r1 = hub_r + vane_proud,
+                                     r2 = cone_top_r + vane_proud);
+                    }
         }
+        // axle D-bore — extended up through most of the cone (solid tip
+        // left above it). The bore reaches wheel_thickness + cone_h - 3.
         translate([0, 0, -1])
-            d_solid(axle_d + fit_clear, axle_flat, wheel_thickness + 2);
+            d_solid(axle_d + fit_clear, axle_flat,
+                    wheel_thickness + cone_h - 2);
     }
 }
 

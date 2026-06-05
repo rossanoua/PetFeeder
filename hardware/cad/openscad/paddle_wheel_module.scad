@@ -88,21 +88,25 @@ end_wall           = 3;
 // the inlet.
 housing_buffer_h   = 15;
 
-/* [Anti-rotation lock — flush rim MERLONS (housing) + cap NOTCHES] */
-// 2026-06-04 v4: the v3 outward ears/tabs stuck out past the wall (user:
-// they "випирають"). New scheme keeps EVERYTHING WITHIN the existing wall
-// thickness — nothing protrudes radially:
-//   • HOUSING: the rim wall is raised by lock_rise at 4 spots (MERLONS),
-//     staying inside the wall band (hr_in..hr_out) — just "more wall".
-//   • CAP: 4 matching radial NOTCHES (bites) in the disc edge. The
-//     merlons poke up through the notches → rotation blocked, 4 index
-//     positions. Both print support-free (raised wall = vertical lines;
-//     notch = a full-thickness gap, nothing bridges over it).
+/* [Anti-rotation lock — robust rim MERLONS (housing) + cap NOTCHES] */
+// 2026-06-05 v5: a v4 merlon snapped off easily (thin 3×8 mm tab, 5 mm
+// tall — weak across the print layers). Beefed up so it can't break:
+//   • LONGER tangentially (lock_w 8→14) and LOWER (rise 5→4) = far more
+//     base area, less leverage.
+//   • Thickened INWARD by lock_thick into the buffer (empty there) so the
+//     merlon is 6 mm radial, not 3 — much stiffer against a radial knock.
+//   • A chamfered ANCHOR ramps that thickening down into the wall below
+//     the rim → no thin neck at the base (the usual snap point), and it
+//     stays self-supporting to print.
+//   • Merlons are unioned AFTER the cavity cut so the inward part isn't
+//     carved away. CAP notches match the bigger merlon footprint.
 n_lock         = 4;
 lock_angle_off = 45;    // diagonal — clear of inlet (180) / outlet (0)
 lock_clear     = 0.3;   // merlon <-> notch slip clearance
-lock_w         = 8.0;   // merlon / notch tangential width
-lock_rise      = 5.0;   // merlon height above the rim (pokes through cap)
+lock_w         = 14;    // merlon / notch tangential width (was 8)
+lock_rise      = 4;     // merlon height above the rim (pokes through cap)
+lock_thick     = 3;     // inward radial thickening (into the buffer)
+lock_anchor_h  = 4;     // chamfered anchor depth below the rim
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -254,44 +258,48 @@ module axle() {
 // HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
 // ===========================================================================
 module housing() {
-    // 2026-06-04 v4: 4 rim MERLONS (raised wall sections) replace the v3
-    // outboard ears. They stay WITHIN the wall band (hr_in..hr_out) — no
-    // radial protrusion. The cap's notches drop over them.
-    difference() {
-        union() {
+    // 2026-06-05 v5: 4 robust rim MERLONS — raised, thickened inward, and
+    // anchored below the rim so they can't snap. Unioned AFTER the cavity
+    // cut so the inward thickening survives.
+    union() {
+        difference() {
             cylinder(h = housing_h, d = 2 * hr_out);
-            // 4 rim MERLONS — the wall raised lock_rise at 4 spots,
-            // confined to the wall band (hr_in..hr_out) by intersecting a
-            // raised annular ring with a lock_w-wide angular wedge.
-            for (i = [0 : n_lock - 1])
-                rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                    intersection() {
-                        // raised annular wall ring (hr_in..hr_out)
-                        difference() {
-                            cylinder(h = housing_h + lock_rise, d = 2 * hr_out);
-                            translate([0, 0, -1])
-                                cylinder(h = housing_h + lock_rise + 2,
-                                         d = 2 * hr_in);
-                        }
-                        // keep only a lock_w-wide arc, only the raised part
-                        translate([0, -lock_w/2, housing_h - 1])
-                            cube([hr_out + 1, lock_w, lock_rise + 1]);
-                    }
+
+            // wheel cavity — plain full-width cylinder (full-width buffer)
+            translate([0, 0, end_wall])
+                cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
+
+            // central axle bore
+            translate([0, 0, -1])
+                cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
+
+            // OUTLET — rounded-rect hole through floor
+            rotate([0, 0, outlet_angle_deg])
+                translate([hole_mid_r, 0, -1])
+                    rounded_rect(hole_len, hole_w, hole_corner_r,
+                                 end_wall + 2);
         }
 
-        // wheel cavity — plain full-width cylinder (full-width buffer)
-        translate([0, 0, end_wall])
-            cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
+        // 4 robust MERLONS (added after the cavity cut)
+        for (i = [0 : n_lock - 1])
+            rotate([0, 0, lock_angle_off + 360 * i / n_lock])
+                merlon();
+    }
+}
 
-        // central axle bore
-        translate([0, 0, -1])
-            cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
-
-        // OUTLET — rounded-rect hole through floor
-        rotate([0, 0, outlet_angle_deg])
-            translate([hole_mid_r, 0, -1])
-                rounded_rect(hole_len, hole_w, hole_corner_r,
-                             end_wall + 2);
+// One robust merlon, centred on +X. Raised block (radial hr_in-lock_thick
+// .. hr_out) + a chamfered inward anchor that ramps the thickening down
+// into the wall below the rim (self-supporting, no thin neck).
+module merlon() {
+    // raised block
+    translate([hr_in - lock_thick, -lock_w/2, housing_h])
+        cube([lock_thick + housing_wall, lock_w, lock_rise]);
+    // chamfered inward anchor below the rim
+    hull() {
+        translate([hr_in - lock_thick, -lock_w/2, housing_h - 0.01])
+            cube([lock_thick, lock_w, 0.01]);
+        translate([hr_in - 0.01, -lock_w/2, housing_h - lock_anchor_h])
+            cube([0.01, lock_w, 0.01]);
     }
 }
 
@@ -347,12 +355,14 @@ module end_cap() {
                                  collar_h + 1);
             }
 
-        // 4 anti-rotation NOTCHES in the disc edge — full-thickness radial
-        // gaps over the wall band; the housing merlons poke up through.
+        // 4 anti-rotation NOTCHES — sized to the merlon footprint (radial
+        // hr_in-lock_thick .. hr_out, tangential lock_w) + clearance. The
+        // robust merlons poke up through these.
         for (i = [0 : n_lock - 1])
             rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                translate([hr_in - 1, -(lock_w/2 + lock_clear), -1])
-                    cube([(hr_out + 1) - (hr_in - 1),
+                translate([hr_in - lock_thick - lock_clear,
+                           -(lock_w/2 + lock_clear), -1])
+                    cube([(hr_out + 1) - (hr_in - lock_thick - lock_clear),
                           lock_w + 2 * lock_clear, end_wall + 2]);
     }
 }

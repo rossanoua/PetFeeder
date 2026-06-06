@@ -101,12 +101,10 @@ td_flare_z = 5;         // z where the round→teardrop flare starts (above rece
 td_clear   = 0.4;       // cap-over-housing teardrop slip clearance
 // td_tip_cx is derived below (needs hr_out)
 
-/* [Cap inlet] — bigger than the floor outlet; extends back into the bulge.
-   The OUTLET (floor) keeps the hole_* params below; the inlet adds a
-   tapering bulge tip on top of that over-wheel footprint. */
-inlet_tip_r  = 11;      // inlet bulge-tip radius
-inlet_back   = 56;      // how far the inlet tip reaches back (-x)
-inlet_tip_cx = inlet_back - inlet_tip_r;     // inlet tip circle centre (-x)
+/* [Cap inlet] — MAX opening: the inlet hugs the whole teardrop cavity,
+   inset only by a thin cap rim (no rectangle, no centre island). Bigger
+   opening → fewer arches. The OUTLET (floor) keeps the hole_* params. */
+inlet_margin = 3;       // cap-rim width between the inlet edge and the cavity
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -186,16 +184,10 @@ module teardrop_2d(R, tip_r, tip_cx) {
     }
 }
 
-// Cap inlet outline (2D): the over-wheel rounded rect (the outlet shape,
-// mirrored to the inlet side, -X) hulled to a bulge tip → a teardrop hole.
+// Cap inlet outline (2D): the teardrop CAVITY inset by a thin rim → the
+// biggest opening that still leaves the cap a frame to rest on the rim.
 module inlet_2d() {
-    hull() {
-        translate([-hole_mid_r, 0])
-            offset(r = hole_corner_r) offset(r = -hole_corner_r)
-                square([hole_len, hole_w], center = true);
-        translate([-inlet_tip_cx, 0])
-            circle(r = inlet_tip_r, $fn = 48);
-    }
+    offset(-inlet_margin) teardrop_2d(hr_in, td_tip_r - housing_wall, td_tip_cx);
 }
 
 // ===========================================================================
@@ -351,9 +343,8 @@ module end_cap() {
             }
         }
 
-        // central axle bore (in the solid front of the cap)
-        translate([0, 0, -1])
-            cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
+        // (no cap axle bore — the inlet covers the centre; the axle is
+        //  guided by the floor bore + the wheel cone)
 
         // INLET through-hole
         translate([0, 0, -1])

@@ -64,7 +64,7 @@ join_clear      = 0.3;
 // 2026-06-05b: throat extended inward toward the axle (in 14→7) to feed
 // the wheel's stirrer cone. Now 33×34. MUST match paddle_wheel_module.scad.
 hole_radial_in   = 7;
-hole_radial_out  = 40;   // length 33 mm (out = wheel rim)
+hole_radial_out  = 35;   // (floor outlet only; funnel uses the teardrop)
 hole_w           = 34;   // tangential
 hole_corner_r    = 2;
 

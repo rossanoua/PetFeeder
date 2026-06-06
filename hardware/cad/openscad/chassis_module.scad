@@ -73,7 +73,7 @@ $fn = 64;
 
 // --- derived ----------------------------------------------------------------
 // Housing outlet position in chassis frame (housing center = chassis (0,0,top))
-housing_outlet_x = 23.5; // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (7+40)/2
+housing_outlet_x = 21;   // ≈ hole_mid_r = (hole_radial_in+hole_radial_out)/2 = (7+35)/2
 housing_outlet_z = chassis_h;  // kibble enters chassis from above at top
 
 // Chute outlet position (front face)

@@ -121,13 +121,13 @@ cap_clear = 0.4;        // cap <-> lip slip clearance
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 7;    // 2026-06-05: extended inward toward the axle so
-hole_radial_out  = 40;   //   kibble drops onto the stirrer cone. r=7 leaves
-hole_w           = 34;   //   ~4 mm to the axle bore. out=40 is the wheel rim.
-hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
-out_cham         = 2;    // 2026-06-06: outlet is TAPERED (wider at the top,
-                         //   the wheel side) so the paddle doesn't catch on
-                         //   a sharp 90° edge; narrows to nominal at the exit
+hole_radial_in   = 7;    // (floor OUTLET; the cap inlet is the teardrop).
+hole_radial_out  = 35;   // 2026-06-06: out pulled IN from the rim (40→35) so
+hole_w           = 34;   //   the paddle TIP sweeps solid floor near the rim
+hole_corner_r    = 2;    //   and never crosses a hole edge there.
+out_cham         = 3;    // tangential lead-in: the two edges the paddle
+                         //   crosses are SLOPED (wider at the wheel side), a
+                         //   ramp instead of a 90° edge.
 inlet_angle_deg  = 180;
 outlet_angle_deg = 0;
 
@@ -329,17 +329,20 @@ module housing() {
         translate([0, 0, -1])
             cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
 
-        // OUTLET — TAPERED rounded-rect hole through floor: nominal at the
-        // exit (bottom), wider at the top (the wheel side) so paddles/kibble
-        // ride a sloped edge instead of catching on a sharp 90° corner.
+        // OUTLET — rounded-rect hole through floor. The two TANGENTIAL edges
+        // (the ones the paddle crosses as it sweeps) are SLOPED: nominal at
+        // the exit (bottom), wider tangentially at the top (wheel side), so
+        // the paddle/kibble ride a ramp. The radial edges stay vertical; the
+        // outer edge is at r=35 (clear of the rim) so the paddle tip never
+        // meets it.
         rotate([0, 0, outlet_angle_deg])
             translate([hole_mid_r, 0, 0])
                 hull() {
                     translate([0, 0, -1])
                         rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
                     translate([0, 0, end_wall + 0.5])
-                        rounded_rect(hole_len + 2*out_cham, hole_w + 2*out_cham,
-                                     hole_corner_r + out_cham, 0.5);
+                        rounded_rect(hole_len, hole_w + 2*out_cham,
+                                     hole_corner_r, 0.5);
                 }
 
         // REBATE — cut the inner rim down to a ledge, leaving the outer

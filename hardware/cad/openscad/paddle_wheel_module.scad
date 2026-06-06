@@ -108,6 +108,15 @@ td_clear   = 0.4;       // cap-over-housing teardrop slip clearance
 inlet_margin = 3;       // rim between the inlet edge and the cavity wall
 axle_keep    = axle_d/2 + fit_clear + 2;  // solid cap kept around the axle bore
 
+/* [Cap rebate joint — the cap nests into a CUT in the housing rim] */
+// 2026-06-06: connect housing↔cap with a REBATE, not pins/holes. The rim
+// is cut down on the inside to a ledge, leaving the outer teardrop LIP;
+// the cap is inset so it drops into that cut and is captured laterally
+// (the teardrop keeps it from rotating).
+rab_d     = 3;          // rebate depth (how deep the cap nests into the lip)
+rab_w     = 2;          // teardrop lip width (the un-cut outer rim)
+cap_clear = 0.4;        // cap <-> lip slip clearance
+
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
@@ -196,6 +205,12 @@ module inlet_2d() {
             teardrop_2d(hr_in, td_tip_r - housing_wall, td_tip_cx);
         translate([-axle_keep - 200, -100]) square([200, 200]);  // x <= -axle_keep
     }
+}
+
+// Cap outline (2D): the housing teardrop inset so the cap drops inside the
+// housing rebate lip (with cap_clear slip).
+module cap_outline() {
+    offset(-(rab_w + cap_clear)) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
 }
 
 // ===========================================================================
@@ -315,6 +330,12 @@ module housing() {
         rotate([0, 0, outlet_angle_deg])
             translate([hole_mid_r, 0, -1])
                 rounded_rect(hole_len, hole_w, hole_corner_r, end_wall + 2);
+
+        // REBATE — cut the inner rim down to a ledge, leaving the outer
+        // teardrop LIP (rab_w wide) at full height. The cap nests in here.
+        translate([0, 0, housing_h - rab_d])
+            linear_extrude(rab_d + 1)
+                offset(-rab_w) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
     }
 }
 
@@ -329,37 +350,38 @@ module housing() {
 // the cap OD.
 // ===========================================================================
 module end_cap() {
-    // 2026-06-06: TEARDROP cap matching the housing top. Big teardrop INLET
-    // (bulge toward -X). Sits on the housing teardrop rim — the shape itself
-    // keeps it from sitting in a wrong orientation (it would tilt off the
-    // round part). Collar fences the funnel's teardrop throat. No merlons.
+    // 2026-06-06: TEARDROP cap that NESTS into the housing rebate. Its
+    // teardrop is inset by (rab_w + cap_clear) so it drops inside the
+    // housing lip; the disc is (end_wall + rab_d) thick so its bottom rab_d
+    // sits in the cut while its top stays flush with the old rim height
+    // (collar/funnel unchanged). The teardrop blocks rotation; the lip
+    // captures it laterally. No pins, no holes.
+    cap_t = end_wall + rab_d;
     difference() {
         union() {
-            // teardrop disc
-            linear_extrude(end_wall) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
-            // collar fence around the inlet (clipped within the disc).
-            // Interior accepts the funnel plug = inlet + hopper_wall + clear.
+            // inset teardrop disc (nests into the rebate)
+            linear_extrude(cap_t) cap_outline();
+            // collar fence around the inlet (clipped within the inset disc)
             intersection() {
-                translate([0, 0, end_wall])
+                translate([0, 0, cap_t])
                     linear_extrude(collar_h)
                         difference() {
                             offset(hopper_wall + collar_clear + collar_wall) inlet_2d();
                             offset(hopper_wall + collar_clear) inlet_2d();
                         }
-                linear_extrude(end_wall + collar_h + 1)
-                    teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+                linear_extrude(cap_t + collar_h + 1) cap_outline();
             }
         }
 
         // central axle bore (in the solid front of the cap — top guide)
         translate([0, 0, -1])
-            cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
+            cylinder(h = cap_t + 2, d = axle_d + fit_clear * 2);
 
         // INLET through-hole
         translate([0, 0, -1])
-            linear_extrude(end_wall + 2) inlet_2d();
+            linear_extrude(cap_t + 2) inlet_2d();
         // collar interior above the cap — accepts the funnel plug
-        translate([0, 0, end_wall + 0.5])
+        translate([0, 0, cap_t + 0.5])
             linear_extrude(collar_h + 1)
                 offset(hopper_wall + collar_clear) inlet_2d();
     }
@@ -423,7 +445,7 @@ if (part == "assembly") {
     color("LightBlue", 0.28)
         housing();
     color("LightSteelBlue", 0.55)
-        translate([0, 0, housing_h]) end_cap();
+        translate([0, 0, housing_h - rab_d]) end_cap();  // nests into the rebate
     // hopper sits ON the cap (z = housing_h + end_wall = cap top),
     // offset to inlet_angle_deg, radial offset hole_mid_r
     color("Khaki", 0.55)

@@ -150,8 +150,9 @@ module assembly() {
     translate([0, 0, z_housing_bottom - 22])
         color("DimGray") axle();
 
-    // End cap on top of housing rim
-    translate([0, 0, z_housing_bottom + housing_height])
+    // End cap nests into the housing rebate (rab_d=3 below the rim; its
+    // thicker disc brings the top back flush, so z_cap_top is unchanged)
+    translate([0, 0, z_housing_bottom + housing_height - 3 /*rab_d*/])
         color("LightSteelBlue", 0.75) end_cap();
 
     // Bulk hopper: funnel sits ON the cap (collar-mount; no socket).

@@ -159,17 +159,17 @@ module assembly() {
     // aligns with the cap inlet hole. The cap collar surrounds the
     // funnel outer bottom edge.
     z_cap_top = z_housing_bottom + housing_height + 3 /*end_wall*/;
-    translate([-23.5, 0,z_cap_top])
+    translate([-28, 0,z_cap_top])
         color("LightBlue", 0.5) funnel();
 
     // Storage ring on top of funnel (funnel_h = 115 mm in new design)
     z_funnel_top = z_cap_top + 115;
-    translate([-23.5, 0,z_funnel_top])
+    translate([-28, 0,z_funnel_top])
         color("LightSteelBlue", 0.5) ring();
 
     // Lid on top of ring (ring_h = 170 mm)
     z_ring_top = z_funnel_top + 170;
-    translate([-23.5, 0,z_ring_top])
+    translate([-28, 0,z_ring_top])
         color("Khaki", 0.6) lid();
 }
 

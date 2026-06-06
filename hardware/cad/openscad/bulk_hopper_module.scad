@@ -72,8 +72,21 @@ hole_corner_r    = 2;
 hopper_wall     = 2;
 collar_clear    = 0.5;
 cap_collar_h    = 10;   // MUST match collar_h in paddle_wheel_module.scad
-                        //   funnel has a straight rect plug at the bottom
-                        //   that fits into this collar (taper starts ABOVE)
+                        //   funnel has a straight plug at the bottom that
+                        //   fits into this collar (taper starts ABOVE)
+
+/* [Teardrop throat — MUST match paddle_wheel_module.scad cap inlet] */
+// 2026-06-06: the funnel throat is now the SAME teardrop as the cap inlet
+// (big opening on the inlet side, reaching the axle). The Ø160 top is
+// centred over the throat (the throat is shifted +throat_cx so it sits at
+// the funnel origin); the funnel is then placed at chassis (-throat_cx).
+pw_hr_in        = 40.8;  // = wheel_r 40 + housing_clear 0.8
+pw_housing_wall = 3;
+pw_td_tip_r     = 18;
+pw_td_back      = 22;
+pw_inlet_margin = 3;
+pw_axle_keep    = 4.8;   // = axle_d/2 + fit_clear + 2
+throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
 
 /* [Quality] */
 $fn = 96;
@@ -91,11 +104,33 @@ hopper_outer_len = hole_len + 2 * hopper_wall; // radial
 lip_or         = bulk_r_in - join_clear;
 lip_ir         = lip_or - bulk_wall;
 
+// Teardrop throat derived
+pw_hr_out      = pw_hr_in + pw_housing_wall;
+pw_td_tip_cx   = pw_hr_out + pw_td_back - pw_td_tip_r;
+
 // Z markers
 z_funnel_top   = funnel_h;                 // = top of funnel cone
 z_lip_top      = z_funnel_top + joint_lip_h;
 
 // --- helpers ----------------------------------------------------------------
+// Teardrop outline (2D) + the cap-inlet THROAT, shifted so its centre sits
+// at the funnel origin (the Ø160 top is built there). MUST stay in sync
+// with paddle_wheel_module.scad's teardrop_2d / inlet_2d.
+module teardrop_2d(R, tip_r, tip_cx) {
+    hull() {
+        circle(r = R, $fn = 96);
+        translate([-tip_cx, 0]) circle(r = tip_r, $fn = 48);
+    }
+}
+module throat_2d() {
+    translate([throat_cx, 0])
+        intersection() {
+            offset(-pw_inlet_margin)
+                teardrop_2d(pw_hr_in, pw_td_tip_r - pw_housing_wall, pw_td_tip_cx);
+            translate([-pw_axle_keep - 200, -100]) square([200, 200]);
+        }
+}
+
 module rounded_rect(x, y, r, h) {
     hull() {
         for (dx = [-1, 1])
@@ -131,16 +166,13 @@ module stacking_lip(z_base) {
 // — that solid wall is what supports the lip's first print layer.
 module funnel_outer() {
     union() {
-        // Straight rect plug (fits into the cap collar)
-        rounded_rect(hopper_outer_len, hopper_outer_w,
-                     hole_corner_r + hopper_wall, cap_collar_h);
-        // More-open mass-flow cone — from rect plug to Ø bulk_d at
-        // z=cone_top_z (reached early). Above cone_top_z the outer is a
-        // straight Ø bulk_d cylinder all the way to the top.
+        // Teardrop plug (throat + wall) — fits into the cap collar
+        linear_extrude(cap_collar_h) offset(hopper_wall) throat_2d();
+        // Mass-flow cone — from the teardrop plug to Ø bulk_d at cone_top_z
+        // (Ø160 centred at the origin, over the throat).
         hull() {
             translate([0, 0, cap_collar_h])
-                rounded_rect(hopper_outer_len, hopper_outer_w,
-                             hole_corner_r + hopper_wall, 0.5);
+                linear_extrude(0.5) offset(hopper_wall) throat_2d();
             translate([0, 0, cone_top_z - 0.5])
                 cylinder(d = bulk_d, h = 0.5);
         }
@@ -173,16 +205,14 @@ module funnel_outer() {
 // під кінець").
 module funnel_cavity() {
     union() {
-        // 1. Straight inner bottom (= cap hole shape), extends below z=0
-        //    for clean cut-through
+        // 1. Teardrop throat (= cap inlet), extends below z=0 for a clean
+        //    cut-through.
         translate([0, 0, -2])
-            rounded_rect(hole_len, hole_w, hole_corner_r,
-                         cap_collar_h + 2 + 0.5);
-        // 2. Cone cavity — top reaches r=(bulk_d/2 - hopper_wall) at
-        //    z=cone_top_z (more-open cone, uniform 2 mm wall).
+            linear_extrude(cap_collar_h + 2 + 0.5) throat_2d();
+        // 2. Cone cavity — throat → r=(bulk_d/2 - hopper_wall) at cone_top_z.
         hull() {
             translate([0, 0, cap_collar_h])
-                rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
+                linear_extrude(0.5) throat_2d();
             translate([0, 0, cone_top_z - 0.5])
                 cylinder(r = bulk_d/2 - hopper_wall, h = 0.5);
         }

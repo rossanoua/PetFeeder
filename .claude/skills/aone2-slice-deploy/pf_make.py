@@ -26,6 +26,11 @@ def prepare_config():
     with zipfile.ZipFile(PROJECT_3MF) as z:
         cfg = json.loads(z.read("Metadata/project_settings.config"))
     cfg.pop("post_process", None)          # CLI can't run post-process scripts
+    # optional per-run overrides, e.g.
+    #   PF_CONFIG_OVERRIDE='{"brim_type":"outer_and_inner","brim_width":5}'
+    ov = os.environ.get("PF_CONFIG_OVERRIDE")
+    if ov:
+        cfg.update(json.loads(ov))
     path = os.path.join(WORK, "pf_noproc.json")
     json.dump(cfg, open(path, "w"))
     return path

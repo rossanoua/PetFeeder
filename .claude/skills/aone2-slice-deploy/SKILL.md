@@ -55,6 +55,11 @@ straight from `~/Downloads/petFeeder.3mf`, slices each, prints the gcode
 path. Verify the gcode header has `gcode_flavor = klipper` and
 `printer_settings_id = AONE2 0.4 nozzle_`.
 
+Per-run profile tweaks go through `PF_CONFIG_OVERRIDE` (a JSON dict merged
+into the config), e.g. inner+outer brim:
+`PF_CONFIG_OVERRIDE='{"brim_type":"outer_and_inner","brim_width":5}' python3 pf_make.py …`
+(OrcaSlicer `brim_type`: no_brim | outer_only | inner_only | outer_and_inner | auto_brim.)
+
 ## After slicing
 - Refine estimates (talks to Moonraker):
   `~/Downloads/klipper_estimator_osx --config_moonraker_url http://192.168.88.102:81 post-process <gcode>`

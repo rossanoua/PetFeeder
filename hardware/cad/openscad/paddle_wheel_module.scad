@@ -125,6 +125,9 @@ hole_radial_in   = 7;    // 2026-06-05: extended inward toward the axle so
 hole_radial_out  = 40;   //   kibble drops onto the stirrer cone. r=7 leaves
 hole_w           = 34;   //   ~4 mm to the axle bore. out=40 is the wheel rim.
 hole_corner_r    = 2;    // rounded corners — no piece-corner catch points
+out_cham         = 2;    // 2026-06-06: outlet is TAPERED (wider at the top,
+                         //   the wheel side) so the paddle doesn't catch on
+                         //   a sharp 90° edge; narrows to nominal at the exit
 inlet_angle_deg  = 180;
 outlet_angle_deg = 0;
 
@@ -326,10 +329,18 @@ module housing() {
         translate([0, 0, -1])
             cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
 
-        // OUTLET — rounded-rect hole through floor (front, round region)
+        // OUTLET — TAPERED rounded-rect hole through floor: nominal at the
+        // exit (bottom), wider at the top (the wheel side) so paddles/kibble
+        // ride a sloped edge instead of catching on a sharp 90° corner.
         rotate([0, 0, outlet_angle_deg])
-            translate([hole_mid_r, 0, -1])
-                rounded_rect(hole_len, hole_w, hole_corner_r, end_wall + 2);
+            translate([hole_mid_r, 0, 0])
+                hull() {
+                    translate([0, 0, -1])
+                        rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
+                    translate([0, 0, end_wall + 0.5])
+                        rounded_rect(hole_len + 2*out_cham, hole_w + 2*out_cham,
+                                     hole_corner_r + out_cham, 0.5);
+                }
 
         // REBATE — cut the inner rim down to a ledge, leaving the outer
         // teardrop LIP (rab_w wide) at full height. The cap nests in here.

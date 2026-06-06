@@ -233,11 +233,12 @@ module wheel() {
                                      r2 = cone_top_r + vane_proud);
                     }
         }
-        // axle D-bore — extended up through most of the cone (solid tip
-        // left above it). The bore reaches wheel_thickness + cone_h - 3.
+        // axle D-bore — goes ALL THE WAY THROUGH (incl. the cone tip), so
+        // the axle hole is obvious and the axle can pass up to the cap's
+        // bore (top guide). The tip becomes a thin Ø(cone_top_d) ring.
         translate([0, 0, -1])
             d_solid(axle_d + fit_clear, axle_flat,
-                    wheel_thickness + cone_h - 2);
+                    wheel_thickness + cone_h + 2);
     }
 }
 

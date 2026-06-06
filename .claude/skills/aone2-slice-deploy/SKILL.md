@@ -56,9 +56,11 @@ path. Verify the gcode header has `gcode_flavor = klipper` and
 `printer_settings_id = AONE2 0.4 nozzle_`.
 
 Per-run profile tweaks go through `PF_CONFIG_OVERRIDE` (a JSON dict merged
-into the config), e.g. inner+outer brim:
-`PF_CONFIG_OVERRIDE='{"brim_type":"outer_and_inner","brim_width":5}' python3 pf_make.py …`
+into the config), e.g. inner+outer brim 3 mm:
+`PF_CONFIG_OVERRIDE='{"brim_type":"outer_and_inner","brim_width":"3"}' python3 pf_make.py …`
 (OrcaSlicer `brim_type`: no_brim | outer_only | inner_only | outer_and_inner | auto_brim.)
+**Values are strings** — `"brim_width":5` (int) is ignored and falls back to
+0 (= no actual brim); use `"brim_width":"3"`.
 
 ## After slicing
 - Refine estimates (talks to Moonraker):
@@ -66,6 +68,21 @@ into the config), e.g. inner+outer brim:
 - **Skip** `~/Downloads/gcode_post_process.py` — it pops a macOS modal
   dialog (osascript), not headless-friendly. (That script is what adds the
   `…UAH` cost to the user's normal filenames; ours won't have it.)
+- **Thumbnail / Mainsail preview.** The headless OrcaSlicer CLI does NOT
+  render gcode thumbnails (no GL context over SSH) → Mainsail/Fluidd show no
+  preview. Fix: render the part to square PNGs on the NUC and embed standard
+  `; thumbnail begin` blocks with `pf_thumb.py` (this skill dir) **after**
+  the estimator, before upload:
+  ```
+  # on the NUC, one PNG per size (small list icon + large detail)
+  xvfb-run -a openscad -o /tmp/p_300.png --imgsize=300,300 --viewall --autocenter -D 'part="funnel"' bulk_hopper_module.scad
+  xvfb-run -a openscad -o /tmp/p_48.png  --imgsize=48,48   --viewall --autocenter -D 'part="funnel"' bulk_hopper_module.scad
+  scp /tmp/p_300.png /tmp/p_48.png pf_thumb.py macmini:/tmp/pf_slice/
+  # on the Mac
+  python3 pf_thumb.py g_<name>/plate_1.gcode /tmp/pf_slice/p_48.png /tmp/pf_slice/p_300.png
+  ```
+  Moonraker's inotify scan extracts them into `.thumbs/` on upload. Verify:
+  `curl -s 'http://localhost:81/server/files/metadata?filename=petFeeder/<file>' | grep -o thumbnail`.
 
 ## Upload to the Pi
 ```

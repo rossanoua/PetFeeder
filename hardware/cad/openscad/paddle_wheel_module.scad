@@ -88,25 +88,25 @@ end_wall           = 3;
 // the inlet.
 housing_buffer_h   = 15;
 
-/* [Anti-rotation lock — robust rim MERLONS (housing) + cap NOTCHES] */
-// 2026-06-05 v5: a v4 merlon snapped off easily (thin 3×8 mm tab, 5 mm
-// tall — weak across the print layers). Beefed up so it can't break:
-//   • LONGER tangentially (lock_w 8→14) and LOWER (rise 5→4) = far more
-//     base area, less leverage.
-//   • Thickened INWARD by lock_thick into the buffer (empty there) so the
-//     merlon is 6 mm radial, not 3 — much stiffer against a radial knock.
-//   • A chamfered ANCHOR ramps that thickening down into the wall below
-//     the rim → no thin neck at the base (the usual snap point), and it
-//     stays self-supporting to print.
-//   • Merlons are unioned AFTER the cavity cut so the inward part isn't
-//     carved away. CAP notches match the bigger merlon footprint.
-n_lock         = 4;
-lock_angle_off = 45;    // diagonal — clear of inlet (180) / outlet (0)
-lock_clear     = 0.3;   // merlon <-> notch slip clearance
-lock_w         = 14;    // merlon / notch tangential width (was 8)
-lock_rise      = 4;     // merlon height above the rim (pokes through cap)
-lock_thick     = 3;     // inward radial thickening (into the buffer)
-lock_anchor_h  = 4;     // chamfered anchor depth below the rim
+/* [TEARDROP top] — round bottom (wheel) flares to a teardrop top + cap */
+// 2026-06-06: user test — the funnel with the biggest opening flows best.
+// To make the cap inlet bigger, the housing stays ROUND at the bottom
+// (where the round wheel turns) and flares to a TEARDROP at the top, the
+// tip pointing BACK toward the inlet/funnel. The cap is the same teardrop
+// and seats only one way → the SHAPE itself keys the cap (anti-rotation),
+// so the old (snapping) merlons are GONE.
+td_back    = 22;        // teardrop tip reach beyond hr_out, toward the inlet
+td_tip_r   = 18;        // teardrop tip radius
+td_flare_z = 5;         // z where the round→teardrop flare starts (above recess)
+td_clear   = 0.4;       // cap-over-housing teardrop slip clearance
+// td_tip_cx is derived below (needs hr_out)
+
+/* [Cap inlet] — bigger than the floor outlet; extends back into the bulge.
+   The OUTLET (floor) keeps the hole_* params below; the inlet adds a
+   tapering bulge tip on top of that over-wheel footprint. */
+inlet_tip_r  = 11;      // inlet bulge-tip radius
+inlet_back   = 56;      // how far the inlet tip reaches back (-x)
+inlet_tip_cx = inlet_back - inlet_tip_r;     // inlet tip circle centre (-x)
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
@@ -137,6 +137,7 @@ wheel_r    = wheel_d / 2;
 hub_r      = hub_d   / 2;
 hr_in      = wheel_r + housing_clear;
 hr_out     = hr_in + housing_wall;
+td_tip_cx  = hr_out + td_back - td_tip_r;   // teardrop tip centre offset (-x)
 housing_h  = end_wall + floor_clear + wheel_thickness
            + wheel_axial_clear + housing_buffer_h;
                             // no register_d any more — cap sits flat on
@@ -173,6 +174,27 @@ module d_solid(d, flat, len) {
     difference() {
         cylinder(h = len, d = d);
         translate([d/2 - flat, -d, -1]) cube([d, 2*d, len + 2]);
+    }
+}
+
+// Teardrop outline (2D): a circle of radius R with a rounded tip bulging
+// toward -X (the inlet side). tip_cx = how far back the tip centre sits.
+module teardrop_2d(R, tip_r, tip_cx) {
+    hull() {
+        circle(r = R, $fn = 96);
+        translate([-tip_cx, 0]) circle(r = tip_r, $fn = 48);
+    }
+}
+
+// Cap inlet outline (2D): the over-wheel rounded rect (the outlet shape,
+// mirrored to the inlet side, -X) hulled to a bulge tip → a teardrop hole.
+module inlet_2d() {
+    hull() {
+        translate([-hole_mid_r, 0])
+            offset(r = hole_corner_r) offset(r = -hole_corner_r)
+                square([hole_len, hole_w], center = true);
+        translate([-inlet_tip_cx, 0])
+            circle(r = inlet_tip_r, $fn = 48);
     }
 }
 
@@ -256,51 +278,43 @@ module axle() {
 }
 
 // ===========================================================================
-// HOUSING  cup with closed floor; outlet is a ROUNDED-RECT hole
+// HOUSING  round cup (wheel) that FLARES to a teardrop top; closed floor
+//          with a rounded-rect OUTLET. The teardrop top widens the inlet.
 // ===========================================================================
 module housing() {
-    // 2026-06-05 v5: 4 robust rim MERLONS — raised, thickened inward, and
-    // anchored below the rim so they can't snap. Unioned AFTER the cavity
-    // cut so the inward thickening survives.
-    union() {
-        difference() {
-            cylinder(h = housing_h, d = 2 * hr_out);
-
-            // wheel cavity — plain full-width cylinder (full-width buffer)
-            translate([0, 0, end_wall])
-                cylinder(h = housing_h - end_wall + 1, d = 2 * hr_in);
-
-            // central axle bore
-            translate([0, 0, -1])
-                cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
-
-            // OUTLET — rounded-rect hole through floor
-            rotate([0, 0, outlet_angle_deg])
-                translate([hole_mid_r, 0, -1])
-                    rounded_rect(hole_len, hole_w, hole_corner_r,
-                                 end_wall + 2);
+    difference() {
+        // OUTER: round bottom → teardrop top
+        union() {
+            cylinder(h = td_flare_z, d = 2 * hr_out);
+            hull() {
+                translate([0, 0, td_flare_z])
+                    cylinder(d = 2 * hr_out, h = 0.1);
+                translate([0, 0, housing_h - 0.1])
+                    linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+            }
         }
 
-        // 4 robust MERLONS (added after the cavity cut)
-        for (i = [0 : n_lock - 1])
-            rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                merlon();
-    }
-}
+        // CAVITY: round bottom (round wheel clearance) → teardrop-inner top
+        union() {
+            translate([0, 0, end_wall])
+                cylinder(h = td_flare_z - end_wall + 0.1, d = 2 * hr_in);
+            hull() {
+                translate([0, 0, td_flare_z])
+                    cylinder(d = 2 * hr_in, h = 0.1);
+                translate([0, 0, housing_h + 1])
+                    linear_extrude(0.1)
+                        teardrop_2d(hr_in, td_tip_r - housing_wall, td_tip_cx);
+            }
+        }
 
-// One robust merlon, centred on +X. Raised block (radial hr_in-lock_thick
-// .. hr_out) + a chamfered inward anchor that ramps the thickening down
-// into the wall below the rim (self-supporting, no thin neck).
-module merlon() {
-    // raised block
-    translate([hr_in - lock_thick, -lock_w/2, housing_h])
-        cube([lock_thick + housing_wall, lock_w, lock_rise]);
-    // chamfered inward anchor below the rim
-    hull() {
-        translate([hr_in - lock_thick, -lock_w/2, housing_h - 0.01])
-            cube([lock_thick, lock_w, 0.01]);
-        translate([hr_in - 0.01, -lock_w/2, housing_h - lock_anchor_h])
-            cube([0.01, lock_w, 0.01]);
+        // central axle bore
+        translate([0, 0, -1])
+            cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
+
+        // OUTLET — rounded-rect hole through floor (front, round region)
+        rotate([0, 0, outlet_angle_deg])
+            translate([hole_mid_r, 0, -1])
+                rounded_rect(hole_len, hole_w, hole_corner_r, end_wall + 2);
     }
 }
 
@@ -315,56 +329,39 @@ module merlon() {
 // the cap OD.
 // ===========================================================================
 module end_cap() {
-    // 2026-06-04 v4: 4 radial NOTCHES in the disc edge replace the v3
-    // outward tabs. The housing's rim merlons poke up through them → no
-    // protruding feature on either part; everything within the wall OD.
-    // Notches are full-thickness edge gaps → print disc-down, no overhang.
+    // 2026-06-06: TEARDROP cap matching the housing top. Big teardrop INLET
+    // (bulge toward -X). Sits on the housing teardrop rim — the shape itself
+    // keeps it from sitting in a wrong orientation (it would tilt off the
+    // round part). Collar fences the funnel's teardrop throat. No merlons.
     difference() {
         union() {
-            // disc body
-            cylinder(h = end_wall, d = 2 * hr_out);
-            // collar on top, around the hole — clipped to the cap OD so
-            // its tangential corners never overhang the disc edge
+            // teardrop disc
+            linear_extrude(end_wall) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+            // collar fence around the inlet (clipped within the disc).
+            // Interior accepts the funnel plug = inlet + hopper_wall + clear.
             intersection() {
-                rotate([0, 0, inlet_angle_deg])
-                    translate([hole_mid_r, 0, end_wall])
-                        rounded_rect(collar_outer_len, collar_outer_w,
-                                     hole_corner_r + collar_wall + collar_clear,
-                                     collar_h);
-                // limit collar to within cap OD
-                cylinder(h = end_wall + collar_h + 1, d = 2 * hr_out);
+                translate([0, 0, end_wall])
+                    linear_extrude(collar_h)
+                        difference() {
+                            offset(hopper_wall + collar_clear + collar_wall) inlet_2d();
+                            offset(hopper_wall + collar_clear) inlet_2d();
+                        }
+                linear_extrude(end_wall + collar_h + 1)
+                    teardrop_2d(hr_out, td_tip_r, td_tip_cx);
             }
         }
 
-        // central axle bore
+        // central axle bore (in the solid front of the cap)
         translate([0, 0, -1])
-            cylinder(h = end_wall + 2,
-                     d = axle_d + fit_clear * 2);
+            cylinder(h = end_wall + 2, d = axle_d + fit_clear * 2);
 
-        // INLET — rounded-rect hole through cap, AND collar interior cavity
-        // (same outline above the cap: cavity that accepts the hopper outer
-        // bottom edge with collar_clear clearance)
-        rotate([0, 0, inlet_angle_deg])
-            translate([hole_mid_r, 0, -1]) {
-                // through-hole (cap thickness): exactly the flow area
-                rounded_rect(hole_len, hole_w, hole_corner_r,
-                             end_wall + 2);
-                // collar interior above cap top — wider, accepts hopper
-                translate([0, 0, end_wall + 0.5])
-                    rounded_rect(collar_inner_len, collar_inner_w,
-                                 hole_corner_r + collar_clear,
-                                 collar_h + 1);
-            }
-
-        // 4 anti-rotation NOTCHES — sized to the merlon footprint (radial
-        // hr_in-lock_thick .. hr_out, tangential lock_w) + clearance. The
-        // robust merlons poke up through these.
-        for (i = [0 : n_lock - 1])
-            rotate([0, 0, lock_angle_off + 360 * i / n_lock])
-                translate([hr_in - lock_thick - lock_clear,
-                           -(lock_w/2 + lock_clear), -1])
-                    cube([(hr_out + 1) - (hr_in - lock_thick - lock_clear),
-                          lock_w + 2 * lock_clear, end_wall + 2]);
+        // INLET through-hole
+        translate([0, 0, -1])
+            linear_extrude(end_wall + 2) inlet_2d();
+        // collar interior above the cap — accepts the funnel plug
+        translate([0, 0, end_wall + 0.5])
+            linear_extrude(collar_h + 1)
+                offset(hopper_wall + collar_clear) inlet_2d();
     }
 }
 

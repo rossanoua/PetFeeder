@@ -37,6 +37,9 @@ bulk_wall     = 3;      // wall thickness (mm)
 funnel_h        = 115;
 cone_top_z      = 98;   // cone reaches Ø160 at z≈98, straight Ø160 above
 cavity_taper_h  = 5;    // top chamfer that supports the lip's first layer
+throat_fillet   = 8;    // 2026-06-06: ROUND the plug→cone inner corner so
+                        //   kibble slides smoothly (tangent to the vertical
+                        //   plug at the bottom, blends into the cone)
 
 // [Vibromotor mount] removed 2026-06-05 — will be re-added as its own
 // feature once the specific motor's dimensions are known. The active
@@ -131,6 +134,29 @@ module throat_2d() {
         }
 }
 
+// Cone from the straight plug (at z=cap_collar_h, profile = throat_2d offset
+// by prof_off) up to a Ø(2*r_top) circle at cone_top_z, with the bottom
+// corner ROUNDED (a fillet tangent to the vertical plug, blending into the
+// cone). Used for both the outer and the cavity so the wall stays uniform.
+module fillet_cone(prof_off, r_top) {
+    amax = 45; n = 4; fil = throat_fillet;
+    for (i = [0 : n - 1])
+        hull() {
+            translate([0, 0, cap_collar_h + fil * sin(amax * i / n)])
+                linear_extrude(0.02)
+                    offset(prof_off + fil * (1 - cos(amax * i / n))) throat_2d();
+            translate([0, 0, cap_collar_h + fil * sin(amax * (i + 1) / n)])
+                linear_extrude(0.02)
+                    offset(prof_off + fil * (1 - cos(amax * (i + 1) / n))) throat_2d();
+        }
+    hull() {
+        translate([0, 0, cap_collar_h + fil * sin(amax)])
+            linear_extrude(0.02)
+                offset(prof_off + fil * (1 - cos(amax))) throat_2d();
+        translate([0, 0, cone_top_z - 0.5]) cylinder(r = r_top, h = 0.5);
+    }
+}
+
 module rounded_rect(x, y, r, h) {
     hull() {
         for (dx = [-1, 1])
@@ -168,14 +194,8 @@ module funnel_outer() {
     union() {
         // Teardrop plug (throat + wall) — fits into the cap collar
         linear_extrude(cap_collar_h) offset(hopper_wall) throat_2d();
-        // Mass-flow cone — from the teardrop plug to Ø bulk_d at cone_top_z
-        // (Ø160 centred at the origin, over the throat).
-        hull() {
-            translate([0, 0, cap_collar_h])
-                linear_extrude(0.5) offset(hopper_wall) throat_2d();
-            translate([0, 0, cone_top_z - 0.5])
-                cylinder(d = bulk_d, h = 0.5);
-        }
+        // Mass-flow cone with a ROUNDED plug→cone corner, to Ø160 at cone_top_z.
+        fillet_cone(hopper_wall, bulk_d / 2);
         // Straight Ø bulk_d cylinder from cone_top_z to the top.
         translate([0, 0, cone_top_z])
             cylinder(d = bulk_d, h = funnel_h - cone_top_z);
@@ -209,13 +229,9 @@ module funnel_cavity() {
         //    cut-through.
         translate([0, 0, -2])
             linear_extrude(cap_collar_h + 2 + 0.5) throat_2d();
-        // 2. Cone cavity — throat → r=(bulk_d/2 - hopper_wall) at cone_top_z.
-        hull() {
-            translate([0, 0, cap_collar_h])
-                linear_extrude(0.5) throat_2d();
-            translate([0, 0, cone_top_z - 0.5])
-                cylinder(r = bulk_d/2 - hopper_wall, h = 0.5);
-        }
+        // 2. Cone cavity with the SAME rounded plug→cone corner (wall stays
+        //    uniform): throat → r=(bulk_d/2 - hopper_wall) at cone_top_z.
+        fillet_cone(0, bulk_d/2 - hopper_wall);
         // 2b. Straight cavity cylinder r=78 from cone_top_z up to the
         //     chamfer start (keeps the 2 mm wall in the straight section).
         translate([0, 0, cone_top_z])

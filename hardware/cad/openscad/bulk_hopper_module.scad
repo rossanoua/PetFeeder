@@ -20,9 +20,13 @@
 //   part = "ring"     -> storage ring (stackable; print N copies)
 //   part = "lid"      -> top cover with finger handle
 //   part = "assembly" -> all stacked for visual fit check
+//   part = "spider"     -> drop-in anti-pressure stress cone (prints alone)
+//   part = "spider_fit" -> spider + funnel + wheel, half-cut clearance check
 // ===========================================================================
 
-part = "assembly";   // funnel | ring | lid | assembly
+use <paddle_wheel_module.scad>   // wheel() for the spider_fit clearance render
+
+part = "assembly";   // funnel | ring | lid | assembly | spider | spider_fit
 
 /* [Hopper outer geometry] */
 bulk_d        = 160;    // outer diameter of every section (mm)
@@ -90,6 +94,24 @@ pw_td_back      = 22;
 pw_inlet_margin = 3;
 pw_axle_keep    = 4.8;   // = axle_d/2 + fit_clear + 2
 throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
+
+/* [Anti-pressure spider] */
+// Drop-in stress cone: bears the kibble column on a central cone (apex up)
+// and shunts that weight into the funnel wall through 3 legs, so only a thin
+// low-pressure layer reaches the wheel → it turns freely even with a full
+// hopper. Seats cork-style on the diverging cone wall (its legs are clipped
+// to the cavity, giving a 3-point seat); 3 legs = 3 wide flow gaps so the
+// kibble keeps streaming (no arch). Prints as its own part (drop it in).
+sp_cx        = 4;    // funnel-local X of the cone/leg centre (over throat lobe)
+sp_seat_z    = 16;   // funnel-local Z of the flat underside (in the diverging cone)
+sp_cone_d    = 38;   // central load-cone base Ø (apex up)
+sp_cone_h    = 30;   // cone height — steep sides shed kibble
+sp_apex_d    = 3;    // tiny apex flat (printability)
+sp_leg_n     = 3;    // 3 legs → 3 wide flow gaps
+sp_leg_t     = 3.6;  // leg blade thickness
+sp_leg_h     = 18;   // leg blade height above the seat
+sp_leg_phase = 0;   // leg rotation (deg) — orient gaps to the inlet/outlet
+sp_slip      = 0.6;  // slip clearance to the funnel cavity wall
 
 /* [Quality] */
 $fn = 96;
@@ -307,11 +329,64 @@ module lid() {
 }
 
 // ===========================================================================
+// ANTI-PRESSURE SPIDER  drop-in stress cone (seats in the funnel throat)
+// ---------------------------------------------------------------------------
+// The funnel cavity, eroded by sp_slip — the spider's outer faces are clipped
+// to this so it cork-seats on the diverging cone wall (3-point, via the legs).
+module spider_envelope() {
+    union() {
+        linear_extrude(cap_collar_h) offset(-sp_slip) throat_2d();
+        fillet_cone(-sp_slip, bulk_d / 2 - hopper_wall - sp_slip);
+    }
+}
+
+// Built in funnel-local coordinates so it drops straight into the throat.
+module spider() {
+    intersection() {
+        union() {
+            // central load cone, apex up (self-supporting print, sheds kibble)
+            translate([sp_cx, 0, sp_seat_z])
+                cylinder(d1 = sp_cone_d, d2 = sp_apex_d, h = sp_cone_h, $fn = 72);
+            // legs: tall blades from the centre out past the wall …
+            for (a = [0 : 360 / sp_leg_n : 359.9])
+                translate([sp_cx, 0, sp_seat_z]) rotate([0, 0, a + sp_leg_phase])
+                    translate([0, -sp_leg_t / 2, 0]) cube([120, sp_leg_t, sp_leg_h]);
+        }
+        // … clipped to the cavity (outer = wall) and to z ≥ seat (flat bottom)
+        intersection() {
+            spider_envelope();
+            translate([sp_cx - 120, -120, sp_seat_z]) cube([240, 240, 200]);
+        }
+    }
+}
+
+// ===========================================================================
 // RENDER
 // ===========================================================================
 if (part == "funnel")   funnel();
 if (part == "ring")     ring();
 if (part == "lid")      lid();
+if (part == "spider")
+    // print orientation: re-centre on origin, flat bottom on the bed, apex up
+    translate([-sp_cx, 0, -sp_seat_z]) spider();
+if (part == "spider_fit") {
+    // half-cut (keep y ≥ 0) to see the cone / legs / wall / wheel clearance.
+    // wheel sits at funnel-local [throat_cx, 0, 3.5 − 40] (see chassis assembly).
+    difference() {
+        union() {
+            color("LightBlue", 0.30)  funnel();
+            color("Tomato")           spider();
+            color("Silver")           translate([throat_cx, 0, 3.5 - 40]) wheel();
+        }
+        translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y < 0
+    }
+}
+if (part == "spider_cover") {
+    // top-down 2D: throat opening (green) vs spider footprint (red).
+    // Green showing through = open flow gaps; red over centre = roofed column.
+    color("LightGreen")       throat_2d();
+    color("Tomato", 0.65)     projection() spider();
+}
 if (part == "assembly") {
     color("LightBlue", 0.6)         funnel();
     color("LightSteelBlue", 0.55)   translate([0, 0, z_funnel_top]) ring();

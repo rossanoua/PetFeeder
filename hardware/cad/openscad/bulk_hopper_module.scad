@@ -96,39 +96,35 @@ pw_axle_keep    = 4.8;   // = axle_d/2 + fit_clear + 2
 throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
 
 /* [Anti-pressure spider] */
-// MODULAR stress body: a rounded PEAR/DOME body bears the kibble column and
-// shunts that weight into the funnel wall through 3 DETACHABLE blade legs.
-// The legs slide into radial slots in the body (inner) and into recessed
-// slots in the funnel wall (outer) → only a thin low-pressure layer reaches
-// the wheel, and 3 wide gaps keep the kibble streaming (no arch). The funnel
-// slot is RECESSED OUTWARD into a locally thickened wall, so the inner cavity
-// stays SMOOTH (kibble can't catch on it). Anti-rotation = slot ribs, anti
-// fall-through = a stop ledge under each wall slot. Body + 3 legs print flat
-// and snap apart (розбирається).
+// MODULAR stress body: a rounded PEAR body bears the kibble column and shunts
+// that weight into the funnel wall through 3 DETACHABLE blade legs. The legs
+// snap into the body (detent) and the assembled spider drops in; each leg LAYS
+// on a small INWARD ledge (підставка) on the wall → load goes into the wall,
+// no sideways spreading. Small side keys stop rotation. All features are
+// inside + gentle (≤1.5 mm, ramped) so kibble flows past and it prints without
+// supports. Body has ≥3 mm of material under the sockets to hold the legs.
 sp_cx        = 4;    // funnel-local X of the body/leg centre (over throat lobe)
-sp_seat_z    = 26;   // funnel-local Z where the slots/bosses start (raised ~10 mm)
+sp_seat_z    = 26;   // funnel-local Z of the rest plane (ledge top = leg underside)
 sp_leg_n     = 3;    // 3 legs → 3 wide flow gaps
-sp_leg_t     = 3.6;  // leg blade thickness (= slot width)
-sp_leg_len   = 70;   // printed blade length (slides to fit; ≥ longest span)
+sp_leg_t     = 3.6;  // leg blade thickness
+sp_leg_len   = 70;   // printed blade length (clipped to its wall per angle)
 sp_leg_phase = 0;    // leg rotation (deg) — orient gaps to the inlet/outlet
-sp_slip      = 0.6;  // slip clearance, slot vs leg blade
-// funnel wall keyway (recessed OUTWARD; inner wall stays smooth)
-sp_boss_thick = 8.0; // local OUTWARD wall thickening that hosts the pocket
-sp_slot_depth = 6.0; // pocket depth, measured outward from the inner wall
-sp_key_rib    = 2.0; // boss rib each side of the slot (the anti-rotation key)
-sp_key_h      = 14;  // seated leg-blade height in the slot
-sp_key_floor  = 2.0; // stop-ledge thickness under the slot (anti fall-through)
-sp_boss_ramp  = 16;  // the boss eases out to full thickness over this height on
-                     //   its Ø160 (down-in-print) side → shallow ~27° overhang,
-                     //   so the funnel prints WITHOUT supports
-sp_rest_z     = sp_seat_z + sp_key_floor;  // leg underside = slot floor top
+sp_slip      = 0.6;  // slip clearance
+sp_key_h     = 14;   // leg-blade height (in the body socket)
+sp_rest_z    = sp_seat_z;   // legs rest on the ledges at this z
+// inward rest-ledges (підставки) + anti-rotation side keys (all small, ramped)
+sp_ledge_proud = 1.5;  // how far each ledge sticks inward (the leg lays on top)
+sp_ledge_ramp  = 7;    // ledge underside ramps up over this height → no catch, printable
+sp_ledge_key   = 1.2;  // side-key protrusion each side of the leg (anti-rotation)
+sp_ledge_key_h = 4;    // side-key height above the rest plane
 // pear/dome body + its leg sockets
 sp_body_base_r  = 15;   // flat base radius (on the bed when printed dome-up)
 sp_body_belly_r = 20;   // pear belly (max) radius
 sp_body_belly_z = 8;    // belly-centre height above the base
 sp_body_top_r   = 6;    // rounded top radius
 sp_body_h       = 32;   // body height
-sp_sock_depth   = 16;   // leg socket depth into the body (accepts variable insert)
+sp_body_floor   = 3.0;  // pear material BELOW the leg sockets (holds the legs)
+sp_sock_depth   = 16;   // leg socket depth into the body
 // snap detent (holds the leg in the body socket WITHOUT glue): a bump on each
 // leg face that clicks into a dimple in each socket wall.
 sp_det_d        = 3.2;  // detent diameter
@@ -301,23 +297,20 @@ module funnel_cavity() {
 }
 
 module funnel() {
-    // ===== Hollowed funnel body + 3 keyway bosses for the drop-in spider =====
-    // The spider's legs drop into the bosses' slots → it can't rotate or fall
-    // through (an active anti-bridge vibromotor is still planned separately).
-    // The funnel prints without supports (round opening on the bed →
-    // walls slope inward → no overhangs).
-    difference() {
-        union() {
-            difference() {
-                union() {
-                    funnel_outer();
-                    stacking_lip(z_funnel_top);
-                }
-                funnel_cavity();
+    // ===== Hollowed funnel body + 3 small INWARD ledges (підставки) =====
+    // The assembled spider drops in; each leg LAYS on a small inward ledge
+    // (the load goes into the wall, no sideways spreading). Small side keys
+    // stop rotation. Everything is inside + gentle (≤1.5 mm, ramped) so kibble
+    // flows past and it prints without supports.
+    union() {
+        difference() {
+            union() {
+                funnel_outer();
+                stacking_lip(z_funnel_top);
             }
-            spider_mounts();        // 3 inward bosses welded to the wall
+            funnel_cavity();
         }
-        spider_slots();             // carve the keyed slot into each boss
+        spider_ledges();            // 3 inward rest-ledges + side keys
     }
 }
 
@@ -378,53 +371,32 @@ module sp_wedge(i, w) {
     translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
         translate([-1, -w / 2, 0]) cube([400, w, 400]);
 }
-// Funnel OUTER grown outward by `extra` (gives material for the OUTWARD slot
-// pockets, so the inner cavity wall can stay smooth).
-module funnel_outer_off(extra) {
-    union() {
-        linear_extrude(cap_collar_h) offset(hopper_wall + extra) throat_2d();
-        fillet_cone(hopper_wall + extra, bulk_d / 2 + extra);
-        translate([0, 0, cone_top_z]) cylinder(d = bulk_d + 2 * extra, h = funnel_h - cone_top_z + 1);
+// Two tangential strips flanking leg i (for the anti-rotation side keys).
+module sp_strips(i, w_out, w_in) {
+    difference() { sp_wedge(i, w_out); sp_wedge(i, w_in); }
+}
+// A small INWARD wedge of material at the wall (thickness `proud` into the
+// cavity), gently ramped over sp_ledge_ramp so it prints support-free and
+// kibble flows past. `topz` = its top; `wedge` = the angular region.
+module inward_ramp(proud, topz, region_mod_args) {
+    // (region passed via children) — hull of a proud slab on top and a flush
+    // slab at the bottom of the ramp.
+    hull() {
+        intersection() { difference() { cav(0); cav(proud); } children(0);
+            translate([-200, -200, topz - 0.8]) cube([400, 400, 0.8]); }
+        intersection() { difference() { cav(0); cav(0.25); } children(0);
+            translate([-200, -200, sp_rest_z - sp_ledge_ramp]) cube([400, 400, 0.4]); }
     }
 }
-// funnel_outer_off(t) clipped to a thin z-slab (for lofting a ramped boss).
-module boss_slab(z, t, h) {
-    intersection() { funnel_outer_off(t); translate([-200, -200, z]) cube([400, 400, h]); }
-}
-// 3 bosses that thicken the wall OUTWARD (host the recessed slots). The inside
-// stays smooth. The boss is full over the slot, then RAMPS back to the wall on
-// its Ø160 (down-in-print) side over sp_boss_ramp → printable without supports.
-module spider_mounts() {
-    z_full = sp_rest_z + sp_key_h;        // top of the full-thickness boss (= slot top)
-    for (i = [0 : sp_leg_n - 1])
-        intersection() {
-            difference() {
-                union() {
-                    boss_slab(sp_seat_z, sp_boss_thick, z_full - sp_seat_z);   // full block over the slot
-                    hull() {                                                   // gradual ramp on top
-                        boss_slab(z_full - 0.1, sp_boss_thick, 0.1);
-                        boss_slab(z_full + sp_boss_ramp, 0.3, 0.1);
-                    }
-                }
-                funnel_outer();
-            }
-            sp_wedge(i, sp_leg_t + 2 * sp_slip + 2 * sp_key_rib);
-        }
-}
-// 3 BLIND slots recessed OUTWARD into the bosses: open only toward the cavity
-// (the leg slides in radially), floored at the rest plane, capped on top, and
-// backed by the boss → no through-holes. The z-range is bounded to the boss,
-// and a 4th clip (the boss solid) GUARANTEES every cut stays inside the boss.
-module spider_slots() {
-    // z is bounded to [rest, rest+key_h] ⊂ the boss z-range [seat, seat+key_floor
-    // +key_h+6], and radially to slot_depth (< boss_thick) → a 4 mm back wall
-    // always remains. No through-hole.
-    for (i = [0 : sp_leg_n - 1])
-        intersection() {
-            sp_wedge(i, sp_leg_t + 2 * sp_slip);                       // channel width
-            translate([-200, -200, sp_rest_z]) cube([400, 400, sp_key_h]); // z[rest, rest+key_h]
-            difference() { cav(-sp_slot_depth); cav(0); }              // radial: inner → +depth
-        }
+// 3 inward rest-ledges (підставки) the legs lay on, + 2 side keys each
+// (anti-rotation). All small and ramped → kibble flows past, prints support-free.
+module spider_ledges() {
+    for (i = [0 : sp_leg_n - 1]) {
+        inward_ramp(sp_ledge_proud, sp_rest_z)              // the rest ledge
+            sp_wedge(i, sp_leg_t + 2 * sp_slip);
+        inward_ramp(sp_ledge_key, sp_rest_z + sp_ledge_key_h)   // the 2 side keys
+            sp_strips(i, sp_leg_t + 2 * sp_slip + 2 * 2.0, sp_leg_t + 2 * sp_slip);
+    }
 }
 
 // --- modular spider: pear/dome body + detachable blade legs ----------------
@@ -448,7 +420,7 @@ module spider_body() {
                 translate([0, 0, sp_body_belly_z]) sphere(sp_body_belly_r, $fn = 72); // belly
                 translate([0, 0, sp_body_h - sp_body_top_r]) sphere(sp_body_top_r, $fn = 48); // top
             }
-            translate([-200, -200, sp_rest_z]) cube([400, 400, 400]);          // FLAT base at rest
+            translate([-200, -200, sp_rest_z - sp_body_floor]) cube([400, 400, 400]); // flat base, 3mm floor below sockets
         }
         for (i = [0 : sp_leg_n - 1])                                           // 3 leg sockets
             intersection() {
@@ -469,7 +441,7 @@ module spider_leg_placed(i) {
             translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
                 translate([sp_body_base_r - sp_sock_depth + sp_slip, -sp_leg_t / 2, sp_rest_z])
                     cube([sp_leg_len, sp_leg_t, sp_key_h]);
-            cav(-(sp_slot_depth - sp_slip));      // outer tip reaches into the wall pocket
+            cav(sp_slip);      // clipped just inside the wall; the end lays on the ledge
         }
         sp_detents(i, sp_det_d, sp_det_h, sp_leg_t / 2);   // snap bump (both faces)
     }

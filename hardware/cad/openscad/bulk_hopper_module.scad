@@ -480,6 +480,16 @@ if (part == "spider_fit") {
         translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y < 0
     }
 }
+if (part == "funnel_xsec")
+    // debug: horizontal wall section at the slot level → 3 slots show as inner
+    // notches, 3 bosses as outer bumps.
+    projection(cut = true) translate([0, 0, -(sp_rest_z + sp_key_h / 2)]) funnel();
+if (part == "funnel_cut")
+    // debug: funnel cross-sectioned through leg-0's slot (on the +x wall, y=0).
+    difference() {
+        funnel();
+        translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y < 0
+    }
 if (part == "key_zoom") {
     // debug: a z-slab around the seat, half-cut, so --viewall frames the
     // boss / slot / leg-tab engagement at a readable scale.

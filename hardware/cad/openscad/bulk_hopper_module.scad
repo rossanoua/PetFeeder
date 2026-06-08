@@ -116,8 +116,11 @@ sp_slip      = 0.6;  // slip clearance, slot vs leg blade
 sp_boss_thick = 8.0; // local OUTWARD wall thickening that hosts the pocket
 sp_slot_depth = 6.0; // pocket depth, measured outward from the inner wall
 sp_key_rib    = 2.0; // boss rib each side of the slot (the anti-rotation key)
-sp_key_h      = 14;  // slot height (vertical leg-blade travel)
+sp_key_h      = 14;  // seated leg-blade height in the slot
 sp_key_floor  = 2.0; // stop-ledge thickness under the slot (anti fall-through)
+sp_boss_ramp  = 16;  // the boss eases out to full thickness over this height on
+                     //   its Ø160 (down-in-print) side → shallow ~27° overhang,
+                     //   so the funnel prints WITHOUT supports
 sp_rest_z     = sp_seat_z + sp_key_floor;  // leg underside = slot floor top
 // pear/dome body + its leg sockets
 sp_body_base_r  = 15;   // flat base radius (on the bed when printed dome-up)
@@ -384,14 +387,28 @@ module funnel_outer_off(extra) {
         translate([0, 0, cone_top_z]) cylinder(d = bulk_d + 2 * extra, h = funnel_h - cone_top_z + 1);
     }
 }
-// 3 bosses that thicken the wall OUTWARD (host the recessed slots). They bump
-// the funnel's OUTSIDE (still inside Ø160); the inside stays smooth.
+// funnel_outer_off(t) clipped to a thin z-slab (for lofting a ramped boss).
+module boss_slab(z, t, h) {
+    intersection() { funnel_outer_off(t); translate([-200, -200, z]) cube([400, 400, h]); }
+}
+// 3 bosses that thicken the wall OUTWARD (host the recessed slots). The inside
+// stays smooth. The boss is full over the slot, then RAMPS back to the wall on
+// its Ø160 (down-in-print) side over sp_boss_ramp → printable without supports.
 module spider_mounts() {
+    z_full = sp_rest_z + sp_key_h;        // top of the full-thickness boss (= slot top)
     for (i = [0 : sp_leg_n - 1])
         intersection() {
-            difference() { funnel_outer_off(sp_boss_thick); funnel_outer(); }
+            difference() {
+                union() {
+                    boss_slab(sp_seat_z, sp_boss_thick, z_full - sp_seat_z);   // full block over the slot
+                    hull() {                                                   // gradual ramp on top
+                        boss_slab(z_full - 0.1, sp_boss_thick, 0.1);
+                        boss_slab(z_full + sp_boss_ramp, 0.3, 0.1);
+                    }
+                }
+                funnel_outer();
+            }
             sp_wedge(i, sp_leg_t + 2 * sp_slip + 2 * sp_key_rib);
-            translate([-200, -200, sp_seat_z]) cube([400, 400, sp_key_floor + sp_key_h + 6]);
         }
 }
 // 3 BLIND slots recessed OUTWARD into the bosses: open only toward the cavity
@@ -510,6 +527,10 @@ if (part == "funnel_xsec")
     // debug: horizontal wall section → 3 slots show as inner notches + outer
     // bosses at the slot level; a plain ring above the boss (no holes).
     projection(cut = true) translate([0, 0, -xsec_z]) funnel();
+if (part == "funnel_vsec")
+    // debug: VERTICAL section at y=0 (through leg-0's +x boss) → see the boss
+    // ramp profile + slot + overhang angle.
+    projection(cut = true) rotate([90, 0, 0]) funnel();
 if (part == "funnel_cut")
     // debug: funnel cross-sectioned through leg-0's slot (on the +x wall, y=0).
     difference() {

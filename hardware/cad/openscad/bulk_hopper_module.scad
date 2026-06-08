@@ -126,6 +126,11 @@ sp_body_belly_z = 8;    // belly-centre height above the base
 sp_body_top_r   = 6;    // rounded top radius
 sp_body_h       = 32;   // body height
 sp_sock_depth   = 16;   // leg socket depth into the body (accepts variable insert)
+// snap detent (holds the leg in the body socket WITHOUT glue): a bump on each
+// leg face that clicks into a dimple in each socket wall.
+sp_det_d        = 3.2;  // detent diameter
+sp_det_h        = 0.8;  // bump proud height / dimple depth
+sp_det_x        = sp_body_base_r - sp_sock_depth + 5;  // radial pos from sp_cx (near socket bottom)
 
 /* [Quality] */
 $fn = 96;
@@ -389,20 +394,35 @@ module spider_mounts() {
             translate([-200, -200, sp_seat_z]) cube([400, 400, sp_key_floor + sp_key_h + 6]);
         }
 }
-// 3 slots recessed OUTWARD from the inner wall into the bosses (floored at the
-// rest plane, backed by sp_boss_thick−sp_slot_depth so nothing breaches).
+// 3 BLIND slots recessed OUTWARD into the bosses: open only toward the cavity
+// (the leg slides in radially), floored at the rest plane, capped on top, and
+// backed by the boss → no through-holes. The z-range is bounded to the boss,
+// and a 4th clip (the boss solid) GUARANTEES every cut stays inside the boss.
 module spider_slots() {
+    // z is bounded to [rest, rest+key_h] ⊂ the boss z-range [seat, seat+key_floor
+    // +key_h+6], and radially to slot_depth (< boss_thick) → a 4 mm back wall
+    // always remains. No through-hole.
     for (i = [0 : sp_leg_n - 1])
         intersection() {
-            sp_wedge(i, sp_leg_t + 2 * sp_slip);
-            translate([-200, -200, sp_rest_z]) cube([400, 400, sp_key_h + 30]);
-            difference() { cav(-sp_slot_depth); cav(0); }   // inner wall → +slot_depth outward
+            sp_wedge(i, sp_leg_t + 2 * sp_slip);                       // channel width
+            translate([-200, -200, sp_rest_z]) cube([400, 400, sp_key_h]); // z[rest, rest+key_h]
+            difference() { cav(-sp_slot_depth); cav(0); }              // radial: inner → +depth
         }
 }
 
 // --- modular spider: pear/dome body + detachable blade legs ----------------
+// Snap detent: 2 coaxial cylinders on the ±Y faces of leg i, `off` out from
+// the centre, `hh` long. Used as a BUMP on the leg and a DIMPLE in the socket
+// so the leg clicks in and holds with no glue.
+module sp_detents(i, dia, hh, off) {
+    translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
+        translate([sp_det_x, 0, sp_rest_z + sp_key_h / 2])
+            for (s = [-1, 1])
+                translate([0, s * off, 0]) rotate([-s * 90, 0, 0])
+                    cylinder(d = dia, h = hh, $fn = 24);
+}
 // Body: a rounded pear (no flat tops → sheds kibble), flat base at the rest
-// plane, with 3 radial sockets the leg blades slide into.
+// plane, with 3 radial sockets the leg blades slide into + detent dimples.
 module spider_body() {
     difference() {
         intersection() {
@@ -420,16 +440,21 @@ module spider_body() {
                 translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
                     translate([sp_body_base_r - sp_sock_depth, -50, -50]) cube([400, 100, 400]);
             }
+        for (i = [0 : sp_leg_n - 1])                                           // detent dimples
+            sp_detents(i, sp_det_d + 0.6, sp_det_h + 0.6, sp_leg_t / 2 + sp_slip);
     }
 }
 // One leg as placed in the funnel (for the assembled / fit views): a radial
 // blade from inside the body socket out into the wall pocket.
 module spider_leg_placed(i) {
-    intersection() {
-        translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
-            translate([sp_body_base_r - sp_sock_depth + sp_slip, -sp_leg_t / 2, sp_rest_z])
-                cube([sp_leg_len, sp_leg_t, sp_key_h]);
-        cav(-(sp_slot_depth - sp_slip));      // outer tip reaches into the wall pocket
+    union() {
+        intersection() {
+            translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
+                translate([sp_body_base_r - sp_sock_depth + sp_slip, -sp_leg_t / 2, sp_rest_z])
+                    cube([sp_leg_len, sp_leg_t, sp_key_h]);
+            cav(-(sp_slot_depth - sp_slip));      // outer tip reaches into the wall pocket
+        }
+        sp_detents(i, sp_det_d, sp_det_h, sp_leg_t / 2);   // snap bump (both faces)
     }
 }
 // One leg laid FLAT on the bed for printing (thickness → Z). Each leg is cut
@@ -480,10 +505,11 @@ if (part == "spider_fit") {
         translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y < 0
     }
 }
+xsec_z = sp_rest_z + sp_key_h / 2;   // override with -D xsec_z=NN
 if (part == "funnel_xsec")
-    // debug: horizontal wall section at the slot level → 3 slots show as inner
-    // notches, 3 bosses as outer bumps.
-    projection(cut = true) translate([0, 0, -(sp_rest_z + sp_key_h / 2)]) funnel();
+    // debug: horizontal wall section → 3 slots show as inner notches + outer
+    // bosses at the slot level; a plain ring above the boss (no holes).
+    projection(cut = true) translate([0, 0, -xsec_z]) funnel();
 if (part == "funnel_cut")
     // debug: funnel cross-sectioned through leg-0's slot (on the +x wall, y=0).
     difference() {

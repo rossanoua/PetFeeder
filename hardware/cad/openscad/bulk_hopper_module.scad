@@ -111,12 +111,16 @@ sp_leg_len   = 70;   // printed blade length (clipped to its wall per angle)
 sp_leg_phase = 0;    // leg rotation (deg) — orient gaps to the inlet/outlet
 sp_slip      = 0.6;  // slip clearance
 sp_key_h     = 14;   // leg-blade height (in the body socket)
-sp_rest_z    = sp_seat_z;   // legs rest on the ledges at this z
-// inward rest-ledges (підставки) + anti-rotation side keys (all small, ramped)
-sp_ledge_proud = 1.5;  // how far each ledge sticks inward (the leg lays on top)
-sp_ledge_ramp  = 7;    // ledge underside ramps up over this height → no catch, printable
-sp_ledge_key   = 1.2;  // side-key protrusion each side of the leg (anti-rotation)
-sp_ledge_key_h = 4;    // side-key height above the rest plane
+sp_rest_z    = sp_seat_z;   // legs rest on the pocket floor at this z
+// CAPTURE POCKETS (replace the old lay-on ledges): each leg tip drops INTO a
+// slot = ramped floor (load + no fall) + 2 tall side walls (anti-rotation) +
+// the funnel wall itself as radial backstop. The leg is caught on all sides so
+// the spider can't spin off or slide into the outlet. Floor underside is ramped
+// (≥proud over the rise → ≤45°) so it still prints without supports.
+sp_pocket_proud = 7;   // radial depth of the floor/side-walls inward from the wall
+sp_ledge_ramp   = 8;   // floor-underside ramp rise (≥ proud → ≤45°, printable)
+sp_wall_t       = 2.5; // each side-wall thickness (tangential)
+sp_wall_h       = 11;  // side-wall height above the rest plane (leg is sp_key_h tall)
 // pear/dome body + its leg sockets
 sp_body_base_r  = 15;   // flat base radius (on the bed when printed dome-up)
 sp_body_belly_r = 20;   // pear belly (max) radius
@@ -310,7 +314,7 @@ module funnel() {
             }
             funnel_cavity();
         }
-        spider_ledges();            // 3 inward rest-ledges + side keys
+        spider_pockets();           // 3 capture pockets (floor + side walls)
     }
 }
 
@@ -388,15 +392,31 @@ module inward_ramp(proud, topz, region_mod_args) {
             translate([-200, -200, sp_rest_z - sp_ledge_ramp]) cube([400, 400, 0.4]); }
     }
 }
-// 3 inward rest-ledges (підставки) the legs lay on, + 2 side keys each
-// (anti-rotation). All small and ramped → kibble flows past, prints support-free.
-module spider_ledges() {
-    for (i = [0 : sp_leg_n - 1]) {
-        inward_ramp(sp_ledge_proud, sp_rest_z)              // the rest ledge
-            sp_wedge(i, sp_leg_t + 2 * sp_slip);
-        inward_ramp(sp_ledge_key, sp_rest_z + sp_ledge_key_h)   // the 2 side keys
-            sp_strips(i, sp_leg_t + 2 * sp_slip + 2 * 2.0, sp_leg_t + 2 * sp_slip);
-    }
+// 3 CAPTURE POCKETS the leg tips drop into. Each = a ramped floor (the leg
+// rests on it) + 2 tall side walls hugging the wall (anti-rotation), with the
+// funnel wall as the radial backstop. The leg channel is open at the top and
+// toward the centre so the assembled spider just drops in. Prints support-free.
+module spider_pockets() {
+    slot_w = sp_leg_t + 2 * sp_slip + 2 * sp_wall_t;       // floor/walls footprint
+    for (i = [0 : sp_leg_n - 1])
+        difference() {
+            union() {
+                // ramped floor (flush below → proud at the rest plane)
+                inward_ramp(sp_pocket_proud, sp_rest_z) sp_wedge(i, slot_w);
+                // side-wall block: a proud shell band hugging the wall, rest → rest+wall_h
+                intersection() {
+                    difference() { cav(0); cav(sp_pocket_proud); }
+                    sp_wedge(i, slot_w);
+                    translate([-200, -200, sp_rest_z]) cube([400, 400, sp_wall_h]);
+                }
+            }
+            // carve the leg channel (open top + open toward centre) → leaves the
+            // floor below and the two side walls flanking it
+            intersection() {
+                sp_wedge(i, sp_leg_t + 2 * sp_slip);
+                translate([-200, -200, sp_rest_z]) cube([400, 400, sp_wall_h + 30]);
+            }
+        }
 }
 
 // --- modular spider: pear/dome body + detachable blade legs ----------------

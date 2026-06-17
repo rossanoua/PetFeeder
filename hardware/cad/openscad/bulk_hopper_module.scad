@@ -423,15 +423,19 @@ module spider_pockets() {
 }
 
 // --- modular spider: pear/dome body + detachable blade legs ----------------
-// Snap detent: 2 coaxial cylinders on the ±Y faces of leg i, `off` out from
-// the centre, `hh` long. Used as a BUMP on the leg and a DIMPLE in the socket
-// so the leg clicks in and holds with no glue.
-module sp_detents(i, dia, hh, off) {
+// Snap detent: a VERTICAL half-round rib on each ±Y face of leg i (BUMP on the
+// leg, GROOVE in the socket), running the full blade height. Because the rib
+// runs along Z — the build direction when the leg is printed ON EDGE, and the
+// socket-wall direction when the body is printed dome-up — BOTH the rib and the
+// groove print with NO overhang. `dia` = rib Ø, `prot` = how far it stands proud
+// of the face. The leg slides in radially; the rounded rib rides the wall and
+// snaps into the groove → glueless hold.
+module sp_detents(i, dia, prot) {
     translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
-        translate([sp_det_x, 0, sp_rest_z + sp_key_h / 2])
+        translate([sp_det_x, 0, sp_rest_z])
             for (s = [-1, 1])
-                translate([0, s * off, 0]) rotate([-s * 90, 0, 0])
-                    cylinder(d = dia, h = hh, $fn = 24);
+                translate([0, s * (sp_leg_t / 2 + prot - dia / 2), 0])
+                    cylinder(d = dia, h = sp_key_h, $fn = 24);
 }
 // Body: a rounded pear (no flat tops → sheds kibble), flat base at the rest
 // plane, with 3 radial sockets the leg blades slide into + detent dimples.
@@ -452,8 +456,8 @@ module spider_body() {
                 translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
                     translate([sp_body_base_r - sp_sock_depth, -50, -50]) cube([400, 100, 400]);
             }
-        for (i = [0 : sp_leg_n - 1])                                           // detent dimples
-            sp_detents(i, sp_det_d + 0.6, sp_det_h + 0.6, sp_leg_t / 2 + sp_slip);
+        for (i = [0 : sp_leg_n - 1])                                           // detent grooves
+            sp_detents(i, sp_det_d + 0.8, sp_det_h + 0.4);
     }
 }
 // One leg as placed in the funnel (for the assembled / fit views): a radial
@@ -466,18 +470,18 @@ module spider_leg_placed(i) {
                     cube([sp_leg_len, sp_leg_t, sp_key_h]);
             cav(sp_slip);      // clipped just inside the wall; the end lays on the ledge
         }
-        sp_detents(i, sp_det_d, sp_det_h, sp_leg_t / 2);   // snap bump (both faces)
+        sp_detents(i, sp_det_d, sp_det_h);   // snap rib (both faces)
     }
 }
-// One leg laid FLAT on the bed for printing (thickness → Z). Each leg is cut
-// to its own wall (the teardrop throat gives 3 different lengths), so leg i
-// goes into wall-slot i. Same blade cross-section as spider_leg_placed.
+// One leg STANDING ON ITS EDGE for printing (blade height sp_key_h → Z). Layers
+// run across the blade → strong against the bending load; the detents end up on
+// the vertical side faces so they aren't crushed flat on the bed. Just undo the
+// funnel placement (angle + offset) — the leg already sits on its bottom edge at
+// z=0..sp_key_h, no lay-down rotation. Each leg is cut to its own wall length.
 module spider_leg_flat(i) {
-    translate([0, 0, sp_leg_t / 2])
-        rotate([90, 0, 0])
-            rotate([0, 0, -(i * 360 / sp_leg_n + sp_leg_phase)])
-                translate([-sp_cx, 0, -sp_rest_z])
-                    spider_leg_placed(i);
+    rotate([0, 0, -(i * 360 / sp_leg_n + sp_leg_phase)])
+        translate([-sp_cx, 0, -sp_rest_z])
+            spider_leg_placed(i);
 }
 // All 3 legs laid out on the bed.
 module spider_legs() {

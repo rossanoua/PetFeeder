@@ -128,7 +128,10 @@ sp_body_belly_z = 8;    // belly-centre height above the base
 sp_body_top_r   = 6;    // rounded top radius
 sp_body_h       = 32;   // body height
 sp_body_floor   = 3.0;  // pear material BELOW the leg sockets (holds the legs)
-sp_sock_depth   = 16;   // leg socket depth into the body
+sp_sock_depth   = 9;    // leg socket depth into the body. MUST be < body_base_r
+                        //   so the 3 sockets/legs DON'T meet at the centre (at 16
+                        //   they overshot → 3 legs collided → couldn't seat → stuck
+                        //   out too long → spider hung high & wouldn't descend).
 // snap detent (holds the leg in the body socket WITHOUT glue): a bump on each
 // leg face that clicks into a dimple in each socket wall.
 sp_det_d        = 3.2;  // detent diameter
@@ -502,6 +505,17 @@ if (part == "spider_leg")       // one flat blade leg (leg 0)
     spider_leg_flat(0);
 if (part == "spider_legs")      // PRINT: all 3 leg blades laid out on the bed
     spider_legs();
+if (part == "spider_sec")    // DEBUG: vertical half-cut of the assembled spider
+    difference() {           //        → see leg-0 seated in its body socket + detent
+        translate([-sp_cx, 0, -sp_rest_z]) spider();
+        translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y<0
+    }
+if (part == "spider_hsec")   // DEBUG: horizontal slab at the socket plane (top view)
+    intersection() {
+        translate([-sp_cx, 0, -sp_rest_z]) spider();
+        translate([-200, -200, sp_rest_z + sp_key_h/2 - 0.6 - sp_rest_z])
+            cube([400, 400, 1.2]);
+    }
 if (part == "spider_fit") {
     // half-cut (keep y ≥ 0) to see the cone / legs / wall / wheel clearance.
     // wheel sits at funnel-local [throat_cx, 0, 3.5 − 40] (see chassis assembly).

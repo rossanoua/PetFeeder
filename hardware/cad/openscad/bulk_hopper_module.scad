@@ -468,7 +468,13 @@ module spider_leg_placed(i) {
             translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
                 translate([sp_body_base_r - sp_sock_depth + sp_slip, -sp_leg_t / 2, sp_rest_z])
                     cube([sp_leg_len, sp_leg_t, sp_key_h]);
-            cav(sp_slip);      // clipped just inside the wall; the end lays on the ledge
+            // clip the outer end VERTICALLY at the wall radius on the REST plane
+            // (not down the sloped cone wall) → the blade's outer edge is vertical,
+            // so printed on edge it has NO overhang. Above z=rest it just clears the
+            // (wider) wall; the pocket floor + side walls catch it at the rest plane.
+            translate([0, 0, sp_rest_z - 1])
+                linear_extrude(height = sp_key_h + 2)
+                    projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
         }
         sp_detents(i, sp_det_d, sp_det_h);   // snap rib (both faces)
     }

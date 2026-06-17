@@ -127,7 +127,11 @@ sp_body_belly_r = 20;   // pear belly (max) radius
 sp_body_belly_z = 8;    // belly-centre height above the base
 sp_body_top_r   = 6;    // rounded top radius
 sp_body_h       = 32;   // body height
-sp_body_floor   = 3.0;  // pear material BELOW the leg sockets (holds the legs)
+sp_body_floor   = 0;    // NO floor — sockets open at the bottom so the body drops
+                        //   straight down onto the 3 legs (legs enter from below,
+                        //   ribs slide up the vertical grooves). Radial insertion is
+                        //   gone, so the dome narrowing at the top no longer blocks a
+                        //   square-cornered leg from seating to full depth.
 sp_sock_depth   = 9;    // leg socket depth into the body. MUST be < body_base_r
                         //   so the 3 sockets/legs DON'T meet at the centre (at 16
                         //   they overshot → 3 legs collided → couldn't seat → stuck

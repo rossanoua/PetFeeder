@@ -104,7 +104,10 @@ throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
 // inside + gentle (≤1.5 mm, ramped) so kibble flows past and it prints without
 // supports. Body has ≥3 mm of material under the sockets to hold the legs.
 sp_cx        = 4;    // funnel-local X of the body/leg centre (over throat lobe)
-sp_seat_z    = 26;   // funnel-local Z of the rest plane (ledge top = leg underside)
+sp_seat_z    = 36;   // funnel-local Z of the rest plane. Raised 26→36 (+10mm) to
+                     //   lift the whole spider 1 cm: the wall pockets move up with
+                     //   it and the legs auto-lengthen (cone is wider higher up).
+                     //   Body shape unchanged (it just sits higher).
 sp_leg_n     = 3;    // 3 legs → 3 wide flow gaps
 sp_leg_t     = 3.2;  // leg NECK thickness (the blade)
 sp_leg_len   = 70;   // printed blade length (clipped to its wall per angle)

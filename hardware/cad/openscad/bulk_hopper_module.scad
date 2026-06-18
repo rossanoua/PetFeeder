@@ -139,10 +139,11 @@ sp_wall_h       = 11;  // side-wall height above the rest plane (leg is sp_key_h
 sp_body_base_r  = 16;   // hub cylinder radius (socket outer wall)
 sp_cap_h        = 12;   // rounded cone cap height, above the hub
 sp_cap_tip_r    = 4;    // cap tip radius (rounded point)
-sp_socket_through = false; // true: slot runs through the cap (open top, no slicer
-                           //   fill, but no ceiling). false: ROOFED socket — needs
-                           //   a STEEP cap (dome) so the slicer doesn't cascade
-                           //   top-infill down into the slot.
+sp_socket_through = true;  // CHOSEN FINAL = open-top (clean, full-depth slots, no
+                           //   slicer fill). true: slot runs through the cap (open
+                           //   top, no ceiling). false: roofed dome + dead-end vents
+                           //   (full depth + ceiling but messier walls) — kept as an
+                           //   option; rejected for the cosmetic mess.
 sp_roof_gap     = 2;    // when roofed: socket roof this far above the leg neck.
                         //   Small now — the dead-end VENT holes (below) stop the
                         //   slicer filling the slot, so no big dead zone is needed.

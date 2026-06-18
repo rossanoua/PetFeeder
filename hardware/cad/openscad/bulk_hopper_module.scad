@@ -143,10 +143,9 @@ sp_socket_through = false; // true: slot runs through the cap (open top, no slic
                            //   fill, but no ceiling). false: ROOFED socket — needs
                            //   a STEEP cap (dome) so the slicer doesn't cascade
                            //   top-infill down into the slot.
-sp_roof_gap     = 7;    // when roofed: socket roof sits this far ABOVE the leg
-                        //   neck top. The slicer fills the slot's inner dead-end
-                        //   ~6 mm below any roof, so this keeps that fill clear of
-                        //   the leg (the leg still seats full-height).
+sp_roof_gap     = 2;    // when roofed: socket roof this far above the leg neck.
+                        //   Small now — the dead-end VENT holes (below) stop the
+                        //   slicer filling the slot, so no big dead zone is needed.
 sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs enter RADIALLY
                         //   from the side; the foot rests on this floor at z=rest).
 sp_sock_depth   = 10;   // leg socket depth into the hub. MUST be < body_base_r
@@ -509,6 +508,16 @@ module spider_body() {
             sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip,
                      sp_socket_through ? sp_key_h + sp_cap_h + 2   // through the cap (open)
                                        : sp_key_h + sp_roof_gap);  // roofed, clear of the leg
+        // ROOFED build: vent each slot's inner DEAD-END straight up through the
+        // dome with a small hole, so it's not a closed pocket — the slicer was
+        // filling that dead-end with solid infill ~6 mm down from any roof,
+        // eating the slot depth right above the leg. The vent keeps the slot full
+        // to the roof; the dome stays closed apart from 3 small central holes.
+        if (!sp_socket_through)
+            for (i = [0 : sp_leg_n - 1])
+                translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
+                    translate([sp_body_base_r - sp_sock_depth + 1, 0, sp_rest_z - 1])
+                        cylinder(r = 1.4, h = sp_key_h + sp_cap_h + 40, $fn = 24);  // r<neck/2 → clear of the leg
     }
 }
 // One leg as placed in the funnel (for the assembled / fit views): a radial

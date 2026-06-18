@@ -479,11 +479,14 @@ module spider_body() {
                 }
             }
         }
-        // 3 inverted-T grooves (open at the dome face, stopped at the inner end).
-        // Neck slot runs up to the socket roof (sp_key_h); the foot chamber +
-        // shoulders capture the leg foot vertically.
+        // 3 inverted-T grooves. The neck slot runs ALL THE WAY THROUGH THE CAP
+        // (open top) — NOT capped at sp_key_h — so the slicer doesn't see a roofed
+        // pocket and fill it with top/solid infill (that was closing the socket in
+        // the gcode from ~5 mm below the cap). The capture is the foot under the
+        // shoulders (z≈28), independent of the top, so an open top is fine. The
+        // foot chamber + shoulders still capture the leg foot vertically.
         for (i = [0 : sp_leg_n - 1])
-            sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip, sp_key_h + 0.2);
+            sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip, sp_key_h + sp_cap_h + 2);
     }
 }
 // One leg as placed in the funnel (for the assembled / fit views): a radial

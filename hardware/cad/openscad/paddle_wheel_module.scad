@@ -55,6 +55,9 @@ wheel_thickness = 18;    // axial extent of wheel hub (taller again — the
 n_paddles       = 3;     // sector 120°
 paddle_thick    = 2.4;
 paddle_fraction = 0.5;
+rim_t           = 1.5;   // thin RING along the outer contour tying the 3 paddle
+                         //   tips together (0 = no ring). Same radius/height as
+                         //   the paddle tips, so it keeps the housing clearance.
 hub_d           = 20;    // proportional to wheel_d=80
 
 /* [Active stirrer cone] (2026-06-05, replaces the dead static spider) */
@@ -253,6 +256,14 @@ module wheel() {
                         translate([wheel_r - rp, 0, paddle_h - rp])
                             sphere(r = rp, $fn = 16);
                     }
+            // Connecting RIM: a thin ring at the outer contour joining the 3
+            // paddle tips (rigidises them). r = wheel_r (paddle-tip envelope),
+            // height = paddle_h, wall = rim_t. Keeps the same housing clearance.
+            if (rim_t > 0)
+                difference() {
+                    cylinder(h = paddle_h, r = wheel_r);
+                    translate([0, 0, -1]) cylinder(h = paddle_h + 2, r = wheel_r - rim_t);
+                }
             // Active stirrer: frustum on the hub top (base = hub_d).
             translate([0, 0, wheel_thickness])
                 cylinder(h = cone_h, r1 = hub_r, r2 = cone_top_r);

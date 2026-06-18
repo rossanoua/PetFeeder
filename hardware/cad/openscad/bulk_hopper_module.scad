@@ -106,10 +106,20 @@ throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
 sp_cx        = 4;    // funnel-local X of the body/leg centre (over throat lobe)
 sp_seat_z    = 26;   // funnel-local Z of the rest plane (ledge top = leg underside)
 sp_leg_n     = 3;    // 3 legs → 3 wide flow gaps
-sp_leg_t     = 3.6;  // leg blade thickness
+sp_leg_t     = 3.2;  // leg NECK thickness (the blade)
 sp_leg_len   = 70;   // printed blade length (clipped to its wall per angle)
 sp_leg_phase = 0;    // leg rotation (deg) — orient gaps to the inlet/outlet
-sp_slip      = 0.6;  // slip clearance
+sp_slip      = 0.35; // slip clearance (snug T-rail slide)
+// DOVETAIL / inverted-T capture: each leg is an inverted-T rail — a wide FOOT
+// along the bottom + a narrow NECK on top. The body socket is the matching
+// T-groove; sliding the leg in RADIALLY captures it vertically (the foot can't
+// lift through the narrower neck slot). Holds with NO snap force and NO glue;
+// the load path (body socket roof → leg top → wall pocket floor) doesn't touch
+// the capture. Both parts print support-free: the leg is wide-to-narrow going up
+// (a pyramid, zero overhang); the body's foot-chamber shoulder is a small
+// horizontal overhang (~flare wide) that bridges trivially.
+sp_foot_flare = 0.8; // how far the foot sticks out past the neck, each side
+sp_foot_h     = 2.2; // foot height (the captured lip)
 sp_key_h     = 14;   // leg-blade height (in the body socket)
 sp_rest_z    = sp_seat_z;   // legs rest on the pocket floor at this z
 // CAPTURE POCKETS (replace the old lay-on ledges): each leg tip drops INTO a
@@ -127,25 +137,18 @@ sp_body_belly_r = 20;   // pear belly (max) radius
 sp_body_belly_z = 8;    // belly-centre height above the base
 sp_body_top_r   = 6;    // rounded top radius
 sp_body_h       = 32;   // body height
-sp_body_floor   = 0;    // NO floor — sockets open at the bottom so the body drops
-                        //   straight down onto the 3 legs (legs enter from below,
-                        //   ribs slide up the vertical grooves). Radial insertion is
-                        //   gone, so the dome narrowing at the top no longer blocks a
-                        //   square-cornered leg from seating to full depth.
+sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs now enter
+                        //   RADIALLY from the side, not from below, so the base is
+                        //   closed again — the foot rests on this floor at z=rest).
 sp_sock_depth   = 9;    // leg socket depth into the body. MUST be < body_base_r
                         //   so the 3 sockets/legs DON'T meet at the centre (at 16
                         //   they overshot → 3 legs collided → couldn't seat → stuck
                         //   out too long → spider hung high & wouldn't descend).
-// SNAP detent (holds the leg in the socket WITHOUT glue): a horizontal 45°
-// wedge RIDGE runs radially across each leg face at sp_snap_z above the base,
-// with a matching RELIEF notch in each socket wall at the same height. Sliding
-// the leg up from below, the ridge presses the wall then pops into the notch →
-// click; its lower 45° face resists the leg dropping back out (gravity hold),
-// yet BOTH faces are 45° so the ridge (leg on edge) and the notch (body dome-up)
-// print with no support. The radial slot itself stops rotation — no rib needed.
-sp_snap_z       = 4.5;  // ridge centre height above the rest plane
-sp_snap_prot    = 0.8;  // how far the ridge pokes beyond the leg face (snap depth)
-sp_snap_clear   = 0.3;  // extra relief in the socket notch, per side
+// Radial retention is by the snug T-rail friction (sp_slip) over the ~12 mm
+// engagement; the dovetail itself resists gravity in the normal dome-up
+// orientation. sp_stop_vslip = the foot chamber is this much taller than the
+// foot (assembly play). If legs ever slide out too easily, add a detent here.
+sp_stop_vslip   = 0.3;
 
 /* [Quality] */
 $fn = 96;
@@ -409,7 +412,10 @@ module inward_ramp(proud, topz, region_mod_args) {
 // funnel wall as the radial backstop. The leg channel is open at the top and
 // toward the centre so the assembled spider just drops in. Prints support-free.
 module spider_pockets() {
-    slot_w = sp_leg_t + 2 * sp_slip + 2 * sp_wall_t;       // floor/walls footprint
+    // Pocket holds only the NECK (the wide foot is inner-only, inside the body),
+    // so this stays as narrow as before → the already-printed funnel still fits.
+    chan_w = sp_leg_t + 2 * sp_slip;
+    slot_w = chan_w + 2 * sp_wall_t;                        // floor/walls footprint
     for (i = [0 : sp_leg_n - 1])
         difference() {
             union() {
@@ -425,33 +431,33 @@ module spider_pockets() {
             // carve the leg channel (open top + open toward centre) → leaves the
             // floor below and the two side walls flanking it
             intersection() {
-                sp_wedge(i, sp_leg_t + 2 * sp_slip);
+                sp_wedge(i, chan_w);
                 translate([-200, -200, sp_rest_z]) cube([400, 400, sp_wall_h + 30]);
             }
         }
 }
 
-// --- modular spider: pear/dome body + detachable blade legs ----------------
-// Snap detent: a VERTICAL half-round rib on each ±Y face of leg i (BUMP on the
-// leg, GROOVE in the socket), running the full blade height. Because the rib
-// runs along Z — the build direction when the leg is printed ON EDGE, and the
-// socket-wall direction when the body is printed dome-up — BOTH the rib and the
-// groove print with NO overhang. `dia` = rib Ø, `prot` = how far it stands proud
-// of the face. The leg slides in radially; the rounded rib rides the wall and
-// snaps into the groove → glueless hold.
-// 45° wedge ridge/notch on the ±Y faces of leg i, centred at z=rest+sp_snap_z,
-// running radially across the in-socket span. `prot` = how far it pokes past the
-// leg face — pass sp_snap_prot for the RIDGE (union onto the leg) and
-// sp_snap_prot+sp_snap_clear for the NOTCH (subtract from the body). Built as a
-// 45°-rotated bar (diamond cross-section) so both exposed faces are 45°.
-module sp_snap(i, prot) {
-    c   = prot * sqrt(2);                    // rotated-bar side → pokes `prot` past the face
-    x0  = sp_body_base_r - sp_sock_depth;    // inner radial start
-    len = sp_sock_depth + 2;                 // radial span across the socket
+// --- modular spider: pear/dome body + detachable inverted-T legs ------------
+// Inverted-T (dovetail) RAIL for leg i, as placed: a wide FOOT along the bottom
+// + a narrow NECK on top, a radial prism from x0 (inner) to x1 (outer). `extra`
+// grows every dimension (0 for the leg rail itself; +sp_slip for the body
+// T-groove). Sliding the leg radially into the groove captures it vertically —
+// the foot can't lift out through the narrower neck slot. `htop` caps the neck
+// height (sp_key_h for the leg; a touch more for the groove so the slot is open
+// to the socket roof).
+module sp_trail(i, x0, x1, extra, htop) {
+    nhw = sp_leg_t / 2 + extra;                          // neck half-width
+    fhw = sp_leg_t / 2 + sp_foot_flare + extra;          // foot half-width
+    fh  = sp_foot_h + (extra > 0 ? sp_stop_vslip : 0);   // groove foot chamber a bit taller
+    translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase]) {
+        translate([x0, -fhw, sp_rest_z])        cube([x1 - x0, 2 * fhw, fh]);          // foot
+        translate([x0, -nhw, sp_rest_z + sp_foot_h]) cube([x1 - x0, 2 * nhw, htop - sp_foot_h]); // neck
+    }
+}
+// A plain radial bar for leg i (X radial, half-width hw tangential, z0..z0+h).
+module sp_bar(i, x0, x1, hw, z0, h) {
     translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
-        for (s = [-1, 1])
-            translate([x0 + len / 2, s * (sp_leg_t / 2), sp_rest_z + sp_snap_z])
-                rotate([45, 0, 0]) cube([len, c, c], center = true);
+        translate([x0, -hw, z0]) cube([x1 - x0, 2 * hw, h]);
 }
 // Body: a rounded pear (no flat tops → sheds kibble), flat base at the rest
 // plane, with 3 radial sockets the leg blades slide into + detent dimples.
@@ -465,34 +471,32 @@ module spider_body() {
             }
             translate([-200, -200, sp_rest_z - sp_body_floor]) cube([400, 400, 400]); // flat base, 3mm floor below sockets
         }
-        for (i = [0 : sp_leg_n - 1])                                           // 3 leg sockets
-            intersection() {
-                sp_wedge(i, sp_leg_t + 2 * sp_slip);
-                translate([-200, -200, sp_rest_z]) cube([400, 400, sp_key_h]);
-                translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
-                    translate([sp_body_base_r - sp_sock_depth, -50, -50]) cube([400, 100, 400]);
-            }
-        for (i = [0 : sp_leg_n - 1])                                           // snap notches
-            sp_snap(i, sp_snap_prot + sp_snap_clear);
+        // 3 inverted-T grooves (open at the dome face, stopped at the inner end).
+        // Neck slot runs up to the socket roof (sp_key_h); the foot chamber +
+        // shoulders capture the leg foot vertically.
+        for (i = [0 : sp_leg_n - 1])
+            sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip, sp_key_h + 0.2);
     }
 }
 // One leg as placed in the funnel (for the assembled / fit views): a radial
 // blade from inside the body socket out into the wall pocket.
 module spider_leg_placed(i) {
-    union() {
-        intersection() {
-            translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
-                translate([sp_body_base_r - sp_sock_depth + sp_slip, -sp_leg_t / 2, sp_rest_z])
-                    cube([sp_leg_len, sp_leg_t, sp_key_h]);
-            // clip the outer end VERTICALLY at the wall radius on the REST plane
-            // (not down the sloped cone wall) → the blade's outer edge is vertical,
-            // so printed on edge it has NO overhang. Above z=rest it just clears the
-            // (wider) wall; the pocket floor + side walls catch it at the rest plane.
-            translate([0, 0, sp_rest_z - 1])
-                linear_extrude(height = sp_key_h + 2)
-                    projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
+    inner   = sp_body_base_r - sp_sock_depth;          // inner stop radius
+    foot_x1 = inner + sp_sock_depth + 4;               // foot spans only the in-body part
+    intersection() {
+        union() {
+            // full-length NECK blade (rest → key_h): rests in the wall pocket, narrow
+            sp_bar(i, inner, inner + sp_leg_len, sp_leg_t / 2, sp_rest_z, sp_key_h);
+            // FOOT (wide lip) only on the inner / in-body part → inverted-T captured
+            // by the body shoulders; outside the body it's just the neck.
+            sp_bar(i, inner, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
         }
-        sp_snap(i, sp_snap_prot);   // snap ridge (both faces)
+        // clip the outer end VERTICALLY at the wall radius on the REST plane (not
+        // down the sloped cone wall) → the outer edge is vertical, so printed on
+        // edge it has NO overhang. The pocket floor + walls catch it at z=rest.
+        translate([0, 0, sp_rest_z - 1])
+            linear_extrude(height = sp_key_h + 2)
+                projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
     }
 }
 // One leg STANDING ON ITS EDGE for printing (blade height sp_key_h → Z). Layers
@@ -539,7 +543,12 @@ if (part == "spider_sec")    // DEBUG: vertical half-cut of the assembled spider
 if (part == "spider_hsec")   // DEBUG: horizontal slab at the SNAP plane (top view)
     intersection() {
         translate([-sp_cx, 0, -sp_rest_z]) spider();
-        translate([-200, -200, sp_snap_z - 0.6]) cube([400, 400, 1.2]);
+        translate([-200, -200, sp_foot_h / 2 - 0.6]) cube([400, 400, 1.2]);
+    }
+if (part == "spider_tsec")   // DEBUG: Y-Z cross-slab through leg-0 inside the body
+    intersection() {         //        → see the foot captured UNDER the body shoulders
+        translate([-sp_cx, 0, -sp_rest_z]) spider();
+        translate([10, -50, -50]) cube([1.5, 100, 100]);
     }
 if (part == "spider_fit") {
     // half-cut (keep y ≥ 0) to see the cone / legs / wall / wheel clearance.

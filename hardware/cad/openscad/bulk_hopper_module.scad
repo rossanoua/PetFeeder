@@ -466,15 +466,18 @@ module spider_body() {
     difference() {
         intersection() {
             translate([sp_cx, 0, sp_rest_z]) union() {
-                // straight HUB cylinder over the full socket height → constant-depth sockets
-                cylinder(r = sp_body_base_r, h = sp_key_h, $fn = 72);
+                // straight HUB cylinder: extends sp_body_floor BELOW the rest plane
+                // (solid floor under the foot chamber → the foot can't drop out the
+                // bottom; with the shoulders above it's captured) and up over the
+                // full socket height → constant-depth sockets.
+                translate([0, 0, -sp_body_floor])
+                    cylinder(r = sp_body_base_r, h = sp_body_floor + sp_key_h, $fn = 72);
                 // rounded cone cap ABOVE the sockets (kibble-shedding, support-free)
                 translate([0, 0, sp_key_h]) hull() {
                     cylinder(r = sp_body_base_r, h = 0.01, $fn = 72);
                     translate([0, 0, sp_cap_h - sp_cap_tip_r]) sphere(sp_cap_tip_r, $fn = 48);
                 }
             }
-            translate([-200, -200, sp_rest_z - sp_body_floor]) cube([400, 400, 400]); // floor below sockets
         }
         // 3 inverted-T grooves (open at the dome face, stopped at the inner end).
         // Neck slot runs up to the socket roof (sp_key_h); the foot chamber +

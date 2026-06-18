@@ -131,16 +131,17 @@ sp_pocket_proud = 7;   // radial depth of the floor/side-walls inward from the w
 sp_ledge_ramp   = 8;   // floor-underside ramp rise (≥ proud → ≤45°, printable)
 sp_wall_t       = 2.5; // each side-wall thickness (tangential)
 sp_wall_h       = 11;  // side-wall height above the rest plane (leg is sp_key_h tall)
-// pear/dome body + its leg sockets
-sp_body_base_r  = 15;   // flat base radius (on the bed when printed dome-up)
-sp_body_belly_r = 20;   // pear belly (max) radius
-sp_body_belly_z = 8;    // belly-centre height above the base
-sp_body_top_r   = 6;    // rounded top radius
-sp_body_h       = 32;   // body height
-sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs now enter
-                        //   RADIALLY from the side, not from below, so the base is
-                        //   closed again — the foot rests on this floor at z=rest).
-sp_sock_depth   = 9;    // leg socket depth into the body. MUST be < body_base_r
+// HUB cylinder (houses the sockets at CONSTANT depth) + rounded cone cap on top.
+// The sockets live entirely in the straight cylinder, so their cross-section is
+// identical at every layer — the socket does NOT narrow going up (the old pear
+// dome narrowed into the socket so the leg couldn't seat full-height). The cap
+// is only ABOVE the socket roof and just sheds kibble.
+sp_body_base_r  = 16;   // hub cylinder radius (socket outer wall)
+sp_cap_h        = 12;   // rounded cone cap height, above the hub
+sp_cap_tip_r    = 4;    // cap tip radius (rounded point)
+sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs enter RADIALLY
+                        //   from the side; the foot rests on this floor at z=rest).
+sp_sock_depth   = 10;   // leg socket depth into the hub. MUST be < body_base_r
                         //   so the 3 sockets/legs DON'T meet at the centre (at 16
                         //   they overshot → 3 legs collided → couldn't seat → stuck
                         //   out too long → spider hung high & wouldn't descend).
@@ -464,12 +465,16 @@ module sp_bar(i, x0, x1, hw, z0, h) {
 module spider_body() {
     difference() {
         intersection() {
-            translate([sp_cx, 0, sp_rest_z]) hull() {
-                cylinder(r = sp_body_base_r, h = 0.01);                            // base ref
-                translate([0, 0, sp_body_belly_z]) sphere(sp_body_belly_r, $fn = 72); // belly
-                translate([0, 0, sp_body_h - sp_body_top_r]) sphere(sp_body_top_r, $fn = 48); // top
+            translate([sp_cx, 0, sp_rest_z]) union() {
+                // straight HUB cylinder over the full socket height → constant-depth sockets
+                cylinder(r = sp_body_base_r, h = sp_key_h, $fn = 72);
+                // rounded cone cap ABOVE the sockets (kibble-shedding, support-free)
+                translate([0, 0, sp_key_h]) hull() {
+                    cylinder(r = sp_body_base_r, h = 0.01, $fn = 72);
+                    translate([0, 0, sp_cap_h - sp_cap_tip_r]) sphere(sp_cap_tip_r, $fn = 48);
+                }
             }
-            translate([-200, -200, sp_rest_z - sp_body_floor]) cube([400, 400, 400]); // flat base, 3mm floor below sockets
+            translate([-200, -200, sp_rest_z - sp_body_floor]) cube([400, 400, 400]); // floor below sockets
         }
         // 3 inverted-T grooves (open at the dome face, stopped at the inner end).
         // Neck slot runs up to the socket roof (sp_key_h); the foot chamber +
@@ -583,7 +588,7 @@ if (part == "key_zoom") {
     difference() {
         intersection() {
             union() { color("LightBlue") funnel(); color("Tomato") spider(); }
-            translate([-200, -200, sp_seat_z - 2]) cube([400, 400, sp_key_h + sp_body_h]);
+            translate([-200, -200, sp_seat_z - 2]) cube([400, 400, sp_key_h + sp_cap_h]);
         }
         translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y < 0
     }

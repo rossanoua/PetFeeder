@@ -139,6 +139,14 @@ sp_wall_h       = 11;  // side-wall height above the rest plane (leg is sp_key_h
 sp_body_base_r  = 16;   // hub cylinder radius (socket outer wall)
 sp_cap_h        = 12;   // rounded cone cap height, above the hub
 sp_cap_tip_r    = 4;    // cap tip radius (rounded point)
+sp_socket_through = false; // true: slot runs through the cap (open top, no slicer
+                           //   fill, but no ceiling). false: ROOFED socket — needs
+                           //   a STEEP cap (dome) so the slicer doesn't cascade
+                           //   top-infill down into the slot.
+sp_roof_gap     = 7;    // when roofed: socket roof sits this far ABOVE the leg
+                        //   neck top. The slicer fills the slot's inner dead-end
+                        //   ~6 mm below any roof, so this keeps that fill clear of
+                        //   the leg (the leg still seats full-height).
 sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs enter RADIALLY
                         //   from the side; the foot rests on this floor at z=rest).
 sp_sock_depth   = 10;   // leg socket depth into the hub. MUST be < body_base_r
@@ -465,18 +473,30 @@ module sp_bar(i, x0, x1, hw, z0, h) {
 module spider_body() {
     difference() {
         intersection() {
+            // hub_top = local z where the HUB cylinder ends and the cap begins.
+            // Roofed build raises it sp_roof_gap above the leg neck so the solid
+            // roof (and the slicer's top layers under it) sit clear of the leg.
+            let (hub_top = sp_key_h + (sp_socket_through ? 0 : sp_roof_gap))
             translate([sp_cx, 0, sp_rest_z]) union() {
                 // straight HUB cylinder: extends sp_body_floor BELOW the rest plane
-                // (solid floor under the foot chamber → the foot can't drop out the
-                // bottom; with the shoulders above it's captured) and up over the
-                // full socket height → constant-depth sockets.
+                // (solid floor under the foot chamber → the foot can't drop out) and
+                // up to hub_top → constant-depth sockets.
                 translate([0, 0, -sp_body_floor])
-                    cylinder(r = sp_body_base_r, h = sp_body_floor + sp_key_h, $fn = 72);
-                // rounded cone cap ABOVE the sockets (kibble-shedding, support-free)
-                translate([0, 0, sp_key_h]) hull() {
-                    cylinder(r = sp_body_base_r, h = 0.01, $fn = 72);
-                    translate([0, 0, sp_cap_h - sp_cap_tip_r]) sphere(sp_cap_tip_r, $fn = 48);
-                }
+                    cylinder(r = sp_body_base_r, h = sp_body_floor + hub_top, $fn = 72);
+                // cap ABOVE the sockets (kibble-shedding). ROOFED build uses a DOME
+                // (vertical at its base → minimal slicer top-fill above the socket
+                // roof); open-top build keeps the gentle cone (slot runs through it).
+                translate([0, 0, hub_top])
+                    if (sp_socket_through)
+                        hull() {
+                            cylinder(r = sp_body_base_r, h = 0.01, $fn = 72);
+                            translate([0, 0, sp_cap_h - sp_cap_tip_r]) sphere(sp_cap_tip_r, $fn = 48);
+                        }
+                    else
+                        intersection() {                       // hemisphere dome (steep base)
+                            sphere(sp_body_base_r, $fn = 72);
+                            cylinder(r = sp_body_base_r + 1, h = sp_body_base_r, $fn = 72);
+                        }
             }
         }
         // 3 inverted-T grooves. The neck slot runs ALL THE WAY THROUGH THE CAP
@@ -486,7 +506,9 @@ module spider_body() {
         // shoulders (z≈28), independent of the top, so an open top is fine. The
         // foot chamber + shoulders still capture the leg foot vertically.
         for (i = [0 : sp_leg_n - 1])
-            sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip, sp_key_h + sp_cap_h + 2);
+            sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip,
+                     sp_socket_through ? sp_key_h + sp_cap_h + 2   // through the cap (open)
+                                       : sp_key_h + sp_roof_gap);  // roofed, clear of the leg
     }
 }
 // One leg as placed in the funnel (for the assembled / fit views): a radial

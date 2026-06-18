@@ -136,9 +136,11 @@ sp_wall_h       = 11;  // side-wall height above the rest plane (leg is sp_key_h
 // identical at every layer — the socket does NOT narrow going up (the old pear
 // dome narrowed into the socket so the leg couldn't seat full-height). The cap
 // is only ABOVE the socket roof and just sheds kibble.
-sp_body_base_r  = 16;   // hub cylinder radius (socket outer wall)
-sp_cap_h        = 12;   // rounded cone cap height, above the hub
-sp_cap_tip_r    = 4;    // cap tip radius (rounded point)
+sp_body_base_r  = 14.5; // hub (lower/stem) radius = socket outer wall. Ø29.
+sp_body_bulb_r  = 26;   // upper bulb max radius. Ø52 (wide kibble-bearing cap).
+sp_bulb_rise    = 17;   // height above the hub where the bulb reaches its widest
+sp_cap_h        = 42;   // cap height above the hub (was 12; +30 → body 30mm taller)
+sp_cap_tip_r    = 10;   // rounded top radius
 sp_socket_through = true;  // CHOSEN FINAL = open-top (clean, full-depth slots, no
                            //   slicer fill). true: slot runs through the cap (open
                            //   top, no ceiling). false: roofed dome + dead-end vents
@@ -149,8 +151,9 @@ sp_roof_gap     = 2;    // when roofed: socket roof this far above the leg neck.
                         //   slicer filling the slot, so no big dead zone is needed.
 sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs enter RADIALLY
                         //   from the side; the foot rests on this floor at z=rest).
-sp_sock_depth   = 10;   // leg socket depth into the hub. MUST be < body_base_r
-                        //   so the 3 sockets/legs DON'T meet at the centre (at 16
+sp_sock_depth   = 8.5;  // leg socket depth into the hub (= base_r − 6 → inner stop
+                        //   stays at r6). MUST be < body_base_r so the 3 sockets
+                        //   DON'T meet at the centre (at 16
                         //   they overshot → 3 legs collided → couldn't seat → stuck
                         //   out too long → spider hung high & wouldn't descend).
 // Radial retention is by the snug T-rail friction (sp_slip) over the ~12 mm
@@ -488,8 +491,9 @@ module spider_body() {
                 // roof); open-top build keeps the gentle cone (slot runs through it).
                 translate([0, 0, hub_top])
                     if (sp_socket_through)
-                        hull() {
+                        hull() {                               // stem → wide bulb → rounded top
                             cylinder(r = sp_body_base_r, h = 0.01, $fn = 72);
+                            translate([0, 0, sp_bulb_rise]) cylinder(r = sp_body_bulb_r, h = 0.01, $fn = 72);
                             translate([0, 0, sp_cap_h - sp_cap_tip_r]) sphere(sp_cap_tip_r, $fn = 48);
                         }
                     else

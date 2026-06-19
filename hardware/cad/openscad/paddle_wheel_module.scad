@@ -101,6 +101,14 @@ housing_buffer_h   = 15;
 td_back    = 22;        // teardrop tip reach beyond hr_out, toward the inlet
 td_tip_r   = 18;        // teardrop tip radius
 td_flare_z = 5;         // z where the round→teardrop flare starts (above recess)
+// FEED RAMP filling the teardrop-tip lobe. Without it the lobe floor is a flat
+// shelf at td_flare_z, BELOW the wheel rim/paddle top — kibble lands there, can't
+// get over the rim into a sector, and the spinning rim grinds it → JAM. The ramp
+// raises that shelf into a slope: low at the wheel edge (just over the rim top)
+// rising to the tip, so kibble slides over the rim into the wheel. (No housing
+// height increase.)
+ramp_lo    = 13;        // ramp top at the wheel edge (≈ rim top 12.5 + 0.5)
+ramp_hi    = 32;        // ramp top at the teardrop tip (< wheel cone top 32.5)
 td_clear   = 0.4;       // cap-over-housing teardrop slip clearance
 // td_tip_cx is derived below (needs hr_out)
 
@@ -310,7 +318,37 @@ module axle() {
 // HOUSING  round cup (wheel) that FLARES to a teardrop top; closed floor
 //          with a rounded-rect OUTLET. The teardrop top widens the inlet.
 // ===========================================================================
+// Feed ramp: the teardrop-tip lobe (everything beyond the round wheel cup),
+// filled from the floor up to a sloped top — low (over the rim) at the wheel
+// edge, high at the tip — so kibble slides over the rim into the wheel instead
+// of dead-resting on a flat shelf and jamming the spinning rim.
+module lobe_ramp() {
+    intersection() {
+        linear_extrude(housing_h + 1)
+            difference() {
+                teardrop_2d(hr_in, td_tip_r - housing_wall, td_tip_cx);
+                circle(r = hr_in, $fn = 96);          // keep the round wheel cup clear
+            }
+        hull() {
+            translate([-hr_in, -hr_out - 1, 0]) cube([0.1, 2*hr_out + 2, ramp_lo]);
+            translate([-(hr_out + td_back), -hr_out - 1, 0]) cube([0.1, 2*hr_out + 2, ramp_hi]);
+        }
+        // clip to the housing OUTER envelope so the ramp can't float past the
+        // walls (the teardrop tip doesn't exist below td_flare_z).
+        union() {
+            cylinder(h = td_flare_z, d = 2 * hr_out);
+            hull() {
+                translate([0, 0, td_flare_z]) cylinder(d = 2 * hr_out, h = 0.1);
+                translate([0, 0, housing_h - 0.1])
+                    linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+            }
+        }
+    }
+}
+
 module housing() {
+  union() {
+    lobe_ramp();
     difference() {
         // OUTER: round bottom → teardrop top
         union() {
@@ -362,6 +400,7 @@ module housing() {
             linear_extrude(rab_d + 1)
                 offset(-rab_w) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
     }
+  }
 }
 
 // ===========================================================================

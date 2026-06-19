@@ -110,11 +110,13 @@ td_flare_z = 5;         // z where the round→teardrop flare starts (above rece
 ramp_lo    = 13;        // ramp top at the wheel edge (≈ rim top 12.5 + 0.5)
 ramp_hi    = 32;        // ramp top at the teardrop tip (< wheel cone top 32.5)
 // The teardrop nose tapers to a thin (3 mm), overhanging, rebated point that
-// prints with a hole at the tip. tip_extra fattens ONLY the OUTER shell at the
-// nose (bigger outer tip radius) → ~5-6 mm tip wall. The inner cavity, the
-// inlet, the cap rebate and td_tip_cx are untouched, so the cap and the funnel
-// (both locked to those dims) DON'T change — housing-only reprint.
-tip_extra  = 3;         // extra outer-tip radius at the nose
+// prints with a hole at the very TOP of the tip. We fatten ONLY the OUTER shell
+// at the nose, and ONLY over the top tip_thick_h mm (the lip/rim where the hole
+// is) — tapering back to the original below, so the rest of the nose and the
+// print time are unchanged. Inner cavity, inlet, cap rebate and td_tip_cx are
+// untouched → cap and funnel (locked to those dims) DON'T change; housing-only.
+tip_extra    = 3;       // extra outer-tip radius at the very top of the nose
+tip_thick_h  = 8;       // how far down from the rim the thickening reaches
 td_clear   = 0.4;       // cap-over-housing teardrop slip clearance
 // td_tip_cx is derived below (needs hr_out)
 
@@ -365,10 +367,19 @@ module housing() {
         // OUTER: round bottom → teardrop top
         union() {
             cylinder(h = td_flare_z, d = 2 * hr_out);
-            hull() {
+            hull() {                                    // main flare → ORIGINAL teardrop
                 translate([0, 0, td_flare_z])
                     cylinder(d = 2 * hr_out, h = 0.1);
-                translate([0, 0, housing_h - 0.1])      // OUTER nose fattened (tip_extra)
+                translate([0, 0, housing_h - 0.1])
+                    linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+            }
+            // LOCAL nose thickener: only the top tip_thick_h mm, tapering from the
+            // original tip up to (td_tip_r + tip_extra) at the rim. The round part
+            // is identical in both teardrops, so the only NEW material is the tip.
+            hull() {
+                translate([0, 0, housing_h - tip_thick_h])
+                    linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+                translate([0, 0, housing_h - 0.1])
                     linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r + tip_extra, td_tip_cx);
             }
         }

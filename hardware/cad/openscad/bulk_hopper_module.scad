@@ -93,7 +93,11 @@ pw_td_tip_r     = 18;
 pw_td_back      = 22;
 pw_inlet_margin = 3;
 pw_axle_keep    = 4.8;   // = axle_d/2 + fit_clear + 2
-throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
+throat_cx       = 0;     // 2026-06-19 RECENTER: 0 → the Ø160 funnel is centred on
+                         //   the wheel AXLE (was 28 = centred over the throat lobe).
+                         //   The throat stays off-centre toward −X (inlet lobe); the
+                         //   cone inside becomes asymmetric but the housing now hides
+                         //   under the Ø160 silhouette (user: центр над віссю колеса).
 
 /* [Anti-pressure spider] */
 // MODULAR stress body: a rounded PEAR body bears the kibble column and shunts
@@ -103,14 +107,19 @@ throat_cx       = 28;    // throat centre offset → Ø160 sits over the throat
 // no sideways spreading. Small side keys stop rotation. All features are
 // inside + gentle (≤1.5 mm, ramped) so kibble flows past and it prints without
 // supports. Body has ≥3 mm of material under the sockets to hold the legs.
-sp_cx        = 4;    // funnel-local X of the body/leg centre (over throat lobe)
+sp_cx        = -15;  // funnel-local X of the body/leg centre. 2026-06-19: 4→−15 —
+                     //   recentred over the THROAT (its centroid sits at −X) after
+                     //   throat_cx 28→0. Body (Ø52) covers the throat constriction;
+                     //   legs auto-clip to the asymmetric wall (long on +X, short −X).
 sp_seat_z    = 36;   // funnel-local Z of the rest plane. Raised 26→36 (+10mm) to
                      //   lift the whole spider 1 cm: the wall pockets move up with
                      //   it and the legs auto-lengthen (cone is wider higher up).
                      //   Body shape unchanged (it just sits higher).
 sp_leg_n     = 3;    // 3 legs → 3 wide flow gaps
 sp_leg_t     = 3.2;  // leg NECK thickness (the blade)
-sp_leg_len   = 70;   // printed blade length (clipped to its wall per angle)
+sp_leg_len   = 95;   // printed blade length (clipped to its wall per angle). 70→95
+                     //   so the legs still reach the now-asymmetric cone wall (the
+                     //   +X side opens much wider after the recenter).
 sp_leg_phase = 0;    // leg rotation (deg) — orient gaps to the inlet/outlet
 sp_slip      = 0.35; // slip clearance (snug T-rail slide)
 // DOVETAIL / inverted-T capture: each leg is an inverted-T rail — a wide FOOT
@@ -164,6 +173,7 @@ sp_sock_depth   = 8.5;  // leg socket depth into the hub (= base_r − 6 → inn
 // orientation. sp_stop_vslip = the foot chamber is this much taller than the
 // foot (assembly play). If legs ever slide out too easily, add a detent here.
 sp_stop_vslip   = 0.3;
+sp_pockets_on   = true;   // include the 3 spider capture pockets in the funnel
 
 /* [Quality] */
 $fn = 96;
@@ -263,88 +273,88 @@ module stacking_lip(z_base) {
 //     so they no longer protrude past the funnel exterior.
 // ===========================================================================
 
-// Outer funnel shape — straight rect plug at the bottom, mass-flow cone
-// in the middle, and a straight Ø bulk_d cylinder over the top
-// cavity_taper_h. The straight outer at the top + tapered cavity at the
-// top combine to give a thick (6.3 mm) annular wall right at z=funnel_h
-// — that solid wall is what supports the lip's first print layer.
-module funnel_outer() {
-    union() {
-        // Teardrop plug (throat + wall) — fits into the cap collar
-        linear_extrude(cap_collar_h) offset(hopper_wall) throat_2d();
-        // Mass-flow cone with a ROUNDED plug→cone corner, to Ø160 at cone_top_z.
-        fillet_cone(hopper_wall, bulk_d / 2);
-        // Straight Ø bulk_d cylinder from cone_top_z to the top.
-        translate([0, 0, cone_top_z])
-            cylinder(d = bulk_d, h = funnel_h - cone_top_z);
+// 2026-06-19 PRODUCT REDESIGN — cylindrical exterior + merged cap.
+// The funnel is now a Ø160 CYLINDER outside (the whole tower reads as one clean
+// cylinder from the table). Inside: an asymmetric mass-flow cone whose throat is
+// OFF-CENTRE (over the inlet lobe) while the Ø160 is CENTRED on the wheel axle
+// (throat_cx=0) → the housing hides under the silhouette. The old separate
+// end_cap is MERGED into the funnel bottom plate (closes the housing top: axle
+// bore + throat inlet). Vase-like DOUBLE WALL: outer SHELL + inner CONE joined
+// at the top rim and the bottom plate; the ring between them is hollow (light).
+shell_wall   = bulk_wall;             // 3 — Ø160 outer shell wall
+cone_wall    = hopper_wall;           // 2 — inner mass-flow cone wall
+cap_t        = 6;                     // merged-cap bottom plate thickness
+pw_axle_d    = 5;                     // axle Ø (= paddle_wheel_module axle_d)
+pw_fit_clear = 0.3;
+cone_in_top  = bulk_r_in - 1;         // cone inner opens just inside the shell bore
+                                      //   (−1 avoids a coincident face at the junction)
+cone_out_top = bulk_r_in + cone_wall; // cone outer 2 mm into the shell wall (clean overlap)
+
+// Outer Ø160 shell — a tube, OPEN at the bottom (its rim rests on the base).
+// The inner bore tapers IN over the top cavity_taper_h so the stacking lip's
+// first layer lands on solid wall (same lip-support trick as before).
+module shell_tube() {
+    difference() {
+        cylinder(d = bulk_d, h = funnel_h);
+        translate([0, 0, -1])
+            cylinder(r = bulk_r_in, h = funnel_h - cavity_taper_h + 1);
+        translate([0, 0, funnel_h - cavity_taper_h])
+            cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
     }
 }
 
-// Inner cavity shape — three sections:
-//   1. straight rect bottom (= cap hole shape, through the plug)
-//   2. tapered mass-flow cone (rect → circle r=(bulk_d/2 - hopper_wall)
-//      = 78), uniform 2 mm wall against the cone outer
-//   3. taper-down chamfer at the top — cavity narrows from r=78 to
-//      r=lip_ir (=73.7) over cavity_taper_h (5 mm). This LOCAL inward
-//      taper means that at z=funnel_h the cavity edge has moved to
-//      r=lip_ir, so the lip wall (r=lip_ir to r=lip_or) sits ENTIRELY
-//      ON solid material below. Without this taper, the lip's outer
-//      (r=lip_or=76.7) prints over the empty cavity → slicer "floating
-//      regions" warning, lip's first layer fails.
-//   4. lip cavity above z=funnel_h — straight cylinder r=lip_ir
-//
-// Cone wall thickness:
-//   • z=10  (plug top):                 2 mm
-//   • z=funnel_h-cavity_taper_h (=110): 2 mm (last layer with uniform wall)
-//   • z=funnel_h (=115):                6.3 mm (max wall, supports lip)
-//   • z=funnel_h+ε (lip):               3 mm (lip wall)
-// Thickening is LOCAL to the taper region (5 mm) at the very top —
-// exactly what the user asked for ("уніформ якомога більше, потовщення
-// під кінець").
-module funnel_cavity() {
-    union() {
-        // 1. Teardrop throat (= cap inlet), extends below z=0 for a clean
-        //    cut-through.
-        translate([0, 0, -2])
-            linear_extrude(cap_collar_h + 2 + 0.5) throat_2d();
-        // 2. Cone cavity with the SAME rounded plug→cone corner (wall stays
-        //    uniform): throat → r=(bulk_d/2 - hopper_wall) at cone_top_z.
-        fillet_cone(0, bulk_d/2 - hopper_wall);
-        // 2b. Straight cavity cylinder r=78 from cone_top_z up to the
-        //     chamfer start (keeps the 2 mm wall in the straight section).
-        translate([0, 0, cone_top_z])
-            cylinder(r = bulk_d/2 - hopper_wall,
-                     h = (funnel_h - cavity_taper_h) - cone_top_z + 0.01);
-        // 3. Top chamfer — cavity narrows from r=78 to r=lip_ir over
-        //    cavity_taper_h. Slope ≈ 41° from vertical = 49° from
-        //    horizontal — within FDM's self-supporting overhang range
-        //    (>45° from horizontal).
-        translate([0, 0, funnel_h - cavity_taper_h])
-            cylinder(r1 = bulk_d/2 - hopper_wall, r2 = lip_ir,
-                     h = cavity_taper_h);
-        // 4. Lip cavity — straight cylinder r=lip_ir through the lip
-        //    region. Starts 0.5 mm BELOW funnel_h to overlap with the
-        //    chamfer's top end and avoid Z-fighting.
-        translate([0, 0, funnel_h - 0.5])
-            cylinder(r = lip_ir, h = joint_lip_h + 2.5);
+// Inner mass-flow CONE wall (asymmetric: throat off to −X, opens to a centred
+// Ø). Throat plug (z 0..cap_collar_h) → rounded cone → meets the shell at top.
+module cone_wall_solid() {
+    difference() {
+        union() {
+            linear_extrude(cap_collar_h) offset(cone_wall) throat_2d();
+            fillet_cone(cone_wall, cone_out_top);
+        }
+        union() {                                    // kibble passage (hollow)
+            translate([0, 0, -1]) linear_extrude(cap_collar_h + 1) throat_2d();
+            fillet_cone(0, cone_in_top);
+            translate([0, 0, cone_top_z - 0.01]) cylinder(r = cone_in_top, h = funnel_h);
+        }
     }
 }
+
+nest_clear = 0.4;   // groove↔wall slip clearance (mirror nest_clear in paddle_wheel)
+nest_h     = 3.5;   // nest depth — the housing top wall enters this far up
+
+// MERGED cap plate — teardrop disc closing the housing top (throat inlet open,
+// axle-bore top guide) with a perimeter teardrop GROOVE on its underside that
+// the HOUSING TOP WALL enters → self-centres + anti-rotates (the teardrop keys
+// it). The groove is cut UP into the plate (from below), so the funnel still
+// prints flat-bottomed — only a narrow teardrop-ring bridge (trivial). This is
+// the "низ лійки одягається на housing" joint; the cap is merged in here.
+module cap_plate() {
+    difference() {
+        linear_extrude(cap_t) teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+        // perimeter nest groove (ring slot the housing wall slides into)
+        translate([0, 0, -0.01]) linear_extrude(nest_h)
+            difference() {
+                offset(nest_clear)                     teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+                offset(-pw_housing_wall - nest_clear)  teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+            }
+        translate([0, 0, -1]) linear_extrude(cap_t + 2) throat_2d();                 // inlet
+        translate([0, 0, -1]) cylinder(h = cap_t + 2, d = pw_axle_d + 2 * pw_fit_clear); // axle bore
+    }
+}
+
+// (funnel_outer / funnel_cavity removed 2026-06-19 — replaced by the
+//  shell_tube + cone_wall_solid + cap_plate trio above.)
 
 module funnel() {
-    // ===== Hollowed funnel body + 3 small INWARD ledges (підставки) =====
-    // The assembled spider drops in; each leg LAYS on a small inward ledge
-    // (the load goes into the wall, no sideways spreading). Small side keys
-    // stop rotation. Everything is inside + gentle (≤1.5 mm, ramped) so kibble
-    // flows past and it prints without supports.
+    // Ø160 cylindrical product shell + internal asymmetric mass-flow cone +
+    // merged cap plate. The assembled spider still drops in; its capture
+    // pockets follow the cone wall via cav() (refit to the new cone).
     union() {
-        difference() {
-            union() {
-                funnel_outer();
-                stacking_lip(z_funnel_top);
-            }
-            funnel_cavity();
-        }
-        spider_pockets();           // 3 capture pockets (floor + side walls)
+        shell_tube();
+        cone_wall_solid();
+        cap_plate();
+        stacking_lip(z_funnel_top);
+        if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
     }
 }
 
@@ -383,6 +393,101 @@ module lid() {
         if (lid_handle)
             translate([0, 0, skirt_h + lid_disc_h])
                 cylinder(h = lid_handle_h, d = lid_handle_d);
+    }
+}
+
+// ===========================================================================
+// BASE  Ø160 product shell that hides the mechanism (2026-06-19, FIRST PASS)
+// ---------------------------------------------------------------------------
+// The lower Ø160 section. (a) Encloses the housing so the tower reads as one
+// clean cylinder; (b) a UNIVERSAL central motor cavity under the axle (specific
+// motor TBD — заклади порожнину з запасом); (c) routes the wheel floor OUTLET
+// out a SIDE CHUTE to a bowl in FRONT (+X). The funnel stacks on top via the
+// same lip joint as the rings, and its cap-plate nests on the housing top.
+//
+// Vertical stack:  table(0) → motor/chute region (base_motor_h) → housing-rest
+// PLATE → housing (pw_housing_h) → base top = funnel bottom.
+// NOTE: first pass — internals are deliberately simple (solid rest-plate, open
+// chute sides). Lighten + add electronics access once the layout is agreed.
+// [Motor — NEMA17 17HS4401, verified from BOM/project-notes]
+nema_w        = 42.3;   // frame size (square body)
+nema_len      = 40;     // 17HS4401 body length (VERIFY your unit: 34/40/48 variants)
+nema_pilot_d  = 22;     // centring boss Ø on the motor face
+nema_bolt_sq  = 31;     // M3 mounting-hole square pattern
+nema_bolt_d   = 3.4;    // M3 clearance hole
+nema_shaft_d  = 5;      // shaft Ø (Ø5 D-axle couples to it; wheel bore already 5mm D)
+base_outlet_angle = 0;          // outlet/chute on +X (the "front", bowl side)
+pw_housing_h2     = 37;         // = paddle_wheel_module housing_h (keep in sync)
+base_floor        = 3;          // bottom floor thickness
+motor_mount_t     = 5;          // motor DECK thickness (NEMA17 bolts up to it)
+base_plate_t      = 3;          // housing-rest plate thickness
+base_deck_z       = base_floor + nema_len;   // 43 — motor face / deck; body hangs below
+base_motor_h      = base_deck_z + motor_mount_t + 12;  // 60 — + coupler/chute region
+base_h            = base_motor_h + pw_housing_h2;       // 97
+base_chute_w      = hole_w + 6; // 40 — chute / outlet-drop width
+base_mouth_h      = 18;         // front exit opening height
+base_mid_r        = (hole_radial_in + hole_radial_out) / 2;   // 21 — outlet centre r
+// [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
+// in (under the tower) and the chute drops food straight into it. Above niche_h
+// the tower stays full Ø160. Clears the central motor (niche back at x≈30 > r21).
+niche_w  = 124;   // bowl niche Ø/width (store-bought bowl ~Ø120)
+niche_cx = 92;    // niche centre x (forward; back edge tucks into the base front)
+niche_h  = 55;    // niche height (bowl + cat head access)
+
+module base() {
+    seat_z  = base_motor_h;                 // 60 — housing rest-plate top
+    deck_z  = base_deck_z;                  // 43 — NEMA17 face / deck bottom
+    deck_t  = deck_z + motor_mount_t;       // 48 — deck top (chute floor base)
+    plate_b = seat_z - base_plate_t;        // 57 — rest-plate bottom
+    difference() {
+        union() {
+            // 1. hollowed Ø160 shell + stacking lip (motor body hangs in the hollow).
+            //    The bore tapers IN to lip_ir over the top cavity_taper_h so the lip
+            //    sits on solid wall (same trick as the funnel) — without it the lip
+            //    floats and the hollow eats it (a stray volume).
+            difference() {
+                union() { cylinder(d = bulk_d, h = base_h); stacking_lip(base_h); }
+                translate([0, 0, base_floor])
+                    cylinder(r = bulk_r_in, h = base_h - base_floor - cavity_taper_h);
+                translate([0, 0, base_h - cavity_taper_h])
+                    cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
+            }
+            // 2. MOTOR DECK — NEMA17 bolts up to it; body (42²×40) hangs below in
+            //    the hollow. Full disc, +0.4 into the shell wall (no coincident face).
+            translate([0, 0, deck_z]) cylinder(r = bulk_r_in + 1.5, h = motor_mount_t);
+            // 3. housing REST-PLATE (food drops through its outlet hole to the chute)
+            translate([0, 0, plate_b]) cylinder(r = bulk_r_in + 1.5, h = base_plate_t);
+            // 4. CHUTE — solid sloped wedge deck→plate, food slides outlet → front
+            //    mouth. Starts at r9 (butts the column) and dips 1 mm into the deck.
+            rotate([0, 0, base_outlet_angle]) hull() {
+                translate([6,            -base_chute_w/2, deck_t - 1]) cube([6, base_chute_w, plate_b - deck_t + 2]);
+                translate([bulk_r_in - 4, -base_chute_w/2, deck_t - 1]) cube([4, base_chute_w, 6]);
+            }
+            // 5. central SHAFT COLUMN — shields the coupler from food + supports the
+            //    plate centre. Overlaps INTO the deck (−2) and the plate (+1) so no
+            //    coincident faces leave it as a separate volume.
+            translate([0, 0, deck_t - 2]) cylinder(d = 18, h = plate_b - deck_t + 3);
+        }
+        // ---- cuts ----
+        translate([0, 0, -1]) cylinder(d = nema_shaft_d + 3, h = base_h + 2);          // central axle/shaft
+        translate([0, 0, deck_z - 1]) cylinder(d = nema_pilot_d + 1, h = 4);           // pilot boss COUNTERBORE (bottom of deck only)
+        for (sx = [-1, 1]) for (sy = [-1, 1])                                          // 4× M3 mount holes
+            translate([sx * nema_bolt_sq/2, sy * nema_bolt_sq/2, deck_z - 1])
+                cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
+        rotate([0, 0, base_outlet_angle])                                             // outlet hole in the plate
+            translate([base_mid_r, 0, plate_b - 0.5]) linear_extrude(base_plate_t + 1)
+                square([hole_len + 6, base_chute_w], center = true);
+        rotate([0, 0, base_outlet_angle])                                             // front chute MOUTH
+            translate([bulk_r_in - 1, -base_chute_w/2, deck_t + 1])
+                cube([bulk_wall + 3, base_chute_w, base_mouth_h]);
+        // motor INSERTION + wiring hole in the floor (the 42² body drops UP through
+        // this into the hollow, then bolts to the deck from above; wires exit here).
+        translate([-(nema_w + 2)/2, -(nema_w + 2)/2, -1])
+            cube([nema_w + 2, nema_w + 2, base_floor + 2]);
+        // BOWL NICHE — scallop the front so the bowl tucks in; also shortens the
+        // chute so food drops straight into the bowl. (Load-cell platform next.)
+        rotate([0, 0, base_outlet_angle])
+            translate([niche_cx, 0, -1]) cylinder(d = niche_w, h = niche_h + 1, $fn = 96);
     }
 }
 
@@ -577,6 +682,27 @@ module spider() {
 if (part == "funnel")   funnel();
 if (part == "ring")     ring();
 if (part == "lid")      lid();
+if (part == "base")     base();
+if (part == "chassis") {
+    // full lower stack: base + housing (on the rest-plate) + funnel (cap nests
+    // on the housing top). Shows the Ø160 silhouette hiding the housing + the
+    // front chute. Wheel + axle included for the food-path sanity check.
+    color("Gainsboro")            base();
+    color("LightBlue", 0.85)      translate([0, 0, base_motor_h]) housing();
+    color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
+    color("Khaki", 0.45)          translate([0, 0, base_h]) funnel();
+}
+if (part == "chassis_cut") {
+    difference() {
+        union() {
+            color("Gainsboro")        base();
+            color("LightBlue", 0.9)   translate([0, 0, base_motor_h]) housing();
+            color("Silver")           translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
+            color("Khaki", 0.5)       translate([0, 0, base_h]) funnel();
+        }
+        translate([-200, -400, -300]) cube([400, 400, 700]);   // remove y < 0
+    }
+}
 if (part == "spider")           // assembled view (not for printing directly)
     translate([-sp_cx, 0, -sp_rest_z]) spider();
 if (part == "spider_body")      // PRINT: pear body, dome up, flat base on bed
@@ -643,6 +769,19 @@ if (part == "spider_cover") {
     // Green showing through = open flow gaps; red over centre = roofed column.
     color("LightGreen")       throat_2d();
     color("Tomato", 0.65)     projection() spider();
+}
+if (part == "nest_check") {
+    // verify the housing top WALL seats in the funnel cap-plate GROOVE (vertical
+    // half-cut). pw_housing_h = paddle_wheel housing_h (end_wall+floor_clear+
+    // wheel_thickness+wheel_axial_clear+housing_buffer_h = 3+0.5+18+0.5+15).
+    pw_housing_h = 37;
+    difference() {
+        union() {
+            color("LightBlue")  housing();
+            color("Tomato")     translate([0, 0, pw_housing_h]) cap_plate();
+        }
+        translate([-200, -400, -250]) cube([400, 400, 500]);   // remove y < 0
+    }
 }
 if (part == "assembly") {
     color("LightBlue", 0.6)         funnel();

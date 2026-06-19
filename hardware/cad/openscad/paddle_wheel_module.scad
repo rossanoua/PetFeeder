@@ -109,15 +109,21 @@ td_flare_z = 5;         // z where the round→teardrop flare starts (above rece
 // height increase.)
 ramp_lo    = 13;        // ramp top at the wheel edge (≈ rim top 12.5 + 0.5)
 ramp_hi    = 32;        // ramp top at the teardrop tip (< wheel cone top 32.5)
-// The teardrop nose tapers to a thin (3 mm), overhanging, rebated point that
-// prints with a hole at the very TOP of the tip. We fatten ONLY the OUTER shell
-// at the nose, and ONLY over the top tip_thick_h mm (the lip/rim where the hole
-// is) — tapering back to the original below, so the rest of the nose and the
-// print time are unchanged. Inner cavity, inlet, cap rebate and td_tip_cx are
-// untouched → cap and funnel (locked to those dims) DON'T change; housing-only.
-tip_extra    = 3;       // extra outer-tip radius at the very top of the nose
-tip_thick_h  = 8;       // how far down from the rim the thickening reaches
-td_clear   = 0.4;       // cap-over-housing teardrop slip clearance
+// 2026-06-19 — the teardrop nose tapered to a thin overhanging point that
+// printed with a hole. The previous fix grew the OUTER shell at the tip, which
+// STEEPENED the overhang and blobbed on the tilted printer. Now we thicken
+// INWARD: solidify the dead extreme-tip CORNER over the top nose_fill_h mm so
+// the thin point prints solid, WITHOUT touching the outer envelope. Flow is
+// unaffected (the inlet feeds over the wheel, not at the far tip). The housing
+// also prints ROTATED 180° about Z (see render dispatch) for the tilted bed.
+nose_fill_h  = 10;      // top band height that gets the solid inward tip fill
+nose_fill_x0 = -38;     // fill the teardrop tip only for x <= this (dead corner)
+td_clear   = 0.4;       // (legacy) cap-over-housing teardrop slip clearance
+// Funnel NEST (replaces the old cap rebate, since the cap is now MERGED into the
+// funnel). The funnel's cap-plate drops a teardrop SKIRT over the housing top
+// rim → self-centres + anti-rotates (the teardrop shape keys it). Matching
+// params live in bulk_hopper_module.scad (nest_clear / skirt_wall / nest_depth).
+nest_clear = 0.4;       // skirt-over-rim slip clearance (mirror in the funnel)
 // td_tip_cx is derived below (needs hr_out)
 
 /* [Cap inlet] — big opening on the INLET (back) side, reaching the axle.
@@ -367,20 +373,11 @@ module housing() {
         // OUTER: round bottom → teardrop top
         union() {
             cylinder(h = td_flare_z, d = 2 * hr_out);
-            hull() {                                    // main flare → ORIGINAL teardrop
+            hull() {                                    // main flare → teardrop top (clean)
                 translate([0, 0, td_flare_z])
                     cylinder(d = 2 * hr_out, h = 0.1);
                 translate([0, 0, housing_h - 0.1])
                     linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
-            }
-            // LOCAL nose thickener: only the top tip_thick_h mm, tapering from the
-            // original tip up to (td_tip_r + tip_extra) at the rim. The round part
-            // is identical in both teardrops, so the only NEW material is the tip.
-            hull() {
-                translate([0, 0, housing_h - tip_thick_h])
-                    linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
-                translate([0, 0, housing_h - 0.1])
-                    linear_extrude(0.1) teardrop_2d(hr_out, td_tip_r + tip_extra, td_tip_cx);
             }
         }
 
@@ -417,11 +414,17 @@ module housing() {
                                      hole_corner_r, 0.5);
                 }
 
-        // REBATE — cut the inner rim down to a ledge, leaving the outer
-        // teardrop LIP (rab_w wide) at full height. The cap nests in here.
-        translate([0, 0, housing_h - rab_d])
-            linear_extrude(rab_d + 1)
-                offset(-rab_w) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+        // (REBATE removed 2026-06-19 — the cap is MERGED into the funnel, which
+        //  now mates via a teardrop SKIRT dropping over this top rim, not a cut.)
+    }
+    // inward nose-tip fill: solidify the dead extreme-tip CORNER over the top
+    // nose_fill_h mm so the thin overhanging point prints solid (no pinhole),
+    // WITHOUT growing the outer envelope (no added overhang). Clear of the inlet
+    // (which feeds over the wheel), so kibble flow is unaffected.
+    intersection() {
+        linear_extrude(housing_h + 0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
+        translate([-400, -200, housing_h - nose_fill_h])
+            cube([400 + nose_fill_x0, 400, nose_fill_h + 0.1]);   // x <= nose_fill_x0
     }
   }
 }
@@ -521,7 +524,8 @@ module hopper() {
 // ===========================================================================
 if (part == "wheel")   wheel();
 if (part == "axle")    axle();
-if (part == "housing") housing();
+if (part == "housing") rotate([0, 0, 180]) housing();   // 180° about Z: orient
+                                                        // the nose for the tilted printer
 if (part == "end_cap") end_cap();
 if (part == "hopper")  hopper();
 if (part == "assembly") {

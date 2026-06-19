@@ -434,10 +434,16 @@ base_mid_r        = (hole_radial_in + hole_radial_out) / 2;   // 21 — outlet c
 // mostly in FRONT and only its back nestles into a curved niche in the tower.
 bowl_d   = 175;
 bowl_h   = 58;
-bowl_cx  = 155;   // bowl centre x (mostly forward; back nestles ~12 mm into tower)
-niche_z0 = 16;    // scallop STARTS here — below it the tower front stays solid for
-                  //   the load-cell mount; the bowl back nestles in the scallop above
-niche_h  = 82;    // scallop top (clears the bowl back z≈20..79 + cat reach)
+// 2026-06-19 STRAIGHT-DOWN feed (user): food falls vertically from the wheel
+// outlet into the bowl BACK, which nestles UNDER the tower front. The tower
+// stands on LEGS so the outlet clears the (load-cell-raised) bowl rim. The bowl
+// back sits under the outlet (bowl_cx pulled back so back ≈ outlet x).
+leg_h    = 22;    // leg height — lifts the tower so the outlet clears the bowl rim
+leg_d    = 14;    // leg Ø
+bowl_cx  = 112;   // bowl centre x — back (≈x24) sits UNDER the wheel outlet (x21..35)
+niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
+                  //   and the food drops down the open niche straight into it)
+niche_h  = 58;    // scallop top (just under the outlet level so food falls freely)
 niche_cl = 8;     // niche clearance around the bowl (Ø = bowl_d + niche_cl)
 // [Load cell + bowl platform] — 1-5 kg straight bar (~80×12.7×12.7), cantilever:
 // fixed end anchored to the tower behind the scallop, load end forward under the
@@ -475,12 +481,12 @@ module base() {
             translate([0, 0, deck_z]) cylinder(r = bulk_r_in + 1.5, h = motor_mount_t);
             // 3. housing REST-PLATE (food drops through its outlet hole to the chute)
             translate([0, 0, plate_b]) cylinder(r = bulk_r_in + 1.5, h = base_plate_t);
-            // 4. CHUTE — solid sloped wedge deck→plate, food slides outlet → front
-            //    mouth. Starts at r9 (butts the column) and dips 1 mm into the deck.
-            rotate([0, 0, base_outlet_angle]) hull() {
-                translate([6,            -base_chute_w/2, deck_t - 1]) cube([6, base_chute_w, plate_b - deck_t + 2]);
-                translate([bulk_r_in - 4, -base_chute_w/2, deck_t - 1]) cube([4, base_chute_w, 6]);
-            }
+            // 4. LEGS — lift the tower so the wheel outlet clears the (load-cell-
+            //    raised) bowl rim; the bowl back + cell sit in the freed space under
+            //    the front. Placed off the front (60/135/225/300°) to clear the bowl.
+            for (a = [60, 135, 225, 300])
+                rotate([0, 0, a]) translate([bulk_r_out - leg_d/2 - 2, 0, -leg_h])
+                    cylinder(d = leg_d, h = leg_h + 3, $fn = 40);
             // 5. central SHAFT COLUMN — shields the coupler from food + supports the
             //    plate centre. Overlaps INTO the deck (−2) and the plate (+1) so no
             //    coincident faces leave it as a separate volume.
@@ -495,9 +501,7 @@ module base() {
         rotate([0, 0, base_outlet_angle])                                             // outlet hole in the plate
             translate([base_mid_r, 0, plate_b - 0.5]) linear_extrude(base_plate_t + 1)
                 square([hole_len + 6, base_chute_w], center = true);
-        rotate([0, 0, base_outlet_angle])                                             // front chute MOUTH
-            translate([bulk_r_in - 1, -base_chute_w/2, deck_t + 1])
-                cube([bulk_wall + 3, base_chute_w, base_mouth_h]);
+        // (front side-mouth removed — food now drops STRAIGHT DOWN the open niche)
         // motor INSERTION + wiring hole in the floor (the 42² body drops UP through
         // this into the hollow, then bolts to the deck from above; wires exit here).
         translate([-(nema_w + 2)/2, -(nema_w + 2)/2, -1])
@@ -508,14 +512,8 @@ module base() {
         rotate([0, 0, base_outlet_angle])
             translate([bowl_cx, 0, niche_z0]) cylinder(d = bowl_d + niche_cl, h = niche_h - niche_z0 + 1, $fn = 120);
     }
-    // load-cell FIXED-END boss: a pedestal from the floor at the (solid) lower
-    // tower front, 2× M4 the cell's fixed end bolts down to. Added AFTER the cuts.
-    rotate([0, 0, base_outlet_angle])
-        difference() {
-            translate([lc_x0 - 8, -(lc_w + 10)/2, 0]) cube([30, lc_w + 10, lc_z]);
-            for (hx = [lc_fix1, lc_fix2])
-                translate([hx, 0, lc_z - 5]) cylinder(d = lc_hole_d, h = 8);
-        }
+    // (load-cell mount moved — it now lives UNDER the bowl on the table, not on
+    //  the tower front; detailed once this straight-down arrangement is agreed.)
 }
 
 // ===========================================================================
@@ -742,18 +740,30 @@ if (part == "chassis") {
     color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
     color("Khaki", 0.45)          translate([0, 0, base_h]) funnel();
 }
-if (part == "station") {
-    // base + load-cell mount/boss + the real platform + the Ø175 bowl mock.
-    color("Gainsboro")          base();
-    color("DimGray") rotate([0, 0, base_outlet_angle])
-                                translate([lc_x0, -lc_w/2, lc_z]) cube([lc_l, lc_w, lc_h]);   // load cell
-    color("Khaki")              bowl_platform();
-    color("LightBlue", 0.4) rotate([0, 0, base_outlet_angle])
-        translate([bowl_cx, 0, plat_z + plat_t])                                              // Ø175 bowl mock
+module bowl_mock() {
+    rotate([0, 0, base_outlet_angle]) translate([bowl_cx, 0, -leg_h + lc_h + 2])
         difference() {
             cylinder(d1 = bowl_d - 34, d2 = bowl_d, h = bowl_h, $fn = 120);
             translate([0, 0, 3]) cylinder(d1 = bowl_d - 40, d2 = bowl_d - 6, h = bowl_h, $fn = 120);
         }
+}
+if (part == "station") {
+    // tower on LEGS + bowl back under the front (on a load cell on the table) +
+    // food drops STRAIGHT DOWN the open niche into the bowl. Cell shown as a mock.
+    color("Gainsboro")        base();
+    color("DimGray") rotate([0, 0, base_outlet_angle])
+                              translate([bowl_cx - 40, -lc_w/2, -leg_h]) cube([lc_l, lc_w, lc_h]);
+    color("LightBlue", 0.4)   bowl_mock();
+}
+if (part == "station_cut") {
+    difference() {
+        union() {
+            color("Gainsboro")      base();
+            color("Silver")         translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
+            color("LightBlue", 0.5) bowl_mock();
+        }
+        translate([-300, -400, -300]) cube([800, 400, 700]);   // remove y < 0 (see the drop on +X)
+    }
 }
 if (part == "chassis_cut") {
     difference() {

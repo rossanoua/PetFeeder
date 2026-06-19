@@ -495,10 +495,12 @@ module base() {
             for (a = [60, 135, 225, 300])
                 rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
                     cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
-            // 5. central SHAFT COLUMN — shields the coupler from food + supports the
-            //    plate centre. Overlaps INTO the deck (−2) and the plate (+1) so no
-            //    coincident faces leave it as a separate volume.
-            translate([0, 0, deck_t - 2]) cylinder(d = 18, h = plate_b - deck_t + 3);
+            // 5. central SHAFT COLUMN + DEFLECTOR cone — shields the coupler AND
+            //    sheds the inner-outlet food OUTWARD into the niche (so it doesn't
+            //    pile on the motor/coupler). The Ø(shaft+3) bore passes through both;
+            //    the bore trims the cone tip below the wheel, so no wheel clash.
+            translate([0, 0, deck_t - 2]) cylinder(d = 18, h = plate_b - deck_t - 1);  // body
+            translate([0, 0, plate_b - 4]) cylinder(d1 = 28, d2 = 2.5, h = 13, $fn = 48); // deflector cone
         }
         // ---- cuts ----
         translate([0, 0, -1]) cylinder(d = nema_shaft_d + 3, h = base_h + 2);          // central axle/shaft

@@ -438,8 +438,16 @@ bowl_h   = 58;
 // outlet into the bowl BACK, which nestles UNDER the tower front. The tower
 // stands on LEGS so the outlet clears the (load-cell-raised) bowl rim. The bowl
 // back sits under the outlet (bowl_cx pulled back so back ≈ outlet x).
-leg_h    = 22;    // leg height — lifts the tower so the outlet clears the bowl rim
-leg_d    = 14;    // leg Ø
+leg_h    = 22;    // leg foot height (the standoff) — lifts the tower so the outlet
+                  //   clears the (load-cell-raised) bowl rim
+// SCREW-IN legs (user): a separate printed leg with a coarse SELF-TAPPING male
+// thread screws UP into a plain hole in a base socket-boss. Base prints flat-
+// bottomed; legs are separate (replaceable / levelling).
+leg_boss_d     = 18;   // socket-boss Ø in the base
+leg_socket_h   = 14;   // socket-boss height (thread engagement depth)
+leg_thread_d   = 12;   // leg male-thread major Ø
+leg_thread_p   = 3;    // thread pitch (coarse → prints + self-taps cleanly)
+leg_thread_minor = leg_thread_d - leg_thread_p * 0.8;   // 9.6 — the plain socket hole Ø
 bowl_cx  = 112;   // bowl centre x — back (≈x24) sits UNDER the wheel outlet (x21..35)
 niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
                   //   and the food drops down the open niche straight into it)
@@ -481,12 +489,12 @@ module base() {
             translate([0, 0, deck_z]) cylinder(r = bulk_r_in + 1.5, h = motor_mount_t);
             // 3. housing REST-PLATE (food drops through its outlet hole to the chute)
             translate([0, 0, plate_b]) cylinder(r = bulk_r_in + 1.5, h = base_plate_t);
-            // 4. LEGS — lift the tower so the wheel outlet clears the (load-cell-
-            //    raised) bowl rim; the bowl back + cell sit in the freed space under
-            //    the front. Placed off the front (60/135/225/300°) to clear the bowl.
+            // 4. LEG SOCKET-BOSSES — solid bosses (merge into wall + floor) the
+            //    screw-in legs self-tap into. Off the front (60/135/225/300°) to
+            //    clear the bowl. The base prints flat-bottomed; legs are separate.
             for (a = [60, 135, 225, 300])
-                rotate([0, 0, a]) translate([bulk_r_out - leg_d/2 - 2, 0, -leg_h])
-                    cylinder(d = leg_d, h = leg_h + 3, $fn = 40);
+                rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
+                    cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
             // 5. central SHAFT COLUMN — shields the coupler from food + supports the
             //    plate centre. Overlaps INTO the deck (−2) and the plate (+1) so no
             //    coincident faces leave it as a separate volume.
@@ -506,6 +514,10 @@ module base() {
         // this into the hollow, then bolts to the deck from above; wires exit here).
         translate([-(nema_w + 2)/2, -(nema_w + 2)/2, -1])
             cube([nema_w + 2, nema_w + 2, base_floor + 2]);
+        // LEG SOCKET holes (plain — the leg's coarse male thread self-taps in)
+        for (a = [60, 135, 225, 300])
+            rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -1])
+                cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
         // BOWL NICHE — a curved scallop (from niche_z0 up) matching the bowl's
         // back arc; the bowl nestles in and the chute drops food straight into it.
         // Below niche_z0 the tower front stays solid for the load-cell mount.
@@ -740,6 +752,34 @@ if (part == "chassis") {
     color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
     color("Khaki", 0.45)          translate([0, 0, base_h]) funnel();
 }
+// Coarse self-tapping MALE thread (plain-OpenSCAD: a radial tooth swept helically
+// + a core). Prints + self-taps into a plain hole. maj=major Ø, p=pitch.
+module male_thread(maj, p, turns, fn = 48) {
+    h = p * turns;
+    union() {
+        cylinder(d = maj - p, h = h, $fn = fn);                       // core
+        linear_extrude(height = h, twist = 360 * turns,
+                       slices = max(12, floor(10 * turns)), convexity = 10)
+            polygon([[0, 0], [maj/2, -p * 0.25], [maj/2, p * 0.25]]);  // helical tooth
+    }
+}
+// SCREW-IN leg: a foot + a coarse male thread on top that screws UP into a base
+// socket-boss (self-taps the plain hole). Print thread-up.
+module leg() {
+    foot_d = leg_boss_d + 6;
+    union() {
+        cylinder(d1 = foot_d, d2 = foot_d - 5, h = leg_h, $fn = 48);   // foot (slight taper)
+        translate([0, 0, leg_h - 0.01])
+            male_thread(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
+    }
+}
+// the 4 legs as screwed into the base (for assembly views): thread up into the
+// socket, foot below. Placed at the socket angles/radius.
+module legs_mounted() {
+    for (a = [60, 135, 225, 300])
+        rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
+            translate([0, 0, -leg_h]) leg();
+}
 module bowl_mock() {
     rotate([0, 0, base_outlet_angle]) translate([bowl_cx, 0, -leg_h + lc_h + 2])
         difference() {
@@ -747,10 +787,12 @@ module bowl_mock() {
             translate([0, 0, 3]) cylinder(d1 = bowl_d - 40, d2 = bowl_d - 6, h = bowl_h, $fn = 120);
         }
 }
+if (part == "leg")  leg();              // PRINT: one screw-in leg (thread up)
 if (part == "station") {
-    // tower on LEGS + bowl back under the front (on a load cell on the table) +
-    // food drops STRAIGHT DOWN the open niche into the bowl. Cell shown as a mock.
+    // tower on SCREW-IN LEGS + bowl back under the front (on a load cell on the
+    // table) + food drops STRAIGHT DOWN the open niche into the bowl (cell mock).
     color("Gainsboro")        base();
+    color("DimGray")          legs_mounted();
     color("DimGray") rotate([0, 0, base_outlet_angle])
                               translate([bowl_cx - 40, -lc_w/2, -leg_h]) cube([lc_l, lc_w, lc_h]);
     color("LightBlue", 0.4)   bowl_mock();

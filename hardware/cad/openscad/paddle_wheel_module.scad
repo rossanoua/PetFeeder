@@ -329,10 +329,16 @@ module lobe_ramp() {
                 teardrop_2d(hr_in, td_tip_r - housing_wall, td_tip_cx);
                 circle(r = hr_in, $fn = 96);          // keep the round wheel cup clear
             }
-        hull() {
-            translate([-hr_in, -hr_out - 1, 0]) cube([0.1, 2*hr_out + 2, ramp_lo]);
-            translate([-(hr_out + td_back), -hr_out - 1, 0]) cube([0.1, 2*hr_out + 2, ramp_hi]);
-        }
+        // CIRCULAR cove, concentric with the wheel: floor up to a cone that rises
+        // from the wheel edge (r=hr_in, z=ramp_lo, just over the rim) outward to
+        // the tip (z=ramp_hi). Its inner edge is a circular ARC following the
+        // wheel radius — so NO corners (the old straight-edged wedge left V-traps
+        // where it met the round wheel; kibble lodged there and jammed).
+        rotate_extrude($fn = 160)
+            polygon([[hr_in, 0],
+                     [hr_out + td_back + 6, 0],
+                     [hr_out + td_back + 6, ramp_hi],
+                     [hr_in, ramp_lo]]);
         // clip to the housing OUTER envelope so the ramp can't float past the
         // walls (the teardrop tip doesn't exist below td_flare_z).
         union() {

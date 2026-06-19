@@ -438,8 +438,8 @@ bowl_h   = 58;
 // outlet into the bowl BACK, which nestles UNDER the tower front. The tower
 // stands on LEGS so the outlet clears the (load-cell-raised) bowl rim. The bowl
 // back sits under the outlet (bowl_cx pulled back so back ≈ outlet x).
-leg_h    = 22;    // leg foot height (the standoff) — lifts the tower so the outlet
-                  //   clears the (load-cell-raised) bowl rim
+leg_h    = 28;    // leg foot height (the standoff) — lifts the tower so the outlet
+                  //   (z57) clears the load-cell+tray-raised bowl rim (~z52)
 // SCREW-IN legs (user): a separate printed leg with a coarse SELF-TAPPING male
 // thread screws UP into a plain hole in a base socket-boss. Base prints flat-
 // bottomed; legs are separate (replaceable / levelling).
@@ -782,21 +782,50 @@ module legs_mounted() {
         rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
             translate([0, 0, -leg_h]) leg();
 }
+// Standalone WEIGHING PLATFORM (independent of the tower): a bar load cell
+// cantilever — fixed end on a back FOOT on the table, load end carries the bowl
+// TRAY; the bowl weight deflects the cell (HX711). Sits under the food drop.
+wp_cell_z = -leg_h + 4;                 // cell bottom (on the back foot)
+wp_tray_z = wp_cell_z + lc_h + 1;       // tray underside (above the cell, deflection gap)
+module wp_foot() {                       // PRINT: back foot, anchors the cell fixed end
+    difference() {
+        translate([18, -16, -leg_h]) cube([28, 32, wp_cell_z + leg_h]);
+        for (hx = [25, 38]) translate([hx, 0, -leg_h - 1]) cylinder(d = lc_hole_d, h = leg_h + 6, $fn = 24);
+    }
+}
+module wp_tray() {                        // PRINT: bowl tray on the cell LOAD end
+    rotate([0, 0, base_outlet_angle]) difference() {
+        union() {
+            translate([bowl_cx, 0, wp_tray_z])                       // tray + low rim
+                difference() {
+                    cylinder(d = plat_d, h = 8, $fn = 120);
+                    translate([0, 0, plat_t]) cylinder(d = plat_d - 6, h = 9, $fn = 120);
+                }
+            for (hx = [82, 94]) translate([hx, 0, wp_cell_z + lc_h])  // bolt bosses to the load end
+                cylinder(d = 11, h = wp_tray_z - (wp_cell_z + lc_h) + plat_t);
+        }
+        for (hx = [82, 94]) translate([hx, 0, wp_cell_z + lc_h - 1]) cylinder(d = lc_hole_d, h = 12, $fn = 24);
+    }
+}
 module bowl_mock() {
-    rotate([0, 0, base_outlet_angle]) translate([bowl_cx, 0, -leg_h + lc_h + 2])
+    rotate([0, 0, base_outlet_angle]) translate([bowl_cx, 0, wp_tray_z + plat_t])
         difference() {
             cylinder(d1 = bowl_d - 34, d2 = bowl_d, h = bowl_h, $fn = 120);
             translate([0, 0, 3]) cylinder(d1 = bowl_d - 40, d2 = bowl_d - 6, h = bowl_h, $fn = 120);
         }
 }
-if (part == "leg")  leg();              // PRINT: one screw-in leg (thread up)
+if (part == "leg")      leg();          // PRINT: one screw-in leg (thread up)
+if (part == "wp_foot")  wp_foot();      // PRINT: weighing-platform back foot
+if (part == "wp_tray")  wp_tray();      // PRINT: weighing-platform bowl tray
 if (part == "station") {
-    // tower on SCREW-IN LEGS + bowl back under the front (on a load cell on the
-    // table) + food drops STRAIGHT DOWN the open niche into the bowl (cell mock).
+    // tower on SCREW-IN LEGS + standalone WEIGHING PLATFORM (foot + cell + tray)
+    // under the front; food drops STRAIGHT DOWN the open niche into the bowl.
     color("Gainsboro")        base();
     color("DimGray")          legs_mounted();
-    color("DimGray") rotate([0, 0, base_outlet_angle])
-                              translate([bowl_cx - 40, -lc_w/2, -leg_h]) cube([lc_l, lc_w, lc_h]);
+    color("Tan")              wp_foot();
+    color("DimGray") rotate([0, 0, base_outlet_angle])           // load cell (mock)
+                              translate([22, -lc_w/2, wp_cell_z]) cube([lc_l, lc_w, lc_h]);
+    color("Khaki")            wp_tray();
     color("LightBlue", 0.4)   bowl_mock();
 }
 if (part == "station_cut") {

@@ -273,6 +273,15 @@ module stacking_lip(z_base) {
 //     so they no longer protrude past the funnel exterior.
 // ===========================================================================
 
+// ─── SLICE NOTE (funnel) ──────────────────────────────────────────────────
+// The funnel is a HOLLOW double-wall vessel (Ø160 shell + internal cone, AIR in
+// between). SLICE IT WITH sparse_infill_density = 0% (like a vase). Otherwise the
+// slicer treats the between-walls VOID as the model interior and fills it with
+// sparse infill → 20h / 347 g instead of ~13h / 207 g (the void must be air).
+// Geometry tricks (vent gap + ribs → slicer "negative spacing"; vent holes → it
+// still infills) do NOT work — 0% infill is the right setting for a hollow part.
+// pf_make.py:  PF_CONFIG_OVERRIDE='{"sparse_infill_density":"0%", ...brim...}'
+// ──────────────────────────────────────────────────────────────────────────
 // 2026-06-19 PRODUCT REDESIGN — cylindrical exterior + merged cap.
 // The funnel is now a Ø160 CYLINDER outside (the whole tower reads as one clean
 // cylinder from the table). Inside: an asymmetric mass-flow cone whose throat is
@@ -287,8 +296,7 @@ cap_t        = 6;                     // merged-cap bottom plate thickness
 pw_axle_d    = 5;                     // axle Ø (= paddle_wheel_module axle_d)
 pw_fit_clear = 0.3;
 cone_in_top  = bulk_r_in - 1;         // cone inner opens just inside the shell bore
-                                      //   (−1 avoids a coincident face at the junction)
-cone_out_top = bulk_r_in + cone_wall; // cone outer 2 mm into the shell wall (clean overlap)
+cone_out_top = bulk_r_in + cone_wall; // cone outer 2 mm into the shell wall (joins it)
 
 // Outer Ø160 shell — a tube, OPEN at the bottom (its rim rests on the base).
 // The inner bore tapers IN over the top cavity_taper_h so the stacking lip's
@@ -349,6 +357,8 @@ module funnel() {
     // Ø160 cylindrical product shell + internal asymmetric mass-flow cone +
     // merged cap plate. The assembled spider still drops in; its capture
     // pockets follow the cone wall via cav() (refit to the new cone).
+    // Hollow double-wall vessel: slice with 0% sparse infill (the void between the
+    // shell and cone must print as AIR — see SLICE NOTE at the top of the file).
     union() {
         shell_tube();
         cone_wall_solid();

@@ -336,9 +336,14 @@ nest_h     = 3.5;   // nest depth — the housing top wall enters this far up
 // it). The groove is cut UP into the plate (from below), so the funnel still
 // prints flat-bottomed — only a narrow teardrop-ring bridge (trivial). This is
 // the "низ лійки одягається на housing" joint; the cap is merged in here.
+// SEPARATE part (2026-06-20): the cap is NO LONGER merged into the funnel. Merging
+// the solid cap with the hollow double-wall funnel made it un-sliceable (15% infill
+// fills the void → 20h; 0% infill hollows the cap). Split out: the funnel is a pure
+// hollow vessel (0% infill, void = air, light) and the cap is a small SOLID teardrop
+// disc printed on its own. It nests on the housing top; the funnel sits over it.
 module cap_plate() {
     difference() {
-        linear_extrude(cap_t) teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+        linear_extrude(cap_t) teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);   // Ø88 cap disc
         // perimeter nest groove (ring slot the housing wall slides into)
         translate([0, 0, -0.01]) linear_extrude(nest_h)
             difference() {
@@ -357,12 +362,12 @@ module funnel() {
     // Ø160 cylindrical product shell + internal asymmetric mass-flow cone +
     // merged cap plate. The assembled spider still drops in; its capture
     // pockets follow the cone wall via cav() (refit to the new cone).
-    // Hollow double-wall vessel: slice with 0% sparse infill (the void between the
-    // shell and cone must print as AIR — see SLICE NOTE at the top of the file).
+    // PURE HOLLOW double-wall vessel — NO cap (it's a separate part now). Slice with
+    // 0% sparse infill: walls are perimeters, the void between shell and cone is AIR,
+    // and there is no solid region to wrongly hollow. ~10 h / ~120 g.
     union() {
         shell_tube();
         cone_wall_solid();
-        cap_plate();
         stacking_lip(z_funnel_top);
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
     }
@@ -754,6 +759,7 @@ module spider() {
 // RENDER
 // ===========================================================================
 if (part == "funnel")   funnel();
+if (part == "cap")      cap_plate();   // PRINT: separate solid cap disc (nests on housing)
 if (part == "ring")     ring();
 if (part == "lid")      lid();
 if (part == "base")     base();

@@ -295,8 +295,13 @@ cone_wall    = hopper_wall;           // 2 — inner mass-flow cone wall
 cap_t        = 6;                     // merged-cap bottom plate thickness
 pw_axle_d    = 5;                     // axle Ø (= paddle_wheel_module axle_d)
 pw_fit_clear = 0.3;
-cone_in_top  = bulk_r_in - 1;         // cone inner opens just inside the shell bore
-cone_out_top = bulk_r_in + cone_wall; // cone outer 2 mm into the shell wall (joins it)
+// 3-PART funnel (option A): shell, cone, cap are SEPARATE printed parts (so no
+// double-wall void exists in any single part → each slices clean/light; the gap
+// between shell and cone is real AIR in assembly). The cone therefore must NOT
+// touch the shell — leave cone_clear; the cone self-centres via tabs (cone_tabs).
+cone_clear   = 3;                            // radial gap cone-top → shell bore (air)
+cone_out_top = bulk_r_in - cone_clear;       // 74 — cone outer stops short of the shell
+cone_in_top  = cone_out_top - cone_wall;     // 72 — cone inner opening at the top
 
 // Outer Ø160 shell — a tube, OPEN at the bottom (its rim rests on the base).
 // The inner bore tapers IN over the top cavity_taper_h so the stacking lip's
@@ -362,14 +367,40 @@ module funnel() {
     // Ø160 cylindrical product shell + internal asymmetric mass-flow cone +
     // merged cap plate. The assembled spider still drops in; its capture
     // pockets follow the cone wall via cav() (refit to the new cone).
-    // PURE HOLLOW double-wall vessel — NO cap (it's a separate part now). Slice with
-    // 0% sparse infill: walls are perimeters, the void between shell and cone is AIR,
-    // and there is no solid region to wrongly hollow. ~10 h / ~120 g.
+    // assembly view of the 3 SEPARATE parts together (shell + cone + cap). Each is a
+    // single wall → no double-wall void in any one part → slices clean. The gap
+    // between shell and cone is real AIR (they only touch at the centering tabs).
+    funnel_shell();
+    funnel_cone();
+    cap_plate();
+}
+// 3-part funnel — SHELL: the outer Ø160 tube + the stacking lip. A plain tube →
+// slices perfectly (one wall, no void, no bottom disc).
+module funnel_shell() {
     union() {
         shell_tube();
-        cone_wall_solid();
         stacking_lip(z_funnel_top);
+    }
+}
+// 3 centering RIBS near the cone top — each a thin wall in a RADIAL plane (so it
+// has zero overhang however it sits) whose outer edge reaches the shell bore to
+// self-centre the cone. The underside is a ~33° ramp → prints support-free. They
+// TOUCH the bore (0.5 mm slip), not join — shell and cone stay separate parts.
+module cone_tabs() {
+    for (a = [0, 120, 240])
+        rotate([0, 0, a]) rotate([90, 0, 0])
+            linear_extrude(2, center = true)
+                polygon([[cone_out_top - 4, cone_top_z - 2],   // inner-top: bites the cone wall
+                         [bulk_r_in - 0.5, cone_top_z - 2],    // outer-top: shell bore (0.5 slip)
+                         [bulk_r_in - 0.5, cone_top_z - 12]]); // outer-bottom: ramp underside
+}
+// 3-part funnel — CONE insert: the mass-flow cone + spider pockets + centering
+// tabs. Single wall → slices clean/light; sits on the cap, centred by the tabs.
+module funnel_cone() {
+    union() {
+        cone_wall_solid();
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
+        cone_tabs();
     }
 }
 
@@ -758,7 +789,9 @@ module spider() {
 // ===========================================================================
 // RENDER
 // ===========================================================================
-if (part == "funnel")   funnel();
+if (part == "funnel")   funnel();      // assembly view of the 3 parts together
+if (part == "shell")    funnel_shell();// PRINT: Ø160 outer tube + stacking lip (0% infill, clean)
+if (part == "cone")     funnel_cone(); // PRINT: cone insert + spider pockets + centering tabs
 if (part == "cap")      cap_plate();   // PRINT: separate solid cap disc (nests on housing)
 if (part == "ring")     ring();
 if (part == "lid")      lid();

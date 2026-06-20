@@ -445,9 +445,11 @@ leg_h    = 28;    // leg foot height (the standoff) — lifts the tower so the o
 // bottomed; legs are separate (replaceable / levelling).
 leg_boss_d     = 18;   // socket-boss Ø in the base
 leg_socket_h   = 14;   // socket-boss height (thread engagement depth)
-leg_thread_d   = 12;   // leg male-thread major Ø
-leg_thread_p   = 3;    // thread pitch (coarse → prints + self-taps cleanly)
-leg_thread_minor = leg_thread_d - leg_thread_p * 0.8;   // 9.6 — the plain socket hole Ø
+leg_thread_d     = 12;  // leg male-thread major Ø
+leg_thread_p     = 4;   // pitch (coarse → fewer, cleanly-printable turns)
+leg_thread_depth = 1.5; // radial thread depth (root Ø = major − 2·depth = 9)
+leg_thread_minor = leg_thread_d - 2 * leg_thread_depth + 0.5;  // 9.5 — plain socket hole
+                        //   (root Ø9 + 0.5 slip; the Ø12 crest bites ~1.25 mm → self-taps)
 bowl_cx  = 112;   // bowl centre x — back (≈x24) sits UNDER the wheel outlet (x21..35)
 niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
                   //   and the food drops down the open niche straight into it)
@@ -788,25 +790,42 @@ if (part == "chassis") {
     color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
     color("Khaki", 0.45)          translate([0, 0, base_h]) funnel();
 }
-// Coarse self-tapping MALE thread (plain-OpenSCAD: a radial tooth swept helically
-// + a core). Prints + self-taps into a plain hole. maj=major Ø, p=pitch.
-module male_thread(maj, p, turns, fn = 48) {
-    h = p * turns;
+// PRINTABLE coarse MALE thread. Built by sweeping the r-z tooth profile HELICALLY
+// (a stack of small rotate_extrude arcs), NOT a twisted thin fin. Printed
+// AXIS-VERTICAL, the overhanging LOWER flank is ~38° from vertical (well under
+// 45°), so it needs no supports. The leg self-taps this into a plain base hole.
+//   profile (r,z) over one pitch: root → 45°-ish lower flank up to the Ø12 crest
+//   → small crest flat → upper flank back to root (upper flank faces up = free).
+module printable_thread(maj_d, pitch, turns) {
+    maj    = maj_d / 2;
+    depth  = leg_thread_depth;
+    root   = maj - depth;
+    lflank = depth * 1.3;            // lower-flank z-rise → atan(depth/lflank)=37.6° overhang
+    crest  = 0.5;
+    seg    = 20;                      // helix slices per turn
+    H      = pitch * turns;
+    n      = ceil((turns + 1) * seg);
     union() {
-        cylinder(d = maj - p, h = h, $fn = fn);                       // core
-        linear_extrude(height = h, twist = 360 * turns,
-                       slices = max(12, floor(10 * turns)), convexity = 10)
-            polygon([[0, 0], [maj/2, -p * 0.25], [maj/2, p * 0.25]]);  // helical tooth
+        cylinder(r = root + 0.1, h = H, $fn = 48);                              // core
+        intersection() {                                                        // clip helix to 0..H
+            union() {
+                for (i = [0 : n - 1])
+                    rotate([0, 0, i * 360/seg]) translate([0, 0, i * pitch/seg - pitch])
+                        rotate_extrude(angle = 360/seg + 1.5, $fn = 72)
+                            polygon([[root - 0.8, 0], [maj, lflank], [maj, lflank + crest], [root - 0.8, pitch]]);
+            }
+            cylinder(r = maj + 1, h = H, $fn = 48);
+        }
     }
 }
-// SCREW-IN leg: a foot + a coarse male thread on top that screws UP into a base
-// socket-boss (self-taps the plain hole). Print thread-up.
+// SCREW-IN leg: a foot + the printable male thread on top that screws UP into a
+// base socket-boss (self-taps the plain hole). Print foot-down / thread-up.
 module leg() {
     foot_d = leg_boss_d + 6;
     union() {
         cylinder(d1 = foot_d, d2 = foot_d - 5, h = leg_h, $fn = 48);   // foot (slight taper)
-        translate([0, 0, leg_h - 0.01])
-            male_thread(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
+        translate([0, 0, leg_h - 1.5])                                  // overlap into the foot
+            printable_thread(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
     }
 }
 // the 4 legs as screwed into the base (for assembly views): thread up into the

@@ -99,7 +99,11 @@ housing_buffer_h   = 15;
 // and seats only one way → the SHAPE itself keys the cap (anti-rotation),
 // so the old (snapping) merlons are GONE.
 td_back    = 22;        // teardrop tip reach beyond hr_out, toward the inlet
-td_tip_r   = 18;        // teardrop tip radius
+// 2026-06-20 — tip BLUNTED 18→26. The reach (= hr_out + td_back) is invariant of
+// tip_r, so the inlet opening is unchanged toward the funnel — but a fatter tip
+// has no thin overhanging point to pinhole, so the old inward nose_fill (which
+// capped the tip opening) is GONE. Mirror pw_td_tip_r in bulk_hopper_module.scad.
+td_tip_r   = 26;        // teardrop tip radius (blunt → prints clean, no fill)
 td_flare_z = 5;         // z where the round→teardrop flare starts (above recess)
 // FEED RAMP filling the teardrop-tip lobe. Without it the lobe floor is a flat
 // shelf at td_flare_z, BELOW the wheel rim/paddle top — kibble lands there, can't
@@ -110,14 +114,10 @@ td_flare_z = 5;         // z where the round→teardrop flare starts (above rece
 ramp_lo    = 13;        // ramp top at the wheel edge (≈ rim top 12.5 + 0.5)
 ramp_hi    = 32;        // ramp top at the teardrop tip (< wheel cone top 32.5)
 // 2026-06-19 — the teardrop nose tapered to a thin overhanging point that
-// printed with a hole. The previous fix grew the OUTER shell at the tip, which
-// STEEPENED the overhang and blobbed on the tilted printer. Now we thicken
-// INWARD: solidify the dead extreme-tip CORNER over the top nose_fill_h mm so
-// the thin point prints solid, WITHOUT touching the outer envelope. Flow is
-// unaffected (the inlet feeds over the wheel, not at the far tip). The housing
-// also prints ROTATED 180° about Z (see render dispatch) for the tilted bed.
-nose_fill_h  = 10;      // top band height that gets the solid inward tip fill
-nose_fill_x0 = -38;     // fill the teardrop tip only for x <= this (dead corner)
+// printed with a hole; an inward nose_fill closed it but CAPPED the tip of the
+// inlet (shrinking the very opening the teardrop was meant to enlarge). 2026-06-20
+// — replaced by BLUNTING the tip (td_tip_r 18→26): no thin point to pinhole, full
+// opening kept. The housing still prints ROTATED 180° about Z (render dispatch).
 td_clear   = 0.4;       // (legacy) cap-over-housing teardrop slip clearance
 // Funnel NEST (replaces the old cap rebate, since the cap is now MERGED into the
 // funnel). The funnel's cap-plate drops a teardrop SKIRT over the housing top
@@ -417,15 +417,8 @@ module housing() {
         // (REBATE removed 2026-06-19 — the cap is MERGED into the funnel, which
         //  now mates via a teardrop SKIRT dropping over this top rim, not a cut.)
     }
-    // inward nose-tip fill: solidify the dead extreme-tip CORNER over the top
-    // nose_fill_h mm so the thin overhanging point prints solid (no pinhole),
-    // WITHOUT growing the outer envelope (no added overhang). Clear of the inlet
-    // (which feeds over the wheel), so kibble flow is unaffected.
-    intersection() {
-        linear_extrude(housing_h + 0.1) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
-        translate([-400, -200, housing_h - nose_fill_h])
-            cube([400 + nose_fill_x0, 400, nose_fill_h + 0.1]);   // x <= nose_fill_x0
-    }
+    // (nose_fill removed 2026-06-20 — the blunt tip prints clean without it, so
+    //  the inlet opening is no longer capped at the tip.)
   }
 }
 

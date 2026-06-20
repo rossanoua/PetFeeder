@@ -89,7 +89,7 @@ cap_collar_h    = 10;   // MUST match collar_h in paddle_wheel_module.scad
 // the funnel origin); the funnel is then placed at chassis (-throat_cx).
 pw_hr_in        = 40.8;  // = wheel_r 40 + housing_clear 0.8
 pw_housing_wall = 3;
-pw_td_tip_r     = 18;
+pw_td_tip_r     = 26;   // blunt tip — MIRROR of td_tip_r in paddle_wheel_module.scad
 pw_td_back      = 22;
 pw_inlet_margin = 3;
 pw_axle_keep    = 4.8;   // = axle_d/2 + fit_clear + 2

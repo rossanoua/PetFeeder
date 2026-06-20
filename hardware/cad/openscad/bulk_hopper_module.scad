@@ -273,14 +273,19 @@ module stacking_lip(z_base) {
 //     so they no longer protrude past the funnel exterior.
 // ===========================================================================
 
-// ─── SLICE NOTE (funnel) ──────────────────────────────────────────────────
-// The funnel is a HOLLOW double-wall vessel (Ø160 shell + internal cone, AIR in
-// between). SLICE IT WITH sparse_infill_density = 0% (like a vase). Otherwise the
-// slicer treats the between-walls VOID as the model interior and fills it with
-// sparse infill → 20h / 347 g instead of ~13h / 207 g (the void must be air).
-// Geometry tricks (vent gap + ribs → slicer "negative spacing"; vent holes → it
-// still infills) do NOT work — 0% infill is the right setting for a hollow part.
-// pf_make.py:  PF_CONFIG_OVERRIDE='{"sparse_infill_density":"0%", ...brim...}'
+// ─── SLICE NOTE (3-part funnel) ───────────────────────────────────────────
+// The funnel is THREE separate printed parts so no single part has a double-wall
+// void for the slicer to fill (that left a solid slab in the old one-piece funnel):
+//   part="shell" — Ø160 tube, geom. wall 3 mm. 0% infill, but wall_loops=4 so the
+//                  3 mm wall fills SOLID (2 loops left a hollow core — too empty).
+//                  PF_CONFIG_OVERRIDE='{"sparse_infill_density":"0%","wall_loops":"4",...brim}'
+//   part="cone"  — single-wall cone insert. 0% infill (it's a hollow vessel; the
+//                  bore is air). PF: '{"sparse_infill_density":"0%","wall_loops":"2",...brim}'
+//   part="cap"   — small SOLID teardrop disc. DEFAULT profile infill (NOT 0% — at
+//                  0% the 6 mm disc prints hollow). PF: just the brim override.
+// Why split: any between-walls void inside ONE solid part is "model interior" to
+// the slicer → it floors it with bottom shells + infill. Vent tricks (gap+ribs →
+// "negative spacing"; holes → still infills) do NOT work. Separate parts do.
 // ──────────────────────────────────────────────────────────────────────────
 // 2026-06-19 PRODUCT REDESIGN — cylindrical exterior + merged cap.
 // The funnel is now a Ø160 CYLINDER outside (the whole tower reads as one clean

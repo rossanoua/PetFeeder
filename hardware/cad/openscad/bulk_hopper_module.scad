@@ -745,6 +745,40 @@ if (part == "funnel")   funnel();
 if (part == "ring")     ring();
 if (part == "lid")      lid();
 if (part == "base")     base();
+if (part == "full" || part == "full_norings") {
+    // whole product: tower (base+housing+wheel+funnel[+ring+lid]) on screw-in legs
+    // + standalone weighing platform (foot+cell+tray) + bowl, under the food drop.
+    color("Gainsboro")            base();
+    color("DimGray")              legs_mounted();
+    color("LightSteelBlue", 0.45) translate([0, 0, base_motor_h]) housing();   // hidden inside
+    color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
+    color("Khaki")                translate([0, 0, base_h]) funnel();
+    if (part == "full") {
+        color("BurlyWood")        translate([0, 0, base_h + z_funnel_top]) ring();
+        color("Tan")              translate([0, 0, base_h + z_funnel_top + ring_h]) lid();
+    } else {
+        color("BurlyWood")        translate([0, 0, base_h + z_funnel_top]) lid();   // lid straight on funnel
+    }
+    color("Sienna")               wp_foot();
+    color("DimGray") rotate([0, 0, base_outlet_angle]) translate([22, -lc_w/2, wp_cell_z]) cube([lc_l, lc_w, lc_h]);
+    color("Wheat")                wp_tray();
+    color("LightBlue", 0.4)       bowl_mock();
+}
+if (part == "full_cut") {
+    difference() {
+        union() {
+            color("Gainsboro")            base();
+            color("DimGray")              legs_mounted();
+            color("LightSteelBlue")       translate([0, 0, base_motor_h]) housing();
+            color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
+            color("Khaki")                translate([0, 0, base_h]) funnel();
+            color("Tan")                  translate([0, 0, base_h + z_funnel_top]) lid();
+            color("Wheat")                wp_tray();
+            color("LightBlue", 0.5)       bowl_mock();
+        }
+        translate([-400, -500, -200]) cube([900, 500, 900]);   // remove y < 0
+    }
+}
 if (part == "chassis") {
     // full lower stack: base + housing (on the rest-plate) + funnel (cap nests
     // on the housing top). Shows the Ø160 silhouette hiding the housing + the

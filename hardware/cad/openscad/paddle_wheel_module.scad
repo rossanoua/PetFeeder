@@ -517,8 +517,11 @@ module hopper() {
 // ===========================================================================
 if (part == "wheel")   wheel();
 if (part == "axle")    axle();
-if (part == "housing") rotate([0, 0, 180]) housing();   // 180° about Z: orient
-                                                        // the nose for the tilted printer
+if (part == "housing") housing();   // NATIVE orientation (nose toward -x). Flipped
+                                    // 180° from the earlier rotate([0,0,180]) on
+                                    // 2026-06-21 — that faced the nose the wrong way
+                                    // on the tilted printer. Orientation angle is
+                                    // PER-PART (the cone needs 180°, this needs 0°).
 if (part == "end_cap") end_cap();
 if (part == "hopper")  hopper();
 if (part == "assembly") {

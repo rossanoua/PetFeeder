@@ -378,8 +378,10 @@ module funnel() {
     // assembly view of the 3 SEPARATE parts together (shell + cone + cap). Each is a
     // single wall → no double-wall void in any one part → slices clean. The gap
     // between shell and cone is real AIR (they only touch at the centering tabs).
+    // NB: the cone is raised by cap_t here because in the real stack it RESTS on the
+    // cap top (the print part funnel_cone() is still at z0 — this lift is view-only).
     funnel_shell();
-    funnel_cone();
+    translate([0, 0, cap_t]) funnel_cone();
     cap_plate();
 }
 // 3-part funnel — SHELL: the outer Ø160 tube + the stacking lip. A plain tube →

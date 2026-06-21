@@ -296,7 +296,10 @@ module stacking_lip(z_base) {
 // bore + throat inlet). Vase-like DOUBLE WALL: outer SHELL + inner CONE joined
 // at the top rim and the bottom plate; the ring between them is hollow (light).
 shell_wall   = bulk_wall;             // 3 — Ø160 outer shell wall
-cone_wall    = hopper_wall;           // 2 — inner mass-flow cone wall
+cone_wall    = hopper_wall;           // 2 — inner mass-flow cone wall. Kept THIN: a
+                                      // funnel wall is solid at 2 perimeters already,
+                                      // and thickening it tripled print time (slow
+                                      // overhang passes) for no benefit (2026-06-21).
 cap_t        = 6;                     // merged-cap bottom plate thickness
 pw_axle_d    = 5;                     // axle Ø (= paddle_wheel_module axle_d)
 pw_fit_clear = 0.3;

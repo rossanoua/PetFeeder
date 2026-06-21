@@ -807,7 +807,10 @@ module spider() {
 // ===========================================================================
 if (part == "funnel")   funnel();      // assembly view of the 3 parts together
 if (part == "shell")    funnel_shell();// PRINT: Ø160 outer tube + stacking lip (0% infill, clean)
-if (part == "cone")     funnel_cone(); // PRINT: cone insert + spider pockets + centering tabs
+if (part == "cone")     rotate([0, 0, 180]) funnel_cone();   // PRINT: cone insert + spider
+                                       // pockets. 180° about Z to orient the asymmetric
+                                       // throat/overhang for the TILTED printer (matches
+                                       // housing in paddle_wheel_module.scad — see slice skill)
 if (part == "cap")      cap_plate();   // PRINT: separate solid cap disc (nests on housing)
 if (part == "ring")     ring();
 if (part == "lid")      lid();

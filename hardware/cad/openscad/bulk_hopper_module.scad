@@ -305,9 +305,15 @@ pw_axle_d    = 5;                     // axle Ø (= paddle_wheel_module axle_d)
 pw_fit_clear = 0.3;
 // 3-PART funnel (option A): shell, cone, cap are SEPARATE printed parts (so no
 // double-wall void exists in any single part → each slices clean/light; the gap
-// between shell and cone is real AIR in assembly). The cone therefore must NOT
-// touch the shell — leave cone_clear; the cone self-centres via tabs (cone_tabs).
+// between shell and cone is real AIR in assembly). The cone is LOCATED BY THE CAP
+// (throat plug into the cap collar), so cone_clear is just a loose containment gap
+// to the shell bore (no ribs — they printed in air at the cone top).
 cone_clear   = 3;                            // radial gap cone-top → shell bore (air)
+// cap throat COLLAR — a raised rim the cone's throat plug drops into so the cap
+// centres the cone + holds it against tipping (replaces the deleted shell ribs).
+cap_reg_clear = 0.4;                         // slip: cone plug outer ↔ collar inner
+cap_reg_wall  = 2;                           // collar wall thickness
+cap_reg_h     = 8;                           // collar height = plug register depth
 cone_out_top = bulk_r_in - cone_clear;       // 74 — cone outer stops short of the shell
 cone_in_top  = cone_out_top - cone_wall;     // 72 — cone inner opening at the top
 
@@ -355,16 +361,26 @@ nest_h     = 3.5;   // nest depth — the housing top wall enters this far up
 // hollow vessel (0% infill, void = air, light) and the cap is a small SOLID teardrop
 // disc printed on its own. It nests on the housing top; the funnel sits over it.
 module cap_plate() {
-    difference() {
-        linear_extrude(cap_t) teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);   // Ø88 cap disc
-        // perimeter nest groove (ring slot the housing wall slides into)
-        translate([0, 0, -0.01]) linear_extrude(nest_h)
+    union() {
+        difference() {
+            linear_extrude(cap_t) teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);   // Ø88 cap disc
+            // perimeter nest groove (ring slot the housing wall slides into)
+            translate([0, 0, -0.01]) linear_extrude(nest_h)
+                difference() {
+                    offset(nest_clear)                     teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+                    offset(-pw_housing_wall - nest_clear)  teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+                }
+            translate([0, 0, -1]) linear_extrude(cap_t + 2) throat_2d();                 // inlet
+            translate([0, 0, -1]) cylinder(h = cap_t + 2, d = pw_axle_d + 2 * pw_fit_clear); // axle bore
+        }
+        // throat COLLAR (on the cap TOP, OUTSIDE the cone-plug outer so the passage
+        // stays fully open): the cone's throat plug drops in → the cap centres the
+        // cone and holds it against tipping. A vertical ring → prints clean.
+        translate([0, 0, cap_t]) linear_extrude(cap_reg_h)
             difference() {
-                offset(nest_clear)                     teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
-                offset(-pw_housing_wall - nest_clear)  teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+                offset(cone_wall + cap_reg_clear + cap_reg_wall) throat_2d();
+                offset(cone_wall + cap_reg_clear)                throat_2d();
             }
-        translate([0, 0, -1]) linear_extrude(cap_t + 2) throat_2d();                 // inlet
-        translate([0, 0, -1]) cylinder(h = cap_t + 2, d = pw_axle_d + 2 * pw_fit_clear); // axle bore
     }
 }
 
@@ -377,9 +393,9 @@ module funnel() {
     // pockets follow the cone wall via cav() (refit to the new cone).
     // assembly view of the 3 SEPARATE parts together (shell + cone + cap). Each is a
     // single wall → no double-wall void in any one part → slices clean. The gap
-    // between shell and cone is real AIR (they only touch at the centering tabs).
-    // NB: the cone is raised by cap_t here because in the real stack it RESTS on the
-    // cap top (the print part funnel_cone() is still at z0 — this lift is view-only).
+    // between shell and cone is real AIR (the cone is located by the cap collar, not
+    // the shell). NB: the cone is raised by cap_t here because in the real stack it
+    // RESTS on the cap top (the print part funnel_cone() is still at z0 — view-only).
     funnel_shell();
     translate([0, 0, cap_t]) funnel_cone();
     cap_plate();
@@ -392,25 +408,15 @@ module funnel_shell() {
         stacking_lip(z_funnel_top);
     }
 }
-// 3 centering RIBS near the cone top — each a thin wall in a RADIAL plane (so it
-// has zero overhang however it sits) whose outer edge reaches the shell bore to
-// self-centre the cone. The underside is a ~33° ramp → prints support-free. They
-// TOUCH the bore (0.5 mm slip), not join — shell and cone stay separate parts.
-module cone_tabs() {
-    for (a = [0, 120, 240])
-        rotate([0, 0, a]) rotate([90, 0, 0])
-            linear_extrude(2, center = true)
-                polygon([[cone_out_top - 4, cone_top_z - 2],   // inner-top: bites the cone wall
-                         [bulk_r_in - 0.5, cone_top_z - 2],    // outer-top: shell bore (0.5 slip)
-                         [bulk_r_in - 0.5, cone_top_z - 12]]); // outer-bottom: ramp underside
-}
-// 3-part funnel — CONE insert: the mass-flow cone + spider pockets + centering
-// tabs. Single wall → slices clean/light; sits on the cap, centred by the tabs.
+// 3-part funnel — CONE insert: the mass-flow cone + spider pockets. The cone is
+// LOCATED BY THE CAP (its throat plug drops into the cap collar — see cap_plate),
+// not by the shell, so there are no centering ribs (they cantilevered into air at
+// the cone top, which prints throat-down). The shell bore just loosely contains it
+// (3 mm gap → ≤2° tip). Single wall → slices clean/light.
 module funnel_cone() {
     union() {
         cone_wall_solid();
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
-        cone_tabs();
     }
 }
 

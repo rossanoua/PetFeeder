@@ -517,8 +517,8 @@ module hopper() {
 // ===========================================================================
 if (part == "wheel")   wheel();
 if (part == "axle")    axle();
-if (part == "housing") rotate([0, 0, 180]) housing();   // 180° about Z for the
-                                    // tilted printer — ROTATED, same as the cone.
+if (part == "housing") housing();   // NATIVE 0° for the tilted printer (flipped
+                                    // 180° from the earlier rotate on 2026-06-22).
 if (part == "end_cap") end_cap();
 if (part == "hopper")  hopper();
 if (part == "assembly") {

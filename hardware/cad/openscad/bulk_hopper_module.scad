@@ -510,6 +510,17 @@ base_h            = base_motor_h + pw_housing_h2;       // 97
 base_chute_w      = hole_w + 6; // 40 — chute / outlet-drop width
 base_mouth_h      = 18;         // front exit opening height
 base_mid_r        = (hole_radial_in + hole_radial_out) / 2;   // 21 — outlet centre r
+// ANTI-ROTATION key collar: a rounded-rect spigot on the rest-plate that rises into
+// the housing's floor outlet (hole_len×hole_w) → keys the housing against motor
+// reaction torque + aligns the two outlets. Food drops through its bore (= the plate
+// outlet). Top sits 0.5 mm below the housing cavity floor so the paddle clears it.
+ar_slip = 0.5;                  // collar ↔ housing-outlet slip
+ar_wall = 1.2;                  // collar wall
+ar_h    = 2.5;                  // collar height (≈ housing end_wall − 0.5)
+ar_ox   = hole_len - ar_slip;             // 27.5 collar outer, radial
+ar_oy   = hole_w   - ar_slip;             // 33.5 collar outer, tangential
+ar_bx   = ar_ox - 2 * ar_wall;            // 25.1 bore / plate-outlet, radial
+ar_by   = ar_oy - 2 * ar_wall;            // 31.1 bore / plate-outlet, tangential
 // [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
 // in (under the tower) and the chute drops food straight into it. Above niche_h
 // the tower stays full Ø160. Clears the central motor (niche back at x≈30 > r21).
@@ -586,6 +597,10 @@ module base() {
             //    the bore trims the cone tip below the wheel, so no wheel clash.
             translate([0, 0, deck_t - 2]) cylinder(d = 18, h = plate_b - deck_t - 1);  // body
             translate([0, 0, plate_b - 4]) cylinder(d1 = 28, d2 = 2.5, h = 13, $fn = 48); // deflector cone
+            // 6. ANTI-ROTATION key collar (solid here; the outlet cut below hollows it
+            //    into a tube). Rises from the rest-plate into the housing floor outlet.
+            rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, seat_z])
+                rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
         }
         // ---- cuts ----
         translate([0, 0, -1]) cylinder(d = nema_shaft_d + 3, h = base_h + 2);          // central axle/shaft
@@ -593,9 +608,11 @@ module base() {
         for (sx = [-1, 1]) for (sy = [-1, 1])                                          // 4× M3 mount holes
             translate([sx * nema_bolt_sq/2, sy * nema_bolt_sq/2, deck_z - 1])
                 cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
-        rotate([0, 0, base_outlet_angle])                                             // outlet hole in the plate
-            translate([base_mid_r, 0, plate_b - 0.5]) linear_extrude(base_plate_t + 1)
-                square([hole_len + 6, base_chute_w], center = true);
+        // outlet bore — through the plate AND up through the key collar (so the collar
+        // becomes a tube). Sized to the collar bore = the food drop.
+        rotate([0, 0, base_outlet_angle])
+            translate([base_mid_r, 0, plate_b - 0.5])
+                rounded_rect(ar_bx, ar_by, hole_corner_r, base_plate_t + ar_h + 1);
         // (front side-mouth removed — food now drops STRAIGHT DOWN the open niche)
         // motor INSERTION + wiring hole in the floor (the 42² body drops UP through
         // this into the hollow, then bolts to the deck from above; wires exit here).

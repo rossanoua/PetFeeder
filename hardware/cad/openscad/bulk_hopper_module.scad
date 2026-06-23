@@ -761,7 +761,7 @@ module spider_body() {
         // to the roof; the dome stays closed apart from 3 small central holes.
         if (!sp_socket_through)
             for (i = [0 : sp_leg_n - 1])
-                translate([sp_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
+                translate([sp_body_cx, 0, 0]) rotate([0, 0, i * 360 / sp_leg_n + sp_leg_phase])
                     translate([sp_body_base_r - sp_sock_depth + 1, 0, sp_rest_z - 1])
                         cylinder(r = 1.4, h = sp_key_h + sp_cap_h + 40, $fn = 24);  // r<neck/2 → clear of the leg
     }
@@ -775,22 +775,28 @@ module spider_leg_placed(i) {
     inner   = sp_body_base_r - sp_sock_depth;          // inner stop radius
     foot_x1 = inner + sp_sock_depth + 4;               // foot spans only the in-body part
     union() {
-        // NECK — radial from the POCKET centre (sp_cx = −15), clipped at the cone
-        // wall on the rest plane → vertical outer edge, no overhang. UNCHANGED → it
-        // still drops into the already-printed slot.
+        // NECK — radial from the POCKET centre (sp_cx = −15), but it STARTS clear of
+        // the −27 body (neck_clr) so it goes AROUND the body, not through it. Its
+        // OUTER end (in the printed cone slot) is unchanged — clipped at the wall.
+        neck_clr = sp_body_base_r + 3.5;   // R from −15 where the neck begins (past body)
         intersection() {
-            sp_bar(i, inner, inner + sp_leg_len, sp_leg_t / 2, sp_rest_z, sp_key_h);
+            sp_bar(i, neck_clr, neck_clr + 60, sp_leg_t / 2, sp_rest_z, sp_key_h);
             translate([0, 0, sp_rest_z - 1])
                 linear_extrude(height = sp_key_h + 2)
                     projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
         }
         // FOOT — inverted-T at the BODY centre (sp_body_cx = −27), captured by body.
-        sp_bar_at(sp_body_cx, i, inner, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
-        sp_bar_at(sp_body_cx, i, inner, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
-        // BRIDGE — join the foot's outer end (−27) to the neck's inner end (−15).
+        // Inner stop pulled out (foot_in) so the foot stays fully inside its slot and
+        // clears the cramped hub centre (the side legs' flat foot face caught the hub
+        // core at R6 when rotated; starting at R9 keeps it clean, still captured).
+        foot_in = inner + 3;
+        sp_bar_at(sp_body_cx, i, foot_in, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
+        sp_bar_at(sp_body_cx, i, foot_in, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
+        // BRIDGE — join the foot's outer end (−27) to the neck's inner end (−15),
+        // running OUTSIDE the body (both ends clear of it).
         hull() {
             sp_bar_at(sp_body_cx, i, foot_x1 - 2, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
-            sp_bar(i, inner, inner + 2, sp_leg_t / 2, sp_rest_z, sp_key_h);
+            sp_bar(i, neck_clr, neck_clr + 2, sp_leg_t / 2, sp_rest_z, sp_key_h);
         }
     }
 }

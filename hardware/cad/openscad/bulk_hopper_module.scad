@@ -521,6 +521,21 @@ ar_ox   = hole_len - ar_slip;             // 27.5 collar outer, radial
 ar_oy   = hole_w   - ar_slip;             // 33.5 collar outer, tangential
 ar_bx   = ar_ox - 2 * ar_wall;            // 25.1 bore / plate-outlet, radial
 ar_by   = ar_oy - 2 * ar_wall;            // 31.1 bore / plate-outlet, tangential
+// 3-PART base (2026-06-23, support-free): the base is a TUBE with two internal LEDGES
+// (45° chamfered undersides → print support-free) that the DECK (motor mount) and the
+// REST-PLATE (housing seat) — both flat discs printed on the bed — drop onto. A key
+// rib/notch on each disc + a slot in the bore stops them rotating with the motor.
+// Both discs install from the TOP and rest on a top-facing ledge (gravity + the
+// motor / housing weight presses them onto it). The DECK is below the PLATE, so the
+// deck disc must be SMALLER than the plate ledge's inner radius to pass it on the way
+// down. Ledge undersides are 45° chamfers → support-free.
+plate_ir = bulk_r_in - 4;                 // 73 — plate ledge inner (z57)
+plate_dr = bulk_r_in - 0.4;               // 76.6 — plate disc, slip-fit in the bore
+deck_ir  = 63;                            // deck ledge inner (z43)
+deck_dr  = plate_ir - 3;                  // 70 — deck disc (< plate_ir → passes it)
+key_ang  = 180;                           // anti-rotation key on −X (away from +X outlet)
+key_w    = 6;                             // key width (tangential)
+key_pro  = 1.2;                           // key tab radial reach into the wall slot
 // [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
 // in (under the tower) and the chute drops food straight into it. Above niche_h
 // the tower stays full Ø160. Clears the central motor (niche back at x≈30 > r21).
@@ -562,74 +577,73 @@ plat_d = 170;     // bowl platform Ø (holds the Ø175 bowl; low rim)
 plat_t = 4;       // tray thickness
 plat_z = lc_z + lc_h + 2;   // tray underside z (cell deflection clearance below)
 
+// inward shelf at z, top seat (r ir..bulk_r_in), 45° underside → prints support-free.
+module base_ledge(z, ir)
+    rotate_extrude($fn = 160)
+        polygon([[bulk_r_in, z - (bulk_r_in - ir)], [ir, z], [bulk_r_in, z]]);
+// anti-rotation rib on a disc (height h) — slides down the base bore slot at key_ang.
+module disc_key(h)
+    rotate([0, 0, key_ang]) translate([deck_dr - 4, -(key_w - 0.4)/2, 0])
+        cube([(bulk_r_in + 0.5) - (deck_dr - 4), key_w - 0.4, h]);
+
+// PART 1 — base TUBE: open bottom, two internal ledges (deck @43, plate @57), leg
+// bosses, bowl niche, and a full-height key slot. The deck + plate drop in from the
+// top. Prints support-free (the ledge undersides are 45° chamfers).
 module base() {
-    seat_z  = base_motor_h;                 // 60 — housing rest-plate top
-    deck_z  = base_deck_z;                  // 43 — NEMA17 face / deck bottom
-    deck_t  = deck_z + motor_mount_t;       // 48 — deck top (chute floor base)
-    plate_b = seat_z - base_plate_t;        // 57 — rest-plate bottom
+    deck_z  = base_deck_z;                  // 43 — deck seat / NEMA17 face
+    plate_z = base_motor_h - base_plate_t;  // 57 — plate seat
     difference() {
         union() {
-            // 1. hollowed Ø160 shell + stacking lip (motor body hangs in the hollow).
-            //    The bore tapers IN to lip_ir over the top cavity_taper_h so the lip
-            //    sits on solid wall (same trick as the funnel) — without it the lip
-            //    floats and the hollow eats it (a stray volume).
-            difference() {
+            difference() {                  // Ø160 tube + stacking lip, OPEN bottom
                 union() { cylinder(d = bulk_d, h = base_h); stacking_lip(base_h); }
-                translate([0, 0, base_floor])
-                    cylinder(r = bulk_r_in, h = base_h - base_floor - cavity_taper_h);
-                translate([0, 0, base_h - cavity_taper_h])
-                    cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
+                translate([0, 0, -1]) cylinder(r = bulk_r_in, h = base_h + 1 - cavity_taper_h);
+                translate([0, 0, base_h - cavity_taper_h]) cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
             }
-            // 2. MOTOR DECK — NEMA17 bolts up to it; body (42²×40) hangs below in
-            //    the hollow. Full disc, +0.4 into the shell wall (no coincident face).
-            translate([0, 0, deck_z]) cylinder(r = bulk_r_in + 1.5, h = motor_mount_t);
-            // 3. housing REST-PLATE (food drops through its outlet hole to the chute)
-            translate([0, 0, plate_b]) cylinder(r = bulk_r_in + 1.5, h = base_plate_t);
-            // 4. LEG SOCKET-BOSSES — solid bosses (merge into wall + floor) the
-            //    screw-in legs self-tap into. Off the front (60/135/225/300°) to
-            //    clear the bowl. The base prints flat-bottomed; legs are separate.
-            for (a = [60, 135, 225, 300])
+            base_ledge(plate_z, plate_ir);  // housing-plate seat (z57)
+            base_ledge(deck_z, deck_ir);    // motor-deck seat (z43)
+            for (a = [60, 135, 225, 300])   // leg socket-bosses
                 rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
                     cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
-            // 5. central SHAFT COLUMN + DEFLECTOR cone — shields the coupler AND
-            //    sheds the inner-outlet food OUTWARD into the niche (so it doesn't
-            //    pile on the motor/coupler). The Ø(shaft+3) bore passes through both;
-            //    the bore trims the cone tip below the wheel, so no wheel clash.
-            translate([0, 0, deck_t - 2]) cylinder(d = 18, h = plate_b - deck_t - 1);  // body
-            translate([0, 0, plate_b - 4]) cylinder(d1 = 28, d2 = 2.5, h = 13, $fn = 48); // deflector cone
-            // 6. ANTI-ROTATION key collar (solid here; the outlet cut below hollows it
-            //    into a tube). Rises from the rest-plate into the housing floor outlet.
-            rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, seat_z])
-                rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
         }
-        // ---- cuts ----
-        translate([0, 0, -1]) cylinder(d = nema_shaft_d + 3, h = base_h + 2);          // central axle/shaft
-        translate([0, 0, deck_z - 1]) cylinder(d = nema_pilot_d + 1, h = 4);           // pilot boss COUNTERBORE (bottom of deck only)
-        for (sx = [-1, 1]) for (sy = [-1, 1])                                          // 4× M3 mount holes
-            translate([sx * nema_bolt_sq/2, sy * nema_bolt_sq/2, deck_z - 1])
-                cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
-        // outlet bore — through the plate AND up through the key collar (so the collar
-        // becomes a tube). Sized to the collar bore = the food drop.
-        rotate([0, 0, base_outlet_angle])
-            translate([base_mid_r, 0, plate_b - 0.5])
-                rounded_rect(ar_bx, ar_by, hole_corner_r, base_plate_t + ar_h + 1);
-        // (front side-mouth removed — food now drops STRAIGHT DOWN the open niche)
-        // motor INSERTION + wiring hole in the floor (the 42² body drops UP through
-        // this into the hollow, then bolts to the deck from above; wires exit here).
-        translate([-(nema_w + 2)/2, -(nema_w + 2)/2, -1])
-            cube([nema_w + 2, nema_w + 2, base_floor + 2]);
-        // LEG SOCKET holes (plain — the leg's coarse male thread self-taps in)
-        for (a = [60, 135, 225, 300])
+        for (a = [60, 135, 225, 300])       // leg socket holes
             rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -1])
                 cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
-        // BOWL NICHE — a curved scallop (from niche_z0 up) matching the bowl's
-        // back arc; the bowl nestles in and the chute drops food straight into it.
-        // Below niche_z0 the tower front stays solid for the load-cell mount.
-        rotate([0, 0, base_outlet_angle])
+        rotate([0, 0, base_outlet_angle])   // bowl niche
             translate([bowl_cx, 0, niche_z0]) cylinder(d = bowl_d + niche_cl, h = niche_h - niche_z0 + 1, $fn = 120);
+        // KEY SLOT — full-height channel notching both ledges + the wall; the disc
+        // ribs slide down it (anti-rotation). From r(deck_dr−1) out into the wall.
+        rotate([0, 0, key_ang]) translate([deck_dr - 1, -(key_w + 0.6)/2, -1])
+            cube([(bulk_r_in + key_pro + 0.5) - (deck_dr - 1), key_w + 0.6, base_h + 2]);
     }
-    // (load-cell mount moved — it now lives UNDER the bowl on the table, not on
-    //  the tower front; detailed once this straight-down arrangement is agreed.)
+}
+// PART 2 — motor DECK (drops onto the z43 ledge; the motor weight holds it down).
+// Flat disc, NEMA17 bolts up to it, body hangs below. Prints flat on the bed.
+module base_deck() {
+    difference() {
+        union() {
+            cylinder(r = deck_dr, h = motor_mount_t, $fn = 160);
+            disc_key(motor_mount_t);
+        }
+        translate([0, 0, -1]) cylinder(d = nema_shaft_d + 3, h = motor_mount_t + 2);      // shaft hole
+        translate([0, 0, -1]) cylinder(d = nema_pilot_d + 1, h = 3);                      // pilot recess (motor face)
+        for (sx = [-1, 1]) for (sy = [-1, 1])                                             // 4× M3
+            translate([sx * nema_bolt_sq/2, sy * nema_bolt_sq/2, -1]) cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
+    }
+}
+// PART 3 — housing REST-PLATE (drops onto the z57 ledge; the tower weight holds it
+// down). Flat disc + the anti-rotation key collar on top + the food outlet. Flat.
+module base_plate() {
+    difference() {
+        union() {
+            cylinder(r = plate_dr, h = base_plate_t, $fn = 160);
+            disc_key(base_plate_t);
+            translate([0, 0, base_plate_t]) rotate([0, 0, base_outlet_angle])   // housing key collar
+                translate([base_mid_r, 0, 0]) rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
+        }
+        translate([0, 0, -1]) cylinder(d = nema_shaft_d + 3, h = base_plate_t + 2);       // axle hole
+        rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, -1])                  // food outlet (= collar bore)
+            rounded_rect(ar_bx, ar_by, hole_corner_r, base_plate_t + ar_h + 2);
+    }
 }
 
 // ===========================================================================
@@ -856,7 +870,9 @@ if (part == "cone")     funnel_cone();   // PRINT: cone insert + spider pockets.
 if (part == "cap")      cap_plate();   // PRINT: separate solid cap disc (nests on housing)
 if (part == "ring")     ring();
 if (part == "lid")      lid();
-if (part == "base")     base();
+if (part == "base")       base();        // PRINT: tube + ledges (support-free)
+if (part == "base_deck")  base_deck();   // PRINT: motor mount disc (flat)
+if (part == "base_plate") base_plate();  // PRINT: housing-seat disc + collar (flat)
 if (part == "full" || part == "full_norings") {
     // whole product: tower (base+housing+wheel+funnel[+ring+lid]) on screw-in legs
     // + standalone weighing platform (foot+cell+tray) + bowl, under the food drop.

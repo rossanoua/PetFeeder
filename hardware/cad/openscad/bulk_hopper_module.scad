@@ -167,6 +167,10 @@ sp_roof_gap     = 2;    // when roofed: socket roof this far above the leg neck.
                         //   slicer filling the slot, so no big dead zone is needed.
 sp_body_floor   = 2.5;  // solid floor below the foot chamber (legs enter RADIALLY
                         //   from the side; the foot rests on this floor at z=rest).
+sp_groove_ext   = 2;    // body groove extends this much PAST the foot inner (R6→R4),
+                        //   a relief void below the foot so the DEEP foot clears the
+                        //   cramped hub centre on the dogleg side legs (2026-06-23).
+                        //   Foot grip (R6→14.5) is UNCHANGED; hub core stays R4.
 sp_sock_depth   = 8.5;  // leg socket depth into the hub (= base_r − 6 → inner stop
                         //   stays at r6). MUST be < body_base_r so the 3 sockets
                         //   DON'T meet at the centre (at 16
@@ -751,7 +755,7 @@ module spider_body() {
         // shoulders (z≈28), independent of the top, so an open top is fine. The
         // foot chamber + shoulders still capture the leg foot vertically.
         for (i = [0 : sp_leg_n - 1])
-            sp_trail(i, sp_body_base_r - sp_sock_depth, 400, sp_slip,
+            sp_trail(i, sp_body_base_r - sp_sock_depth - sp_groove_ext, 400, sp_slip,
                      sp_socket_through ? sp_key_h + sp_cap_h + 2   // through the cap (open)
                                        : sp_key_h + sp_roof_gap);  // roofed, clear of the leg
         // ROOFED build: vent each slot's inner DEAD-END straight up through the
@@ -786,12 +790,11 @@ module spider_leg_placed(i) {
                     projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
         }
         // FOOT — inverted-T at the BODY centre (sp_body_cx = −27), captured by body.
-        // Inner stop pulled out (foot_in) so the foot stays fully inside its slot and
-        // clears the cramped hub centre (the side legs' flat foot face caught the hub
-        // core at R6 when rotated; starting at R9 keeps it clean, still captured).
-        foot_in = inner + 3;
-        sp_bar_at(sp_body_cx, i, foot_in, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
-        sp_bar_at(sp_body_cx, i, foot_in, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
+        // Full DEEP grip (from `inner`); the body groove is extended inward (sp_groove_ext
+        // in spider_body) so the deep foot clears the cramped hub centre — no shortening
+        // of the seat.
+        sp_bar_at(sp_body_cx, i, inner, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
+        sp_bar_at(sp_body_cx, i, inner, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
         // BRIDGE — join the foot's outer end (−27) to the neck's inner end (−15),
         // running OUTSIDE the body (both ends clear of it).
         hull() {

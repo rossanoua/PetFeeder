@@ -107,14 +107,12 @@ throat_cx       = 0;     // 2026-06-19 RECENTER: 0 → the Ø160 funnel is centr
 // no sideways spreading. Small side keys stop rotation. All features are
 // inside + gentle (≤1.5 mm, ramped) so kibble flows past and it prints without
 // supports. Body has ≥3 mm of material under the sockets to hold the legs.
-sp_cx        = -15;  // funnel-local X of the CONE-POCKET centre. Keep at −15: the
-                     //   already-printed cone has the leg slots here, so the necks
-                     //   stay radial-from −15 to fit them. (NOT actually over the
-                     //   throat — its centroid is at −27.1, see sp_body_cx.)
-sp_body_cx   = -27;  // 2026-06-23: BODY/foot centre, over the throat exit centroid
-                     //   (−27.1). The legs DOGLEG: neck in the −15 slot, foot+body
-                     //   at −27 → spider centred on the exit, legs 1-long-2-short,
-                     //   WITHOUT reprinting the cone (slots unchanged).
+sp_cx        = -27;  // funnel-local X of the spider centre = over the throat-exit
+                     //   centroid (−27.1). 2026-06-23: moved −15→−27 now that the cone
+                     //   is reprinted (for the top bortik) — pockets, legs AND body all
+                     //   share −27, so the legs are STRAIGHT (no dogleg), 1-long-2-short,
+                     //   and the spider sits over the exit.
+sp_body_cx   = sp_cx;  // body = pocket centre now (straight legs); kept as an alias.
 sp_seat_z    = 36;   // funnel-local Z of the rest plane. Raised 26→36 (+10mm) to
                      //   lift the whole spider 1 cm: the wall pockets move up with
                      //   it and the legs auto-lengthen (cone is wider higher up).
@@ -425,7 +423,22 @@ module funnel_cone() {
     union() {
         cone_wall_solid();
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
+        cone_bortik();                         // top rim → snug in the shell bore
     }
+}
+// Top BORTIK (rim): a flange at the cone top that flares out to the shell bore so
+// the cone is located at the TOP too (was only held by the cap collar at the bottom
+// + friction). Snug slide-fit (bort_clr to the Ø160 bore); the underside is a ~23°
+// ramp so it prints support-free on the throat-down cone.
+bort_clr = 0.4;                 // radial slip cone bortik ↔ shell bore
+bort_h   = 8;                   // bortik height down from the cone top
+module cone_bortik() {
+    bo_r = bulk_r_in - bort_clr;          // 76.6 — snug in the Ø154 bore
+    rotate_extrude($fn = 160)
+        polygon([[cone_out_top - 1,       cone_top_z - bort_h],   // inner, low — on the cone wall
+                 [bo_r,                    cone_top_z - 2],        // outer — ramp underside (~23°)
+                 [bo_r,                    cone_top_z],            // outer top — vertical snug face
+                 [cone_out_top - 1,        cone_top_z]]);          // inner top
 }
 
 // ===========================================================================
@@ -770,37 +783,25 @@ module spider_body() {
                         cylinder(r = 1.4, h = sp_key_h + sp_cap_h + 40, $fn = 24);  // r<neck/2 → clear of the leg
     }
 }
-// One leg as placed in the funnel (for the assembled / fit views): a radial
-// blade from inside the body socket out into the wall pocket.
-// DOGLEG leg: NECK radial-from −15 (sits in the printed cone slot, unchanged), but
-// the FOOT + body sit at sp_body_cx = −27 (over the throat exit). A short bridge
-// joins them. So the cone slots fit as printed, yet the spider centres on the exit.
+// One leg as placed in the funnel: a STRAIGHT radial blade from the body socket
+// (inner, captured foot) out into the wall pocket (neck, clipped at the cone wall).
+// Pocket, foot and body all share sp_cx = −27, so no dogleg — the spider sits over
+// the exit and the legs come out 1-long-2-short on the asymmetric wall.
 module spider_leg_placed(i) {
     inner   = sp_body_base_r - sp_sock_depth;          // inner stop radius
-    foot_x1 = inner + sp_sock_depth + 4;               // foot spans only the in-body part
-    union() {
-        // NECK — radial from the POCKET centre (sp_cx = −15), but it STARTS clear of
-        // the −27 body (neck_clr) so it goes AROUND the body, not through it. Its
-        // OUTER end (in the printed cone slot) is unchanged — clipped at the wall.
-        neck_clr = sp_body_base_r + 3.5;   // R from −15 where the neck begins (past body)
-        intersection() {
-            sp_bar(i, neck_clr, neck_clr + 60, sp_leg_t / 2, sp_rest_z, sp_key_h);
-            translate([0, 0, sp_rest_z - 1])
-                linear_extrude(height = sp_key_h + 2)
-                    projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
+    foot_x1 = inner + sp_sock_depth + 4;               // foot = the captured in-body part
+    intersection() {
+        union() {
+            // NECK blade (rest → key_h): narrow, rests in the wall pocket
+            sp_bar(i, inner, inner + 70, sp_leg_t / 2, sp_rest_z, sp_key_h);
+            // FOOT (wide lip), inner-only → inverted-T captured by the body shoulders
+            sp_bar(i, inner, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
         }
-        // FOOT — inverted-T at the BODY centre (sp_body_cx = −27), captured by body.
-        // Full DEEP grip (from `inner`); the body groove is extended inward (sp_groove_ext
-        // in spider_body) so the deep foot clears the cramped hub centre — no shortening
-        // of the seat.
-        sp_bar_at(sp_body_cx, i, inner, foot_x1, sp_leg_t / 2 + sp_foot_flare, sp_rest_z, sp_foot_h);
-        sp_bar_at(sp_body_cx, i, inner, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
-        // BRIDGE — join the foot's outer end (−27) to the neck's inner end (−15),
-        // running OUTSIDE the body (both ends clear of it).
-        hull() {
-            sp_bar_at(sp_body_cx, i, foot_x1 - 2, foot_x1, sp_leg_t / 2, sp_rest_z, sp_key_h);
-            sp_bar(i, neck_clr, neck_clr + 2, sp_leg_t / 2, sp_rest_z, sp_key_h);
-        }
+        // clip the outer end vertically at the cone wall on the rest plane → vertical
+        // edge, no overhang; the pocket floor + walls catch it at z = rest.
+        translate([0, 0, sp_rest_z - 1])
+            linear_extrude(height = sp_key_h + 2)
+                projection(cut = true) translate([0, 0, -sp_rest_z]) cav(sp_slip);
     }
 }
 // One leg STANDING ON ITS EDGE for printing (blade height sp_key_h → Z). Layers

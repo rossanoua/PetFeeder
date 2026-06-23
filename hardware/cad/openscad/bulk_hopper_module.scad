@@ -804,10 +804,12 @@ module spider_leg_flat(i) {
         translate([-sp_cx, 0, -sp_rest_z])
             spider_leg_placed(i);
 }
-// All 3 legs laid out on the bed.
+// All 3 legs laid out on the bed. Spacing 32: the DOGLEG legs are ~14 mm wide
+// (the bent ones splay sideways) and legs 1 & 2 bend toward each other, so the
+// old sp_key_h+6 (=20) overlapped them into one blob. 32 leaves a clear gap.
 module spider_legs() {
     for (i = [0 : sp_leg_n - 1])
-        translate([0, i * (sp_key_h + 6), 0]) spider_leg_flat(i);
+        translate([0, i * 32, 0]) spider_leg_flat(i);
 }
 
 // Assembled spider (body + 3 legs) in funnel-local coordinates.

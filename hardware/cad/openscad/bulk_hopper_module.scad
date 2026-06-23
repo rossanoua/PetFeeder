@@ -540,8 +540,8 @@ key_ang  = 180;                           // anti-rotation key on −X (away fro
 jr_step  = 1.5;                           // deck-rim recess (radial) → chute cups it
 jr_slip  = 0.4;                           // joint slip fit
 deck_rim_r = bulk_r_out - jr_step;        // 78.5 — deck rim Ø157 (chute wraps this)
-jr_grv_r = bulk_r_in - 6;                 // 71 — chute-top ring / hopper-groove radius
-jr_wall  = 2;                             // ring wall thickness
+jr_spig_w  = 1.5;                         // chute-top spigot wall (r77..78.5), anchored to the tube wall
+jr_spig_h  = 1.5;                         // chute-top spigot rise into the hopper-plate groove
 jkey_w   = 5;                             // rotational-key width (tangential)
 jkey_pro = 3;                             // rotational-key radial reach
 // [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
@@ -567,6 +567,7 @@ leg_thread_p     = 4;   // pitch (coarse → fewer, cleanly-printable turns)
 leg_thread_depth = 1.5; // radial thread depth (root Ø = major − 2·depth = 9)
 leg_thread_minor = leg_thread_d - 2 * leg_thread_depth + 0.5;  // 9.5 — plain socket hole
                         //   (root Ø9 + 0.5 slip; the Ø12 crest bites ~1.25 mm → self-taps)
+leg_thread_slip  = 0.35;// female-thread radial clearance (socket cut with an oversized tool)
 bowl_cx  = 112;   // bowl centre x — back (≈x24) sits UNDER the wheel outlet (x21..35)
 niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
                   //   and the food drops down the open niche straight into it)
@@ -613,14 +614,14 @@ module base_motor() {
             }
             translate([0, 0, base_deck_z])        // motor DECK: Ø157 disc z43..48 (caps the cavity)
                 cylinder(r = deck_rim_r, h = motor_mount_t, $fn = 160);
-            for (a = [60, 135, 225, 300])         // leg socket-bosses (z0..14)
+            for (a = [60, 135, 225, 300])         // leg socket-bosses — FULL HEIGHT (z0..deck)
                 rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
-                    cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
+                    cylinder(d = leg_boss_d, h = base_deck_z, $fn = 48);   // column → prints as a vertical rib
             base_keybar(base_deck_z, deck_top_z, deck_rim_r - jkey_pro, deck_rim_r, 0);  // −X key lug
         }
-        for (a = [60, 135, 225, 300])             // leg socket holes (legs thread in from z0)
-            rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -1])
-                cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
+        for (a = [60, 135, 225, 300])             // FEMALE-threaded leg sockets (legs screw in from z0)
+            rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -0.01])
+                thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
         translate([0, 0, base_deck_z - 1]) cylinder(d = nema_shaft_d + 3, h = motor_mount_t + 2);  // shaft Ø8
         translate([0, 0, base_deck_z])     cylinder(d = nema_pilot_d + 1, h = 3);                  // pilot recess (z43 face)
         for (sx = [-1, 1]) for (sy = [-1, 1])     // 4× M3 (screws from the deck top into the motor)
@@ -639,15 +640,12 @@ module base_chute() {
                 translate([0, 0, base_deck_z - 1]) cylinder(r = cb_r, h = motor_mount_t + 1);               // counterbore z43..48
                 translate([0, 0, deck_top_z])      cylinder(r = bulk_r_in, h = plate_z - deck_top_z + 1);   // bore Ø154 z48..57
             }
-            translate([0, 0, plate_z])            // top male centering ring (z57..59.4, into hopper groove)
+            translate([0, 0, plate_z])            // top male spigot RING at the wall (into hopper groove)
                 difference() {
-                    cylinder(r = jr_grv_r + jr_wall/2, h = 2.4, $fn = 120);
-                    translate([0, 0, -1]) cylinder(r = jr_grv_r - jr_wall/2, h = 4.4, $fn = 120);
+                    cylinder(r = bulk_r_in + jr_spig_w, h = jr_spig_h, $fn = 160);   // r79
+                    translate([0, 0, -1]) cylinder(r = bulk_r_in, h = jr_spig_h + 2, $fn = 160);  // bore r77
                 }
-            translate([0, 0, plate_z - 3])        // 3 spokes BELOW z57 (in the bore) tying ring→wall
-                for (a = [90, 210, 330])
-                    rotate([0, 0, a]) translate([jr_grv_r - jr_wall/2, -1, 0]) cube([bulk_r_out - jr_grv_r + jr_wall/2, 2, 3]);
-            base_keybar(plate_z, plate_z + 2.4, jr_grv_r - jr_wall/2, jr_grv_r + jr_wall/2, 0);  // top −X key lug
+            base_keybar(plate_z, plate_z + jr_spig_h, bulk_r_in, bulk_r_in + jr_spig_w, 0);  // top −X key lug
         }
         base_keybar(base_deck_z - 1, deck_top_z, deck_rim_r - jkey_pro, cb_r + 1, jr_slip);    // bottom −X key slot
         base_niche();
@@ -673,12 +671,12 @@ module base_hopper() {
         translate([0, 0, plate_z - 1]) cylinder(d = nema_shaft_d + 3, h = base_plate_t + 2);   // axle hole
         rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, plate_z - 1])              // food outlet (= collar bore)
             rounded_rect(ar_bx, ar_by, hole_corner_r, base_plate_t + ar_h + 2);
-        translate([0, 0, plate_z - 0.01])         // centering groove on the plate underside (receives chute ring)
+        translate([0, 0, plate_z - 0.01])         // centering groove on the plate underside (receives chute spigot)
             difference() {
-                cylinder(r = jr_grv_r + jr_wall/2 + jr_slip, h = 2.6, $fn = 120);
-                translate([0, 0, -1]) cylinder(r = jr_grv_r - jr_wall/2 - jr_slip, h = 4.6, $fn = 120);
+                cylinder(r = bulk_r_in + jr_spig_w + jr_slip, h = jr_spig_h + 0.3, $fn = 160);     // r78.9
+                translate([0, 0, -1]) cylinder(r = bulk_r_in - jr_slip, h = jr_spig_h + 2.3, $fn = 160);  // r76.6
             }
-        base_keybar(plate_z - 0.01, plate_z + 2.6, jr_grv_r - jr_wall/2 - jr_slip, jr_grv_r + jr_wall/2 + jr_slip, jr_slip);  // groove −X key slot
+        base_keybar(plate_z - 0.01, plate_z + jr_spig_h + 0.3, bulk_r_in - jr_slip, bulk_r_in + jr_spig_w + jr_slip, jr_slip);  // groove −X key slot
         base_niche();
     }
 }
@@ -993,8 +991,12 @@ module printable_thread(maj_d, pitch, turns) {
         }
     }
 }
-// SCREW-IN leg: a foot + the printable male thread on top that screws UP into a
-// base socket-boss (self-taps the plain hole). Print foot-down / thread-up.
+// FEMALE thread tool — subtract from a boss to cut a threaded hole. Same profile as
+// the leg's male thread but radially oversized by leg_thread_slip so it screws in.
+module thread_hole(maj_d, pitch, turns)
+    printable_thread(maj_d + 2 * leg_thread_slip, pitch, turns);
+// SCREW-IN leg: a foot + the printable male thread on top that screws UP into the
+// base's FEMALE-threaded socket (thread_hole). Print foot-down / thread-up.
 module leg() {
     foot_d = leg_boss_d + 6;
     union() {

@@ -67,8 +67,8 @@ join_clear      = 0.3;
 // in between (the old spout cube is gone in this revision).
 // 2026-06-05b: throat extended inward toward the axle (in 14→7) to feed
 // the wheel's stirrer cone. Now 33×34. MUST match paddle_wheel_module.scad.
-hole_radial_in   = 7;
-hole_radial_out  = 35;   // (floor outlet only; funnel uses the teardrop)
+hole_radial_in   = 22;   // 2026-06-26: 7→22 so the outlet clears the central motor (r21) and sits
+hole_radial_out  = 35;   //   fully over the front niche (x>20.5) → food drops to the bowl, not the motor
 hole_w           = 34;   // tangential
 hole_corner_r    = 2;
 
@@ -505,8 +505,8 @@ base_floor        = 3;          // bottom floor thickness
 motor_mount_t     = 5;          // motor DECK thickness (NEMA17 bolts up to it)
 base_plate_t      = 3;          // housing-rest plate thickness
 base_deck_z       = base_floor + nema_len;   // 43 — motor face / deck; body hangs below
-base_motor_h      = base_deck_z + motor_mount_t + 12;  // 60 — + coupler/chute region
-base_h            = base_motor_h + pw_housing_h2;       // 97
+base_motor_h      = base_deck_z + motor_mount_t;        // 48 — disc top = housing floor (no coupler gap)
+base_h            = base_motor_h + pw_housing_h2;       // 85
 base_chute_w      = hole_w + 6; // 40 — chute / outlet-drop width
 base_mouth_h      = 18;         // front exit opening height
 base_mid_r        = (hole_radial_in + hole_radial_out) / 2;   // 21 — outlet centre r
@@ -521,27 +521,25 @@ ar_ox   = hole_len - ar_slip;             // 27.5 collar outer, radial
 ar_oy   = hole_w   - ar_slip;             // 33.5 collar outer, tangential
 ar_bx   = ar_ox - 2 * ar_wall;            // 25.1 bore / plate-outlet, radial
 ar_by   = ar_oy - 2 * ar_wall;            // 31.1 bore / plate-outlet, tangential
-// 3-PART base (2026-06-24, support-free, TELESCOPING): the deck (motor mount, z43)
-// and the plate (housing seat, z57) are both near-solid discs 14 mm apart. A disc
-// prints clean only as a part's BED-FLOOR; two discs can't share one part. So each
-// disc is the floor of its own cup and a short ring bridges the coupler/chute gap:
-//   base_motor  — deck = bed-floor, the motor-cavity shell + leg bosses grow UP.
-//                 PRINTS UPSIDE DOWN (rotate 180 in the dispatch → deck on the bed);
-//                 the motor inserts from below and bolts up to the deck.
-//   base_chute  — coupler/chute RING (z43→57). PRINTS STANDING; its bottom counter-
-//                 bore drops over the motor-cup's recessed deck rim (outer telescope),
-//                 its top has a male ring that enters the hopper-plate groove.
-//   base_hopper — plate = bed-floor (outlet + housing collar), housing-seat tube +
-//                 stacking lip grow UP. PRINTS plate-on-the-bed.
-// They nest one-into-another and are gravity-held; a −X key in each joint stops them
-// rotating with the motor; the bowl niche is cut through all three.
+// 2-PART base (2026-06-26): the motor DECK and the housing PLATE are MERGED into ONE
+// disc (z43..48). They needed no gap — the wheel sits straight on the Ø5 motor shaft
+// (no coupler), so the old chute "connector" ring is gone. The base is now:
+//   base_motor  — LEG SHROUD: a plain Ø160 tube (legs + motor cavity), open both ends,
+//                 with a SNAP spigot on top. PRINTS STANDING (no support).
+//   base_hopper — CORE DISC: the motor bolts to its UNDERSIDE, the housing seats on
+//                 top; housing-seat tube + funnel lip grow up. PRINTS disc-on-the-bed.
+// The shroud SNAPS up into the disc (a bead springs into a recess groove) → one rigid
+// block, print-only, no metal. A −X key aligns the outlet/niche. WHY 2 parts and not
+// a single stack: the disc must be a part's bed-floor (or it roofs → support), and so
+// must the shroud-side; the shroud-as-standing-tube provides the male snap the disc
+// (printed face-down) can't, so they mate directly with no middle ring.
 key_ang  = 180;                           // anti-rotation key on −X (away from +X outlet)
-// telescoping-joint params
-jr_step  = 1.5;                           // deck-rim recess (radial) → chute cups it
-jr_slip  = 0.4;                           // joint slip fit
-deck_rim_r = bulk_r_out - jr_step;        // 78.5 — deck rim Ø157 (chute wraps this)
-jr_spig_w  = 1.5;                         // chute-top spigot wall (r77..78.5), anchored to the tube wall
-jr_spig_h  = 1.5;                         // chute-top spigot rise into the hopper-plate groove
+// SNAP-joint params (shroud spigot → disc-underside recess)
+snap_ir  = bulk_r_in - 1.5;               // 75.5 — snap-spigot inner r
+snap_or  = bulk_r_in + 1;                 // 78   — snap-spigot outer r (seats on the wall top)
+snap_h   = 3;                             // spigot rise into the disc recess (z43..46)
+snap_bead = 0.7;                          // bead radial proud → springs into the recess groove
+snap_slip = 0.35;                         // recess ↔ spigot slip
 jkey_w   = 5;                             // rotational-key width (tangential)
 jkey_pro = 3;                             // rotational-key radial reach
 // [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
@@ -587,8 +585,7 @@ plat_t = 4;       // tray thickness
 plat_z = lc_z + lc_h + 2;   // tray underside z (cell deflection clearance below)
 
 // z-planes:  legs 0 · motor-face 43 · deck-top 48 · plate 57 · plate-top 60 · top 97
-deck_top_z = base_deck_z + motor_mount_t;     // 48 — deck top = motor-cup top
-plate_z    = base_motor_h - base_plate_t;     // 57 — plate (housing seat)
+deck_top_z = base_deck_z + motor_mount_t;     // 48 — disc top = housing floor (= base_motor_h)
 
 // bowl scallop — cut into every base part it passes through (z−1 .. 58)
 module base_niche()
@@ -596,28 +593,35 @@ module base_niche()
         translate([bowl_cx, 0, niche_z0])
             cylinder(d = bowl_d + niche_cl, h = niche_h - niche_z0 + 1, $fn = 120);
 // −X rotational key: a radial bar over [z0,z1], radius band [r0,r1]. `g` grows it
-// (0 for the lug, +jr_slip for the receiving slot).
+// (0 for the lug, +snap_slip for the receiving slot).
 module base_keybar(z0, z1, r0, r1, g)
     rotate([0, 0, key_ang]) translate([r0, -(jkey_w + 2*g)/2, z0])
         cube([r1 - r0, jkey_w + 2*g, z1 - z0]);
 
-// PART 1 — MOTOR CUP. Deck (motor mount) is the bed-floor; the Ø160 cavity shell +
-// leg bosses grow UP toward the legs. PRINTS UPSIDE DOWN (dispatch rotates it so the
-// deck lands on the bed). Motor inserts from the open (leg) end and bolts up to the
-// deck. The deck rim is recessed to Ø157 so the chute ring cups over it.
+// PART 1 — LEG SHROUD: a plain Ø160 tube (z0..43), open both ends, around the motor;
+// leg sockets at the bottom; a SNAP spigot on top that springs into the disc. PRINTS
+// STANDING (z0 on the bed) — a plain tube, no support. Motor inserts from the bottom.
 module base_motor() {
     difference() {
         union() {
-            difference() {                        // Ø160 cavity shell z0..43, open both ends
+            difference() {                        // Ø160 tube z0..43, open both ends
                 cylinder(d = bulk_d, h = base_deck_z, $fn = 160);
                 translate([0, 0, -1]) cylinder(r = bulk_r_in, h = base_deck_z + 1);
             }
-            translate([0, 0, base_deck_z])        // motor DECK: Ø157 disc z43..48 (caps the cavity)
-                cylinder(r = deck_rim_r, h = motor_mount_t, $fn = 160);
-            for (a = [60, 135, 225, 300])         // leg socket-bosses — FULL HEIGHT (z0..deck)
+            translate([0, 0, base_deck_z])        // SNAP spigot ring (z43..46) rising from the tube top
+                difference() {
+                    cylinder(r = snap_or, h = snap_h, $fn = 160);
+                    translate([0, 0, -1]) cylinder(r = snap_ir, h = snap_h + 2, $fn = 160);
+                }
+            translate([0, 0, base_deck_z + snap_h - 1.6])   // snap bead: cone lead-in (wide at bottom = the catch)
+                difference() {
+                    cylinder(r1 = snap_or + snap_bead, r2 = snap_or, h = 1.6, $fn = 160);
+                    translate([0, 0, -1]) cylinder(r = snap_ir, h = 3.6, $fn = 160);
+                }
+            for (a = [60, 135, 225, 300])         // leg socket-bosses (z0..14) — on the bed, short stubs
                 rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
-                    cylinder(d = leg_boss_d, h = base_deck_z, $fn = 48);   // column → prints as a vertical rib
-            base_keybar(base_deck_z, deck_top_z, deck_rim_r - jkey_pro, deck_rim_r, 0);  // −X key lug
+                    cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
+            base_keybar(base_deck_z, base_deck_z + snap_h, snap_or - 1, snap_or + snap_bead, 0);  // −X key lug
         }
         for (a = [60, 135, 225, 300])             // FEMALE-threaded leg sockets (legs screw in from z0)
             rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -0.01])
@@ -625,42 +629,20 @@ module base_motor() {
                     cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
                 else
                     thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
-        translate([0, 0, base_deck_z - 1]) cylinder(d = nema_shaft_d + 3, h = motor_mount_t + 2);  // shaft Ø8
-        translate([0, 0, base_deck_z])     cylinder(d = nema_pilot_d + 1, h = 3);                  // pilot recess (z43 face)
-        for (sx = [-1, 1]) for (sy = [-1, 1])     // 4× M3 (screws from the deck top into the motor)
-            translate([sx*nema_bolt_sq/2, sy*nema_bolt_sq/2, base_deck_z - 1]) cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
+        for (a = [30, 90, 150, 210, 270, 330])    // 6 relief slots → the spigot flexes as it snaps in
+            rotate([0, 0, a]) translate([snap_ir - 0.5, -0.7, base_deck_z - 0.01])
+                cube([(snap_or + snap_bead + 1) - (snap_ir - 0.5), 1.4, snap_h + 1]);
         base_niche();
     }
 }
-// PART 2 — COUPLER / CHUTE RING (z43..57). Bottom counterbore drops over the deck rim
-// (outer telescope); top male ring enters the hopper-plate groove. PRINTS STANDING.
-module base_chute() {
-    cb_r = deck_rim_r + jr_slip;                  // 78.9 — counterbore over the deck rim
-    difference() {
-        union() {
-            difference() {
-                translate([0, 0, base_deck_z]) cylinder(d = bulk_d, h = plate_z - base_deck_z, $fn = 160);  // Ø160 z43..57
-                translate([0, 0, base_deck_z - 1]) cylinder(r = cb_r, h = motor_mount_t + 1);               // counterbore z43..48
-                translate([0, 0, deck_top_z])      cylinder(r = bulk_r_in, h = plate_z - deck_top_z + 1);   // bore Ø154 z48..57
-            }
-            translate([0, 0, plate_z])            // top male spigot RING at the wall (into hopper groove)
-                difference() {
-                    cylinder(r = bulk_r_in + jr_spig_w, h = jr_spig_h, $fn = 160);   // r79
-                    translate([0, 0, -1]) cylinder(r = bulk_r_in, h = jr_spig_h + 2, $fn = 160);  // bore r77
-                }
-            base_keybar(plate_z, plate_z + jr_spig_h, bulk_r_in, bulk_r_in + jr_spig_w, 0);  // top −X key lug
-        }
-        base_keybar(base_deck_z - 1, deck_top_z, deck_rim_r - jkey_pro, cb_r + 1, jr_slip);    // bottom −X key slot
-        base_niche();
-    }
-}
-// PART 3 — HOPPER CUP. Plate (housing seat: outlet + anti-rotation collar) is the bed-
-// floor; the housing-seat tube + stacking lip grow UP. PRINTS plate-on-the-bed.
+// PART 2 — CORE DISC (z43..48): the motor bolts to its UNDERSIDE (face z43), the housing
+// seats on top (z48); housing-seat tube + stacking lip grow up. The shroud snaps into a
+// recess in its underside. PRINTS disc-on-the-bed (the z43 motor face on the bed).
 module base_hopper() {
     difference() {
         union() {
-            translate([0, 0, plate_z]) cylinder(d = bulk_d, h = base_plate_t, $fn = 160);   // plate Ø160 z57..60
-            difference() {                          // housing-seat tube z60..97 + stacking lip
+            translate([0, 0, base_deck_z]) cylinder(d = bulk_d, h = motor_mount_t, $fn = 160);   // core disc z43..48
+            difference() {                          // housing-seat tube z48..85 + stacking lip
                 union() {
                     translate([0, 0, base_motor_h]) cylinder(d = bulk_d, h = base_h - base_motor_h, $fn = 160);
                     stacking_lip(base_h);
@@ -668,23 +650,33 @@ module base_hopper() {
                 translate([0, 0, base_motor_h - 1]) cylinder(r = bulk_r_in, h = base_h - base_motor_h + 1 - cavity_taper_h + 1);
                 translate([0, 0, base_h - cavity_taper_h]) cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
             }
-            translate([0, 0, base_motor_h]) rotate([0, 0, base_outlet_angle])   // housing key collar (into housing)
+            translate([0, 0, base_motor_h]) rotate([0, 0, base_outlet_angle])   // housing key collar (into housing outlet)
                 translate([base_mid_r, 0, 0]) rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
         }
-        translate([0, 0, plate_z - 1]) cylinder(d = nema_shaft_d + 3, h = base_plate_t + 2);   // axle hole
-        rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, plate_z - 1])              // food outlet (= collar bore)
-            rounded_rect(ar_bx, ar_by, hole_corner_r, base_plate_t + ar_h + 2);
-        translate([0, 0, plate_z - 0.01])         // centering groove on the plate underside (receives chute spigot)
+        // motor mount on the UNDERSIDE (z43 face): pilot recess, 4× M3, shaft hole
+        translate([0, 0, base_deck_z - 1]) cylinder(d = nema_shaft_d + 3, h = motor_mount_t + 2);  // shaft Ø8 through
+        translate([0, 0, base_deck_z])     cylinder(d = nema_pilot_d + 1, h = 3);                  // pilot recess (z43, opens down)
+        for (sx = [-1, 1]) for (sy = [-1, 1])     // 4× M3 (motor bolts up from below)
+            translate([sx*nema_bolt_sq/2, sy*nema_bolt_sq/2, base_deck_z - 1]) cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
+        rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, base_deck_z - 1])    // food outlet through the disc
+            rounded_rect(ar_bx, ar_by, hole_corner_r, motor_mount_t + ar_h + 2);
+        // SNAP recess (annular) in the disc underside + bead groove + −X key slot
+        translate([0, 0, base_deck_z - 0.01])     // recess receiving the spigot (keeps the disc centre solid)
             difference() {
-                cylinder(r = bulk_r_in + jr_spig_w + jr_slip, h = jr_spig_h + 0.3, $fn = 160);     // r78.9
-                translate([0, 0, -1]) cylinder(r = bulk_r_in - jr_slip, h = jr_spig_h + 2.3, $fn = 160);  // r76.6
+                cylinder(r = snap_or + snap_slip, h = snap_h + 0.6, $fn = 160);
+                translate([0, 0, -1]) cylinder(r = snap_ir - snap_slip, h = snap_h + 2.6, $fn = 160);
             }
-        base_keybar(plate_z - 0.01, plate_z + jr_spig_h + 0.3, bulk_r_in - jr_slip, bulk_r_in + jr_spig_w + jr_slip, jr_slip);  // groove −X key slot
+        translate([0, 0, base_deck_z + snap_h - 1.7])   // bead groove (undercut on the recess outer wall)
+            difference() {
+                cylinder(r = snap_or + snap_bead + snap_slip, h = 1.2, $fn = 160);
+                translate([0, 0, -1]) cylinder(r = snap_or + snap_slip, h = 3.2, $fn = 160);
+            }
+        base_keybar(base_deck_z - 0.01, base_deck_z + snap_h, snap_or - 1 - snap_slip, snap_or + snap_bead + snap_slip + 1, snap_slip);  // −X key slot
         base_niche();
     }
 }
-// assembly view — the 3 telescoped parts in place (used by the full/chassis renders)
-module base() { base_motor(); base_chute(); base_hopper(); }
+// assembly view — the 2 snapped parts in place (used by the full/chassis renders)
+module base() { base_motor(); base_hopper(); }
 
 // ===========================================================================
 // BOWL PLATFORM  separate part — holds the Ø175 bowl, bolted to the load cell's
@@ -910,15 +902,13 @@ if (part == "cone")     funnel_cone();   // PRINT: cone insert + spider pockets.
 if (part == "cap")      cap_plate();   // PRINT: separate solid cap disc (nests on housing)
 if (part == "ring")     ring();
 if (part == "lid")      lid();
-if (part == "base")        base();                       // assembly preview (3 telescoped parts)
-if (part == "base_motor")  rotate([180, 0, 0]) base_motor();  // PRINT: motor cup, UPSIDE DOWN (deck on bed)
-if (part == "base_chute")  base_chute();                 // PRINT: coupler/chute ring, standing
-if (part == "base_hopper") base_hopper();                // PRINT: hopper cup, plate on bed
+if (part == "base")        base();                       // assembly preview (2 snapped parts)
+if (part == "base_motor")  base_motor();                 // PRINT: leg shroud, standing
+if (part == "base_hopper") base_hopper();                // PRINT: core disc, disc-on-the-bed
 if (part == "base_cut")                                  // DEBUG: vertical half-cut, colour-coded
     intersection() {
         union() {
             color("Tomato")    base_motor();
-            color("SteelBlue") base_chute();
             color("Gold")      base_hopper();
         }
         translate([-200, 0, -10]) cube([400, 200, 300]);
@@ -933,9 +923,8 @@ module motor_mock(face_z) translate([0, 0, face_z]) {
 if (part == "x_base") {        // EXPLODED base sub-assembly (assembly guide)
     color("DimGray")   translate([0, 0, -40]) legs_mounted();   // 4 legs, screw up from below
     motor_mock(base_deck_z - 70);                                // motor, inserts UP from below
-    color("Tomato")    base_motor();                            // motor cup (deck @43)
-    color("SteelBlue") translate([0, 0, 28]) base_chute();      // coupler ring
-    color("Gold")      translate([0, 0, 58]) base_hopper();     // hopper cup (plate @57)
+    color("Tomato")    base_motor();                            // leg shroud (legs + motor cavity)
+    color("Gold")      translate([0, 0, 45]) base_hopper();     // core disc (motor under, housing over)
 }
 if (part == "x_tower") {       // EXPLODED full tower (assembly guide)
     e = 40;

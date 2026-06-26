@@ -146,7 +146,7 @@ cap_clear = 0.4;        // cap <-> lip slip clearance
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 7;    // (floor OUTLET; the cap inlet is the teardrop).
+hole_radial_in   = 22;   // 2026-06-26: 7→22 — outlet clears the central motor (r21), drops over the niche
 hole_radial_out  = 35;   // 2026-06-06: out pulled IN from the rim (40→35) so
 hole_w           = 34;   //   the paddle TIP sweeps solid floor near the rim
 hole_corner_r    = 2;    //   and never crosses a hole edge there.

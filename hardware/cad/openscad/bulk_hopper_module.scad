@@ -621,7 +621,10 @@ module base_motor() {
         }
         for (a = [60, 135, 225, 300])             // FEMALE-threaded leg sockets (legs screw in from z0)
             rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -0.01])
-                thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
+                if ($preview)                     // plain hole in PREVIEW (fast); real thread on EXPORT (F6)
+                    cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
+                else
+                    thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
         translate([0, 0, base_deck_z - 1]) cylinder(d = nema_shaft_d + 3, h = motor_mount_t + 2);  // shaft Ø8
         translate([0, 0, base_deck_z])     cylinder(d = nema_pilot_d + 1, h = 3);                  // pilot recess (z43 face)
         for (sx = [-1, 1]) for (sy = [-1, 1])     // 4× M3 (screws from the deck top into the motor)
@@ -920,6 +923,39 @@ if (part == "base_cut")                                  // DEBUG: vertical half
         }
         translate([-200, 0, -10]) cube([400, 200, 300]);
     }
+// crude NEMA17 stand-in for assembly guides: Ø42 body + pilot boss + Ø5 shaft,
+// placed so the mount face is at z (body hangs below, shaft pokes up).
+module motor_mock(face_z) translate([0, 0, face_z]) {
+    color("#2c2c2c") translate([-21.15, -21.15, -nema_len]) cube([42.3, 42.3, nema_len]);
+    color("#444")    translate([0, 0, -0.1]) cylinder(d = nema_pilot_d, h = 2.5, $fn = 40);
+    color("Silver")  cylinder(d = nema_shaft_d, h = 24, $fn = 24);
+}
+if (part == "x_base") {        // EXPLODED base sub-assembly (assembly guide)
+    color("DimGray")   translate([0, 0, -40]) legs_mounted();   // 4 legs, screw up from below
+    motor_mock(base_deck_z - 70);                                // motor, inserts UP from below
+    color("Tomato")    base_motor();                            // motor cup (deck @43)
+    color("SteelBlue") translate([0, 0, 28]) base_chute();      // coupler ring
+    color("Gold")      translate([0, 0, 58]) base_hopper();     // hopper cup (plate @57)
+}
+if (part == "x_tower") {       // EXPLODED full tower (assembly guide)
+    e = 40;
+    color("Gainsboro")            base();
+    color("DimGray")              translate([0, 0, -34]) legs_mounted();
+    color("LightSteelBlue")       translate([0, 0, base_motor_h + e]) housing();
+    color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5 + e]) wheel();
+    color("Khaki")                translate([0, 0, base_h + 2*e]) funnel();
+    color("BurlyWood")            translate([0, 0, base_h + z_funnel_top + 3*e]) ring();
+    color("Tan")                  translate([0, 0, base_h + z_funnel_top + ring_h + 4*e]) lid();
+    color("Wheat")                translate([0, 0, 1.2*e]) { wp_foot(); wp_tray(); }
+    color("LightBlue", 0.5)       translate([0, 0, 1.2*e]) bowl_mock();
+}
+if (part == "x_funnel") {      // EXPLODED funnel sub-assembly (assembly guide)
+    e = 55;
+    color("Khaki", 0.30)    funnel_shell();                             // Ø160 outer tube (see-through)
+    color("Orange")         translate([0, 0, cap_t + 1.2*e]) funnel_cone();  // mass-flow cone insert
+    color("Crimson")        translate([0, 0, cap_t + 2.1*e]) spider();        // anti-pressure spider (into cone)
+    color("MediumSeaGreen") translate([0, 0, -0.7*e]) cap_plate();      // cap — nests on the housing top
+}
 if (part == "full" || part == "full_norings") {
     // whole product: tower (base+housing+wheel+funnel[+ring+lid]) on screw-in legs
     // + standalone weighing platform (foot+cell+tray) + bowl, under the food drop.

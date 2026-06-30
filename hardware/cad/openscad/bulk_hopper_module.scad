@@ -1070,6 +1070,8 @@ module bowl_mock() {
         }
 }
 if (part == "leg")      leg();          // PRINT: one screw-in leg (thread up)
+if (part == "legs4")                    // PRINT: all 4 screw-in legs laid out (thread up)
+    for (i = [0:3]) translate([(i % 2 ? 1 : -1) * 23, (i < 2 ? 1 : -1) * 23, 0]) leg();
 if (part == "wp_foot")  wp_foot();      // PRINT: weighing-platform back foot
 if (part == "wp_tray")  wp_tray();      // PRINT: weighing-platform bowl tray
 if (part == "station") {

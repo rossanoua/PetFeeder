@@ -566,6 +566,18 @@ leg_thread_depth = 1.5; // radial thread depth (root Ø = major − 2·depth = 9
 leg_thread_minor = leg_thread_d - 2 * leg_thread_depth + 0.5;  // 9.5 — plain socket hole
                         //   (root Ø9 + 0.5 slip; the Ø12 crest bites ~1.25 mm → self-taps)
 leg_thread_slip  = 0.35;// female-thread radial clearance (socket cut with an oversized tool)
+// The two FRONT sockets must clear the niche scallop (Ø183 at x=bowl_cx). At r70 the
+// niche wall crosses the socket ring at ±54.6°; a Ø18 boss needs its centre past ~63°.
+// 60° was too close (0.15 mm wall → front thread broke open into the niche = only 2 of
+// 4 legs printed with a real hole). 68°/292° gives a 7 mm solid boss wall. ONE list,
+// used by the bosses, the thread cuts AND the assembly leg view so they can't drift.
+leg_sock_ang = [68, 135, 225, 292];
+// socket_thread=true cuts a real FEMALE thread (exact negative of the leg's male thread
+// via thread_hole) in the base socket. It slices OPEN because the socket is a THROUGH
+// bore (see the socket cut) — a blind threaded pocket printed hole-down gets packed with
+// infill; a through bore stays an open channel. (=false falls back to a plain Ø9.5
+// self-tap hole.)
+socket_thread = true;
 bowl_cx  = 112;   // bowl centre x — back (≈x24) sits UNDER the wheel outlet (x21..35)
 niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
                   //   and the food drops down the open niche straight into it)
@@ -618,17 +630,20 @@ module base_motor() {
                     cylinder(r1 = snap_or + snap_bead, r2 = snap_or, h = 1.6, $fn = 160);
                     translate([0, 0, -1]) cylinder(r = snap_ir, h = 3.6, $fn = 160);
                 }
-            for (a = [60, 135, 225, 300])         // leg socket-bosses (z0..14) — on the bed, short stubs
+            for (a = leg_sock_ang)                // leg socket-bosses (z0..14) — on the bed, short stubs
                 rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
                     cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
             base_keybar(base_deck_z, base_deck_z + snap_h, snap_or - 1, snap_or + snap_bead, 0);  // −X key lug
         }
-        for (a = [60, 135, 225, 300])             // FEMALE-threaded leg sockets (legs screw in from z0)
+        for (a = leg_sock_ang)                    // FEMALE-threaded leg sockets (legs screw in from z0)
             rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -0.01])
-                if ($preview)                     // plain hole in PREVIEW (fast); real thread on EXPORT (F6)
+                if ($preview || !socket_thread)   // plain self-tap hole (slices open); thread only if forced
                     cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
-                else
-                    thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
+                else                              // thread runs THROUGH the boss top (into the tube cavity):
+                    // a BLIND threaded pocket printed hole-down reads as enclosed to OrcaSlicer and gets
+                    // packed with infill (bore prints solid). A THROUGH bore stays an open channel and
+                    // slices clean+threaded. Leg still stops on its foot at the boss bottom, not a cap.
+                    thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h + 2) / leg_thread_p);
         for (a = [30, 90, 150, 210, 270, 330])    // 6 relief slots → the spigot flexes as it snaps in
             rotate([0, 0, a]) translate([snap_ir - 0.5, -0.7, base_deck_z - 0.01])
                 cube([(snap_or + snap_bead + 1) - (snap_ir - 0.5), 1.4, snap_h + 1]);
@@ -989,9 +1004,12 @@ if (part == "chassis") {
     color("Khaki", 0.45)          translate([0, 0, base_h]) funnel();
 }
 // PRINTABLE coarse MALE thread. Built by sweeping the r-z tooth profile HELICALLY
-// (a stack of small rotate_extrude arcs), NOT a twisted thin fin. Printed
-// AXIS-VERTICAL, the overhanging LOWER flank is ~38° from vertical (well under
-// 45°), so it needs no supports. The leg self-taps this into a plain base hole.
+// (a stack of small rotate_extrude arcs). This is CGAL-safe as an ADDED solid — the
+// leg's male thread exports intact. (A linear_extrude(twist) version was tried: it
+// slices fine when SUBTRACTED for the socket, but as an added solid it renders in
+// preview yet VANISHES in the F6/CGAL export → the printed leg lost its thread. So the
+// leg's thread stays THIS module, and the socket is made sliceable by being a THROUGH
+// bore, see the socket cut — that, not the thread profile, was the block.)
 //   profile (r,z) over one pitch: root → 45°-ish lower flank up to the Ø12 crest
 //   → small crest flat → upper flank back to root (upper flank faces up = free).
 module printable_thread(maj_d, pitch, turns) {
@@ -1033,7 +1051,7 @@ module leg() {
 // the 4 legs as screwed into the base (for assembly views): thread up into the
 // socket, foot below. Placed at the socket angles/radius.
 module legs_mounted() {
-    for (a = [60, 135, 225, 300])
+    for (a = leg_sock_ang)
         rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
             translate([0, 0, -leg_h]) leg();
 }

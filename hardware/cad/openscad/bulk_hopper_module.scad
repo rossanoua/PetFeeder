@@ -69,15 +69,21 @@ join_clear      = 0.3;
 /* [Cap hole — MUST match paddle_wheel_module.scad] */
 // Bulk hopper bottom opens directly to this rectangular hole. No spout
 // in between (the old spout cube is gone in this revision).
-// 2026-06-05b: throat extended inward toward the axle (in 14→7) to feed
-// the wheel's stirrer cone. Now 33×34. MUST match paddle_wheel_module.scad.
-// 2026-07-02 (B2): 22→25. The bowl (Ø175 @ bowl_cx=112) starts at x=24.5, so an outlet
-// starting at x=22 dropped a 2.5 mm band of kibble BEHIND the bowl rim → onto the tray.
-// At 25 the whole outlet is over the bowl (0.5 mm margin) and still clears the motor (r21).
-// MUST MATCH hole_radial_in in paddle_wheel_module.scad — the housing floor outlet and
-// this disc outlet have to stay aligned or food lands on the disc.
-hole_radial_in   = 25;   // 2026-06-26: 7→22 so the outlet clears the central motor (r21) and sits
-hole_radial_out  = 35;   //   fully over the front niche (x>20.5) → food drops to the bowl, not the motor
+// The outlet is the kibble pipe's narrowest point, so hole_len (= out − in) sets the
+// flow. It is squeezed from FOUR sides — every one of these was hit at least once:
+//   in  > motor r21              (or food lands on the motor)
+//   in  > bowl back rim          (or food drops behind the bowl, onto the tray)
+//   out < paddle rim ring 38.5   (or the sweeping tip crosses a hole edge and catches)
+//   the rounded-rect CORNER (hypot(out−2, hole_w/2−2)+2) < hr_in 40.8, or the outlet
+//     breaks through the housing wall — this is why out=38 is NOT allowed (corner 41.0).
+// 2026-07-13: in 25→23, out 35→36 together with bowl_cx 112→108. B2 had pushed `in` to 25
+// to clear the bowl rim, which collapsed hole_len to 10 → the disc bore ar_bx fell to
+// 7.1 mm and kibble jammed on the disc shoulder. Moving the bowl in frees `in` again.
+// Now: hole_len 13, ar_bx 10.1 (the pre-B2 value). Margins: housing wall 1.6, wheel rim
+// 2.5, motor 2.0, bowl rim 2.5 — nothing under 1.5 mm.
+// MUST MATCH hole_radial_in / _out / _w / _corner_r in paddle_wheel_module.scad.
+hole_radial_in   = 23;   // 7 → 22 (clear motor) → 25 (B2, clear bowl) → 23 (bowl moved in)
+hole_radial_out  = 36;   // 40 → 35 (keep the paddle tip off the hole edge) → 36
 hole_w           = 34;   // tangential
 hole_corner_r    = 2;
 
@@ -537,13 +543,21 @@ base_mid_r        = (hole_radial_in + hole_radial_out) / 2;   // 21 — outlet c
 // the housing's floor outlet (hole_len×hole_w) → keys the housing against motor
 // reaction torque + aligns the two outlets. Food drops through its bore (= the plate
 // outlet). Top sits 0.5 mm below the housing cavity floor so the paddle clears it.
+// Anti-rotation KEY COLLAR: a short rounded-rect tube that stands up out of the disc and
+// plugs INTO the housing floor outlet, keying the housing against spinning. Because it
+// plugs in, its OUTER size is bound to the housing outlet (hole_len × hole_w) — so its
+// BORE, ar_bx × ar_by, is necessarily (2·ar_wall + ar_slip) = 2.9 mm narrower than the
+// outlet. That bore is the kibble pipe's true narrowest point. It CANNOT be widened by
+// clamping ar_bx up to hole_len: the bore would exceed ar_ox and the collar's radial
+// walls would vanish (no key at all). The only way to open it is to grow hole_len.
+// (Derived — do not hand-write numbers here; they went stale twice already.)
 ar_slip = 0.5;                  // collar ↔ housing-outlet slip
 ar_wall = 1.2;                  // collar wall
 ar_h    = 2.5;                  // collar height (≈ housing end_wall − 0.5)
-ar_ox   = hole_len - ar_slip;             // 27.5 collar outer, radial
-ar_oy   = hole_w   - ar_slip;             // 33.5 collar outer, tangential
-ar_bx   = ar_ox - 2 * ar_wall;            // 25.1 bore / plate-outlet, radial
-ar_by   = ar_oy - 2 * ar_wall;            // 31.1 bore / plate-outlet, tangential
+ar_ox   = hole_len - ar_slip;             // collar outer, radial      = hole_len − 0.5
+ar_oy   = hole_w   - ar_slip;             // collar outer, tangential  = 33.5
+ar_bx   = ar_ox - 2 * ar_wall;            // bore / disc outlet, radial     ← THE narrowest
+ar_by   = ar_oy - 2 * ar_wall;            // bore / disc outlet, tangential = 31.1
 // 2-PART base (2026-06-26): the motor DECK and the housing PLATE are MERGED into ONE
 // disc (z43..48). They needed no gap — the wheel sits straight on the Ø5 motor shaft
 // (no coupler), so the old chute "connector" ring is gone. The base is now:
@@ -601,7 +615,13 @@ leg_sock_ang = [68, 135, 225, 292];
 // infill; a through bore stays an open channel. (=false falls back to a plain Ø9.5
 // self-tap hole.)
 socket_thread = true;
-bowl_cx  = 112;   // bowl centre x — back (≈x24) sits UNDER the wheel outlet (x21..35)
+// 108, was 112: at 112 the bowl back sat at x=24.5 and the outlet had to start at 25 to
+// clear it — which strangled hole_len (see hole_radial_in). Moving the bowl 4 mm in puts
+// its back at 20.5, so the outlet can start at 23 and still land 2.5 mm inside the rim.
+// Cost: the niche cuts 4 mm deeper, so the FRONT leg bosses now have 3.9 mm of wall to
+// the niche instead of 7.1 (they were at 0.15 mm before the 68°/292° fix — 3.9 is fine,
+// but do NOT push bowl_cx below ~108 without re-checking that wall).
+bowl_cx  = 108;   // bowl centre x — back (x20.5) sits UNDER the wheel outlet (x23..36)
 niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
                   //   and the food drops down the open niche straight into it)
 niche_h  = 58;    // scallop top (just under the outlet level so food falls freely)

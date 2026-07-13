@@ -137,13 +137,18 @@ axle_keep    = axle_d/2 + fit_clear + 2;  // solid cap kept around the axle bore
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-// 2026-07-02 (B2): 22→25 — see the long note on hole_radial_in in bulk_hopper_module.scad.
-// At 22 a 2.5 mm band of kibble landed BEHIND the bowl rim (bowl starts at x=24.5).
-// MUST MATCH hole_radial_in in bulk_hopper_module.scad.
-hole_radial_in   = 25;   // 2026-06-26: 7→22 — outlet clears the central motor (r21), drops over the niche
-hole_radial_out  = 35;   // 2026-06-06: out pulled IN from the rim (40→35) so
-hole_w           = 34;   //   the paddle TIP sweeps solid floor near the rim
-hole_corner_r    = 2;    //   and never crosses a hole edge there.
+// 2026-07-13: in 25→23, out 35→36 (with bowl_cx 112→108 in bulk_hopper). See the long
+// note on hole_radial_in there for why all four bounds matter. Two that live HERE:
+//   · out must stay under the paddle rim ring (wheel_r − rim_t = 38.5) so the sweeping
+//     tip never crosses a hole edge — that is why it was pulled 40→35 originally.
+//   · the rounded-rect CORNER, hypot(out−2, hole_w/2−2)+2, must stay under hr_in (40.8)
+//     or the outlet breaks through the housing wall. out=36 → corner 39.2 (1.6 mm spare);
+//     out=38 → corner 41.0 = THROUGH THE WALL. Do not go past 37.
+// MUST MATCH hole_radial_in / _out / _w / _corner_r in bulk_hopper_module.scad.
+hole_radial_in   = 23;   // 7 → 22 (clear motor r21) → 25 (B2, clear bowl) → 23 (bowl moved in)
+hole_radial_out  = 36;   // 40 → 35 (keep the paddle tip off the hole edge) → 36
+hole_w           = 34;   // tangential
+hole_corner_r    = 2;
 out_cham         = 3;    // tangential lead-in: the two edges the paddle
                          //   crosses are SLOPED (wider at the wheel side), a
                          //   ramp instead of a 90° edge.

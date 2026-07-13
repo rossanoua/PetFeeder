@@ -582,74 +582,76 @@ jkey_pro = 3;                             // rotational-key radial reach
 // [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
 // in (under the tower) and the chute drops food straight into it. Above niche_h
 // the tower stays full Ø160. Clears the central motor (niche back at x≈30 > r21).
-// [Bowl] store-bought, Ø175 × 58 mm — WIDER than the Ø160 tower, so it sits
-// mostly in FRONT and only its back nestles into a curved niche in the tower.
-bowl_d   = 175;
-bowl_h   = 58;
-// 2026-06-19 STRAIGHT-DOWN feed (user): food falls vertically from the wheel
-// outlet into the bowl BACK, which nestles UNDER the tower front. The tower
-// stands on LEGS so the outlet clears the (load-cell-raised) bowl rim. The bowl
-// back sits under the outlet (bowl_cx pulled back so back ≈ outlet x).
-leg_h    = 28;    // leg foot height (the standoff) — lifts the tower so the outlet
-                  //   (z57) clears the load-cell+tray-raised bowl rim (~z52)
-// SCREW-IN legs (user): a separate printed leg with a coarse SELF-TAPPING male
-// thread screws UP into a plain hole in a base socket-boss. Base prints flat-
-// bottomed; legs are separate (replaceable / levelling).
-leg_boss_d     = 18;   // socket-boss Ø in the base
-leg_socket_h   = 14;   // socket-boss height (thread engagement depth)
-leg_thread_d     = 12;  // leg male-thread major Ø
-leg_thread_p     = 4;   // pitch (coarse → fewer, cleanly-printable turns)
-leg_thread_depth = 1.5; // radial thread depth (root Ø = major − 2·depth = 9)
-leg_thread_minor = leg_thread_d - 2 * leg_thread_depth + 0.5;  // 9.5 — plain socket hole
-                        //   (root Ø9 + 0.5 slip; the Ø12 crest bites ~1.25 mm → self-taps)
-leg_thread_slip  = 0.35;// female-thread radial clearance (socket cut with an oversized tool)
-// The two FRONT sockets must clear the niche scallop (Ø183 at x=bowl_cx). At r70 the
-// niche wall crosses the socket ring at ±54.6°; a Ø18 boss needs its centre past ~63°.
-// 60° was too close (0.15 mm wall → front thread broke open into the niche = only 2 of
-// 4 legs printed with a real hole). 68°/292° gives a 7 mm solid boss wall. ONE list,
-// used by the bosses, the thread cuts AND the assembly leg view so they can't drift.
-leg_sock_ang = [68, 135, 225, 292];
-// socket_thread=true cuts a real FEMALE thread (exact negative of the leg's male thread
-// via thread_hole) in the base socket. It slices OPEN because the socket is a THROUGH
-// bore (see the socket cut) — a blind threaded pocket printed hole-down gets packed with
-// infill; a through bore stays an open channel. (=false falls back to a plain Ø9.5
-// self-tap hole.)
-socket_thread = true;
-// 108, was 112: at 112 the bowl back sat at x=24.5 and the outlet had to start at 25 to
-// clear it — which strangled hole_len (see hole_radial_in). Moving the bowl 4 mm in puts
-// its back at 20.5, so the outlet can start at 23 and still land 2.5 mm inside the rim.
-// Cost: the niche cuts 4 mm deeper, so the FRONT leg bosses now have 3.9 mm of wall to
-// the niche instead of 7.1 (they were at 0.15 mm before the 68°/292° fix — 3.9 is fine,
-// but do NOT push bowl_cx below ~108 without re-checking that wall).
-bowl_cx  = 108;   // bowl centre x — back (x20.5) sits UNDER the wheel outlet (x23..36)
-niche_z0 = -1;    // scallop runs from the base bottom up (the bowl back nestles in,
-                  //   and the food drops down the open niche straight into it)
-niche_h  = 58;    // scallop top (just under the outlet level so food falls freely)
-niche_cl = 8;     // niche clearance around the bowl (Ø = bowl_d + niche_cl)
-// [Load cell + bowl platform] — 1-5 kg straight bar (~80×12.7×12.7), cantilever:
-// fixed end anchored to the tower behind the scallop, load end forward under the
-// platform; the bowl sits on the platform → its weight deflects the cell (HX711).
-lc_l = 80; lc_w = 12.7; lc_h = 12.7;   // bar load cell
-lc_z   = 6;       // load-cell bottom z (low, in the scallop)
-lc_x0  = 70;      // cell fixed-end x (on the tower-front shelf, behind the bowl)
+// [FEED TRAY] — form 1a: the tower stands FLAT on the ground (no legs) and the food
+// lands in a SHALLOW pull-out tray that nests in the front scallop, sitting on a
+// load-cell platform. Depth is hard-limited: the outlet leaves the disc at z43, and
+// under it we must stack ground + cell (12.7) + platform (4) + the tray itself. That
+// leaves ~20 mm of tray, not the 32 first sketched — 32 mm cannot exist here.
+tray_d   = 150;   // shallow tray Ø (pulls FORWARD out of the scallop; its back is
+                  //   under the disc, so it cannot lift straight up)
+// 16, not 20: the tray must also SLIDE OUT under the scallop's roof (niche_h = 40).
+// With the cell (12.7) + a 2 mm deflection gap + the 4 mm platform, the tray floor lands
+// at z21.7 — so at 20 mm deep its rim (z41.7) would foul the scallop roof and the tray
+// could never come out. 16 leaves 2.3 mm to slide and 5.3 mm for the food to drop.
+tray_h   = 16;    // tray depth. Ø150 × 16 ≈ 280 ml — a generous single meal.
+tray_t   = 2.5;   // tray wall / floor
+tray_rim = 3;     // low rim so kibble does not bounce out
+bowl_cx  = 98;    // tray centre x. Back = 98 − 75 = 23, so the outlet (x25..36) drops
+                  //   fully INSIDE the tray with 2 mm to spare.
+// The scallop. niche_z0 is 4, NOT 0: the base now has a real FLOOR (base_sole) at z0..3
+// that carries the load cell, and the niche must not eat it. niche_h is 40, NOT 58:
+// at 58 the scallop cut straight through the DISC (z43..48) — it destroyed the food
+// outlet AND the anti-rotation key collar, and left the housing's front half sitting on
+// nothing. Keeping the niche under the disc restores all three.
+niche_z0 = 4;
+niche_h  = 40;    // scallop top — under the disc (43), so the disc is the tray's roof
+niche_cl = 8;     // clearance around the tray (scallop Ø = tray_d + niche_cl)
+// [Base sole] — an annular floor so the tower has a footprint AND something to bolt the
+// load cell to (it used to be an open tube with nothing inside). The bore stays clear of
+// the NEMA17 (Ø42.3, corner r29.9) so the motor still drops in from BELOW.
+sole_t   = 3;     // floor thickness (z0..3)
+sole_ir  = 32;    // floor inner radius — clears the motor corner (29.9) by 2 mm
+// [Load cell] — 1..5 kg straight bar (80 × 12.7 × 12.7), cantilever: fixed end bolted
+// DOWN onto a pedestal on the sole, load end forward carrying the tray platform.
+lc_l = 80; lc_w = 12.7; lc_h = 12.7;
+lc_z   = 3;       // cell underside — sits on the sole (z0..3)
+lc_x0  = 25;      // cell fixed-end x (on the pedestal, under the tower)
 lc_hole_d = 4.3;  // M4
-lc_fix1 = lc_x0 + 6;  lc_fix2 = lc_x0 + 18;     // fixed-end holes (anchor to base shelf)
-lc_load1 = lc_x0 + lc_l - 18; lc_load2 = lc_x0 + lc_l - 6;  // load-end holes (to platform)
-// 160, not 170: at 170 the tray + a brim is flush against the 180 bed edge (B1). The
-// Ø175 bowl sits mostly FORWARD of the tray anyway, so Ø160 carries it fine and leaves
-// 20 mm of bed margin — same footprint as every other part.
-plat_d = 160;     // bowl platform Ø (holds the Ø175 bowl; low rim)
-plat_t = 4;       // tray thickness
-plat_z = lc_z + lc_h + 2;   // tray underside z (cell deflection clearance below)
+lc_fix1  = lc_x0 + 6;   lc_fix2  = lc_x0 + 18;              // fixed end -> pedestal
+lc_load1 = lc_x0 + lc_l - 18; lc_load2 = lc_x0 + lc_l - 6;  // load end  -> platform
+ped_w  = 30;      // cell pedestal width (Y)
+ped_l  = 30;      // pedestal length (X), from lc_x0 - 3
+// tray platform on the cell load end
+plat_d = 120;     // platform Ø (under the Ø150 tray; smaller so the tray lifts off easily)
+plat_t = 4;
+plat_z = lc_z + lc_h + 2;   // platform underside (2 mm of cell deflection gap)
 
 // z-planes:  legs 0 · motor-face 43 · deck-top 48 · plate 57 · plate-top 60 · top 97
 deck_top_z = base_deck_z + motor_mount_t;     // 48 — disc top = housing floor (= base_motor_h)
 
 // bowl scallop — cut into every base part it passes through (z−1 .. 58)
+// The tray scallop. Cuts base_motor ONLY (z4..40) — it must NOT reach the disc (z43) or
+// it destroys the outlet + key collar and unseats the housing (that was the old bug).
 module base_niche()
     rotate([0, 0, base_outlet_angle])
         translate([bowl_cx, 0, niche_z0])
-            cylinder(d = bowl_d + niche_cl, h = niche_h - niche_z0 + 1, $fn = 120);
+            cylinder(d = tray_d + niche_cl, h = niche_h - niche_z0 + 1, $fn = 120);
+// SOLE — annular floor (z0..sole_t) giving the tower a real footprint and a place to
+// bolt the load cell. Bore r=sole_ir clears the NEMA17 corner so the motor still enters
+// from below. Prints as the FIRST layers on the bed → no overhang.
+module base_sole()
+    difference() {
+        cylinder(r = bulk_r_out, h = sole_t, $fn = 160);
+        translate([0, 0, -1]) cylinder(r = sole_ir, h = sole_t + 2, $fn = 120);
+    }
+// PEDESTAL the load cell's FIXED end bolts down onto (sits on the sole, inside the
+// scallop, under the tower). Vertical block → prints clean standing.
+module cell_pedestal()
+    rotate([0, 0, base_outlet_angle]) difference() {
+        translate([lc_x0 - 3, -ped_w/2, 0]) cube([ped_l, ped_w, lc_z]);
+        for (hx = [lc_fix1, lc_fix2])                       // M4 anchor holes
+            translate([hx, 0, -1]) cylinder(d = lc_hole_d, h = lc_z + 2, $fn = 24);
+    }
 // −X rotational key: a radial bar over [z0,z1], radius band [r0,r1]. `g` grows it
 // (0 for the lug, +snap_slip for the receiving slot).
 module base_keybar(z0, z1, r0, r1, g)
@@ -812,28 +814,21 @@ module base_motor() {
                     cylinder(r1 = snap_or + snap_bead, r2 = snap_or, h = 1.6, $fn = 160);
                     translate([0, 0, -1]) cylinder(r = snap_ir, h = 3.6, $fn = 160);
                 }
-            for (a = leg_sock_ang)                // leg socket-bosses (z0..14) — on the bed, short stubs
-                rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
-                    cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
             base_keybar(base_deck_z, base_deck_z + snap_h, snap_or - 1, snap_or + snap_bead, 0);  // −X key lug
             el_rails();                           // electronics-tray rails (vertical ribs)
         }
         el_rail_slots();                          // the tray grooves (open top, floor = stop)
         el_window();                              // service window (gabled → self-supporting)
-        for (a = leg_sock_ang)                    // FEMALE-threaded leg sockets (legs screw in from z0)
-            rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -0.01])
-                if ($preview || !socket_thread)   // plain self-tap hole (slices open); thread only if forced
-                    cylinder(d = leg_thread_minor, h = leg_socket_h + 1, $fn = 40);
-                else                              // thread runs THROUGH the boss top (into the tube cavity):
-                    // a BLIND threaded pocket printed hole-down reads as enclosed to OrcaSlicer and gets
-                    // packed with infill (bore prints solid). A THROUGH bore stays an open channel and
-                    // slices clean+threaded. Leg still stops on its foot at the boss bottom, not a cap.
-                    thread_hole(leg_thread_d, leg_thread_p, (leg_socket_h + 2) / leg_thread_p);
-        for (a = [30, 90, 150, 210, 270, 330])    // 6 relief slots → the spigot flexes as it snaps in
+        // NOTE: these 6 relief slots are for the SNAP SPIGOT's flex (base_motor ↔ base_hopper),
+        // NOT for any leg thread — they stay even though the legs are gone.
+        for (a = [30, 90, 150, 210, 270, 330])
             rotate([0, 0, a]) translate([snap_ir - 0.5, -0.7, base_deck_z - 0.01])
                 cube([(snap_or + snap_bead + 1) - (snap_ir - 0.5), 1.4, snap_h + 1]);
         base_niche();
     }
+    // added AFTER the niche cut so the scallop cannot eat them
+    base_sole();
+    cell_pedestal();
 }
 // PART 2 — CORE DISC (z43..48): the motor bolts to its UNDERSIDE (face z43), the housing
 // seats on top (z48); housing-seat tube + stacking lip grow up. The shroud snaps into a
@@ -872,34 +867,49 @@ module base_hopper() {
                 translate([0, 0, -1]) cylinder(r = snap_or + snap_slip, h = 3.2, $fn = 160);
             }
         base_keybar(base_deck_z - 0.01, base_deck_z + snap_h, snap_or - 1 - snap_slip, snap_or + snap_bead + snap_slip + 1, snap_slip);  // −X key slot
-        base_niche();
+        // NO base_niche() here — deliberately. The scallop used to be cut through the disc
+        // too (niche_h was 58 > the disc's z43..48), which deleted the food outlet AND the
+        // anti-rotation key collar and left the housing's front half unsupported. The niche
+        // now stops at z40, under the disc; the disc is the tray's roof.
     }
 }
 // assembly view — the 2 snapped parts in place (used by the full/chassis renders)
 module base() { base_motor(); base_hopper(); }
 
 // ===========================================================================
-// BOWL PLATFORM  separate part — holds the Ø175 bowl, bolted to the load cell's
-// LOAD end at the back; free-floating otherwise so the bowl weight goes only
-// through the cell (HX711). Without a cell, bolt the same holes straight to the
-// base boss (rigid, same look).
+// TRAY PLATFORM + FEED TRAY  (form 1a — the tower stands flat; the tray is the bowl)
+// The platform bolts to the load cell's LOAD end and floats free otherwise, so the
+// tray + kibble weight goes only through the cell (HX711). The TRAY just sits on the
+// platform and PULLS FORWARD out of the scallop to be washed — it cannot lift straight
+// up, because its back tucks under the disc.
 // ===========================================================================
-module bowl_platform() {
+module cell_platform() {                 // PRINT: flat on the bed
     rotate([0, 0, base_outlet_angle]) difference() {
         union() {
-            translate([bowl_cx, 0, plat_z])                       // tray + low rim
-                difference() {
-                    cylinder(d = plat_d, h = 8, $fn = 120);
-                    translate([0, 0, plat_t]) cylinder(d = plat_d - 6, h = 9, $fn = 120);
-                }
-            for (hx = [lc_load1, lc_load2])                       // 2 mount bosses to the load end
+            translate([bowl_cx, 0, plat_z]) cylinder(d = plat_d, h = plat_t, $fn = 120);
+            for (hx = [lc_load1, lc_load2])                  // 2 bosses down to the cell load end
                 translate([hx, 0, lc_z + lc_h])
-                    cylinder(d = 11, h = plat_z - (lc_z + lc_h) + plat_t);
+                    cylinder(d = 11, h = plat_z - (lc_z + lc_h) + plat_t, $fn = 32);
         }
-        for (hx = [lc_load1, lc_load2])                           // bolt holes
-            translate([hx, 0, lc_z + lc_h - 1]) cylinder(d = lc_hole_d, h = plat_z + 4);
+        for (hx = [lc_load1, lc_load2])                      // M4 bolt holes
+            translate([hx, 0, lc_z + lc_h - 1]) cylinder(d = lc_hole_d, h = plat_z + 4, $fn = 24);
     }
 }
+module tray() {                          // PRINT: flat on the bed, open side up
+    difference() {
+        cylinder(d = tray_d, h = tray_h, $fn = 140);
+        translate([0, 0, tray_t])
+            cylinder(d = tray_d - 2*tray_t, h = tray_h, $fn = 140);   // open top
+    }
+}
+// the tray as SEATED on the platform (view only)
+module tray_mounted()
+    rotate([0, 0, base_outlet_angle])
+        translate([bowl_cx, 0, plat_z + plat_t]) tray();
+// the load-cell bar itself (bought part — mock, for the fit check)
+module cell_mock()
+    rotate([0, 0, base_outlet_angle])
+        translate([lc_x0, -lc_w/2, lc_z]) cube([lc_l, lc_w, lc_h]);
 
 // ===========================================================================
 // ANTI-PRESSURE SPIDER  drop-in stress cone, KEYED into funnel-wall slots
@@ -1129,22 +1139,21 @@ module motor_mock(face_z) translate([0, 0, face_z]) {
     color("Silver")  cylinder(d = nema_shaft_d, h = 24, $fn = 24);
 }
 if (part == "x_base") {        // EXPLODED base sub-assembly (assembly guide)
-    color("DimGray")   translate([0, 0, -40]) legs_mounted();   // 4 legs, screw up from below
-    motor_mock(base_deck_z - 70);                                // motor, inserts UP from below
-    color("Tomato")    base_motor();                            // leg shroud (legs + motor cavity)
-    color("Gold")      translate([0, 0, 45]) base_hopper();     // core disc (motor under, housing over)
+    motor_mock(base_deck_z - 70);                               // motor, inserts UP from below
+    color("Tomato")    base_motor();                           // shell + sole + scallop + el bay
+    color("Gold")      translate([0, 0, 45]) base_hopper();    // core disc (motor under, housing over)
 }
 if (part == "x_tower") {       // EXPLODED full tower (assembly guide)
     e = 40;
     color("Gainsboro")            base();
-    color("DimGray")              translate([0, 0, -34]) legs_mounted();
     color("LightSteelBlue")       translate([0, 0, base_motor_h + e]) housing();
     color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5 + e]) wheel();
     color("Khaki")                translate([0, 0, base_h + 2*e]) funnel();
     color("BurlyWood")            translate([0, 0, base_h + z_funnel_top + 3*e]) ring();
     color("Tan")                  translate([0, 0, base_h + z_funnel_top + ring_h + 4*e]) lid();
-    color("Wheat")                translate([0, 0, 1.2*e]) { wp_foot(); wp_tray(); }
-    color("LightBlue", 0.5)       translate([0, 0, 1.2*e]) bowl_mock();
+    color("DimGray")              translate([0, 0, 0.4*e]) cell_mock();
+    color("Wheat")                translate([0, 0, 0.8*e]) cell_platform();
+    color("LightBlue", 0.6)       translate([0, 0, 1.4*e]) tray_mounted();
 }
 if (part == "x_funnel") {      // EXPLODED funnel sub-assembly (assembly guide)
     e = 55;
@@ -1154,10 +1163,9 @@ if (part == "x_funnel") {      // EXPLODED funnel sub-assembly (assembly guide)
     color("MediumSeaGreen") translate([0, 0, -0.7*e]) cap_plate();      // cap — nests on the housing top
 }
 if (part == "full" || part == "full_norings") {
-    // whole product: tower (base+housing+wheel+funnel[+ring+lid]) on screw-in legs
-    // + standalone weighing platform (foot+cell+tray) + bowl, under the food drop.
+    // whole product (form 1a): the tower stands FLAT on its sole — no legs, no external
+    // stand. The feed tray pulls out of the front scallop and rides the load cell.
     color("Gainsboro")            base();
-    color("DimGray")              legs_mounted();
     color("SteelBlue")            el_tray_mounted();                           // electronics tray
     color("Tomato")               el_panel();                                  // service panel
     color("LightSteelBlue", 0.45) translate([0, 0, base_motor_h]) housing();   // hidden inside
@@ -1169,24 +1177,23 @@ if (part == "full" || part == "full_norings") {
     } else {
         color("BurlyWood")        translate([0, 0, base_h + z_funnel_top]) lid();   // lid straight on funnel
     }
-    color("Sienna")               wp_foot();
-    color("DimGray") rotate([0, 0, base_outlet_angle]) translate([22, -lc_w/2, wp_cell_z]) cube([lc_l, lc_w, lc_h]);
-    color("Wheat")                wp_tray();
-    color("LightBlue", 0.4)       bowl_mock();
+    color("DimGray")              cell_mock();          // load cell in the scallop
+    color("Wheat")                cell_platform();
+    color("LightBlue", 0.4)       tray_mounted();       // shallow pull-out feed tray
 }
 if (part == "full_cut") {
     difference() {
         union() {
             color("Gainsboro")            base();
-            color("DimGray")              legs_mounted();
             color("SteelBlue")            el_tray_mounted();
             color("Tomato")               el_panel();
             color("LightSteelBlue")       translate([0, 0, base_motor_h]) housing();
             color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
             color("Khaki")                translate([0, 0, base_h]) funnel();
             color("Tan")                  translate([0, 0, base_h + z_funnel_top]) lid();
-            color("Wheat")                wp_tray();
-            color("LightBlue", 0.5)       bowl_mock();
+            color("DimGray")              cell_mock();
+            color("Wheat")                cell_platform();
+            color("LightBlue", 0.5)       tray_mounted();
         }
         translate([-400, -500, -200]) cube([900, 500, 900]);   // remove y < 0
     }
@@ -1200,116 +1207,15 @@ if (part == "chassis") {
     color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
     color("Khaki", 0.45)          translate([0, 0, base_h]) funnel();
 }
-// PRINTABLE coarse MALE thread. Built by sweeping the r-z tooth profile HELICALLY
-// (a stack of small rotate_extrude arcs). This is CGAL-safe as an ADDED solid — the
-// leg's male thread exports intact. (A linear_extrude(twist) version was tried: it
-// slices fine when SUBTRACTED for the socket, but as an added solid it renders in
-// preview yet VANISHES in the F6/CGAL export → the printed leg lost its thread. So the
-// leg's thread stays THIS module, and the socket is made sliceable by being a THROUGH
-// bore, see the socket cut — that, not the thread profile, was the block.)
-//   profile (r,z) over one pitch: root → 45°-ish lower flank up to the Ø12 crest
-//   → small crest flat → upper flank back to root (upper flank faces up = free).
-module printable_thread(maj_d, pitch, turns) {
-    maj    = maj_d / 2;
-    depth  = leg_thread_depth;
-    root   = maj - depth;
-    lflank = depth * 1.3;            // lower-flank z-rise → atan(depth/lflank)=37.6° overhang
-    crest  = 0.5;
-    seg    = 20;                      // helix slices per turn
-    H      = pitch * turns;
-    n      = ceil((turns + 1) * seg);
-    union() {
-        cylinder(r = root + 0.1, h = H, $fn = 48);                              // core
-        intersection() {                                                        // clip helix to 0..H
-            union() {
-                for (i = [0 : n - 1])
-                    rotate([0, 0, i * 360/seg]) translate([0, 0, i * pitch/seg - pitch])
-                        rotate_extrude(angle = 360/seg + 1.5, $fn = 72)
-                            polygon([[root - 0.8, 0], [maj, lflank], [maj, lflank + crest], [root - 0.8, pitch]]);
-            }
-            cylinder(r = maj + 1, h = H, $fn = 48);
-        }
-    }
-}
-// FEMALE thread tool — subtract from a boss to cut a threaded hole. Same profile as
-// the leg's male thread but radially oversized by leg_thread_slip so it screws in.
-module thread_hole(maj_d, pitch, turns)
-    printable_thread(maj_d + 2 * leg_thread_slip, pitch, turns);
-// SCREW-IN leg: a foot + the printable male thread on top that screws UP into the
-// base's FEMALE-threaded socket (thread_hole). Print foot-down / thread-up.
-module leg() {
-    foot_d = leg_boss_d + 6;
-    union() {
-        cylinder(d1 = foot_d, d2 = foot_d - 5, h = leg_h, $fn = 48);   // foot (slight taper)
-        translate([0, 0, leg_h - 1.5])                                  // overlap into the foot
-            printable_thread(leg_thread_d, leg_thread_p, (leg_socket_h - 1) / leg_thread_p);
-    }
-}
-// the 4 legs as screwed into the base (for assembly views): thread up into the
-// socket, foot below. Placed at the socket angles/radius.
-module legs_mounted() {
-    for (a = leg_sock_ang)
-        rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
-            translate([0, 0, -leg_h]) leg();
-}
-// Standalone WEIGHING PLATFORM (independent of the tower): a bar load cell
-// cantilever — fixed end on a back FOOT on the table, load end carries the bowl
-// TRAY; the bowl weight deflects the cell (HX711). Sits under the food drop.
-wp_cell_z = -leg_h + 4;                 // cell bottom (on the back foot)
-wp_tray_z = wp_cell_z + lc_h + 1;       // tray underside (above the cell, deflection gap)
-module wp_foot() {                       // PRINT: back foot, anchors the cell fixed end
-    difference() {
-        translate([18, -16, -leg_h]) cube([28, 32, wp_cell_z + leg_h]);
-        for (hx = [25, 38]) translate([hx, 0, -leg_h - 1]) cylinder(d = lc_hole_d, h = leg_h + 6, $fn = 24);
-    }
-}
-module wp_tray() {                        // PRINT: bowl tray on the cell LOAD end
-    rotate([0, 0, base_outlet_angle]) difference() {
-        union() {
-            translate([bowl_cx, 0, wp_tray_z])                       // tray + low rim
-                difference() {
-                    cylinder(d = plat_d, h = 8, $fn = 120);
-                    translate([0, 0, plat_t]) cylinder(d = plat_d - 6, h = 9, $fn = 120);
-                }
-            for (hx = [82, 94]) translate([hx, 0, wp_cell_z + lc_h])  // bolt bosses to the load end
-                cylinder(d = 11, h = wp_tray_z - (wp_cell_z + lc_h) + plat_t);
-        }
-        for (hx = [82, 94]) translate([hx, 0, wp_cell_z + lc_h - 1]) cylinder(d = lc_hole_d, h = 12, $fn = 24);
-    }
-}
-module bowl_mock() {
-    rotate([0, 0, base_outlet_angle]) translate([bowl_cx, 0, wp_tray_z + plat_t])
-        difference() {
-            cylinder(d1 = bowl_d - 34, d2 = bowl_d, h = bowl_h, $fn = 120);
-            translate([0, 0, 3]) cylinder(d1 = bowl_d - 40, d2 = bowl_d - 6, h = bowl_h, $fn = 120);
-        }
-}
-if (part == "leg")      leg();          // PRINT: one screw-in leg (thread up)
-if (part == "legs4")                    // PRINT: all 4 screw-in legs laid out (thread up)
-    for (i = [0:3]) translate([(i % 2 ? 1 : -1) * 23, (i < 2 ? 1 : -1) * 23, 0]) leg();
-if (part == "wp_foot")  wp_foot();      // PRINT: weighing-platform back foot
-if (part == "wp_tray")  wp_tray();      // PRINT: weighing-platform bowl tray
-if (part == "station") {
-    // tower on SCREW-IN LEGS + standalone WEIGHING PLATFORM (foot + cell + tray)
-    // under the front; food drops STRAIGHT DOWN the open niche into the bowl.
-    color("Gainsboro")        base();
-    color("DimGray")          legs_mounted();
-    color("Tan")              wp_foot();
-    color("DimGray") rotate([0, 0, base_outlet_angle])           // load cell (mock)
-                              translate([22, -lc_w/2, wp_cell_z]) cube([lc_l, lc_w, lc_h]);
-    color("Khaki")            wp_tray();
-    color("LightBlue", 0.4)   bowl_mock();
-}
-if (part == "station_cut") {
-    difference() {
-        union() {
-            color("Gainsboro")      base();
-            color("Silver")         translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
-            color("LightBlue", 0.5) bowl_mock();
-        }
-        translate([-300, -400, -300]) cube([800, 400, 700]);   // remove y < 0 (see the drop on +X)
-    }
-}
+// (REMOVED 2026-07-13 — form 1a scope reset: the tower now stands FLAT on the ground.
+//  Deleted: printable_thread(), thread_hole(), leg(), legs_mounted(), parts "leg"/"legs4",
+//  and the whole EXTERNAL weighing station wp_foot()/wp_tray()/"station"/"station_cut"
+//  plus the deep Ø175 bowl_mock(). Weighing now lives IN the front scallop: base_sole()
+//  carries cell_pedestal(), the cell carries cell_platform(), and tray() sits on it.)
+
+// PRINT parts of the feeding station
+if (part == "tray")          tray();            // PRINT: shallow pull-out feed tray, flat
+if (part == "cell_platform") cell_platform();   // PRINT: tray platform on the cell load end
 if (part == "chassis_cut") {
     difference() {
         union() {

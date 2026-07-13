@@ -22,7 +22,7 @@
 //                     │
 //        ╔═══╦════════│════════════╦══╗   ← collar walls (fence)
 //        ║   ╠════════╧════════════╣  ║      surrounding the hopper
-//        ╞═══╧═══════════════════════╡   ← end_cap rim (removable)
+//        ╞═══╧═══════════════════════╡   ← cap_plate (in bulk_hopper_module)
 //        │     ░░░░░░░░░░░░░░░░░░   │      cavity
 //        │  ┌──┐  ┌──┐  ┌──┐ (3×)   │      paddles (bottom half only)
 //        ├──┤  ├──┤  ├──┤           │      n_paddles = 3, sweep floor
@@ -34,14 +34,11 @@
 //   part = "wheel"    -> hub + half-height paddles + D-bore
 //   part = "axle"     -> through axle
 //   part = "housing"  -> cup, floor with outlet hole (rounded corners)
-//   part = "end_cap"  -> lid with axle bore + inlet hole (rounded corners)
-//                        + COLLAR (rectangular fence) on top, around the
-//                        hole, retaining the hopper laterally
 //   part = "hopper"   -> small test hopper, open-bottom rect-to-round cone
 //   part = "assembly" -> all stacked together for fit check
 // ===========================================================================
 
-part = "assembly";   // wheel | axle | housing | end_cap | hopper | assembly
+part = "assembly";   // wheel | axle | housing | hopper | assembly
 
 /* [Wheel] */
 // 2026-06-03: scaled BACK to wheel_d=80 (was 120). The Ø120 upscale
@@ -133,20 +130,17 @@ nest_clear = 0.4;       // skirt-over-rim slip clearance (mirror in the funnel)
 inlet_margin = 3;       // rim between the inlet edge and the cavity wall
 axle_keep    = axle_d/2 + fit_clear + 2;  // solid cap kept around the axle bore
 
-/* [Cap rebate joint — the cap nests into a CUT in the housing rim] */
-// 2026-06-06: connect housing↔cap with a REBATE, not pins/holes. The rim
-// is cut down on the inside to a ledge, leaving the outer teardrop LIP;
-// the cap is inset so it drops into that cut and is captured laterally
-// (the teardrop keeps it from rotating).
-rab_d     = 3;          // rebate depth (how deep the cap nests into the lip)
-rab_w     = 2;          // teardrop lip width (the un-cut outer rim)
-cap_clear = 0.4;        // cap <-> lip slip clearance
+// (Cap rebate joint params rab_d/rab_w/cap_clear REMOVED 2026-07-02 — the housing
+//  rebate went away 2026-06-19 and end_cap with it; nothing referenced them.)
 
 /* [Inlet / outlet rectangular hole] */
 // Rounded-rect, radially aligned. Hole IS the narrowest cross-section in
 // the entire kibble pipe (cone narrows down to it directly; no wall
 // constriction above or below).
-hole_radial_in   = 22;   // 2026-06-26: 7→22 — outlet clears the central motor (r21), drops over the niche
+// 2026-07-02 (B2): 22→25 — see the long note on hole_radial_in in bulk_hopper_module.scad.
+// At 22 a 2.5 mm band of kibble landed BEHIND the bowl rim (bowl starts at x=24.5).
+// MUST MATCH hole_radial_in in bulk_hopper_module.scad.
+hole_radial_in   = 25;   // 2026-06-26: 7→22 — outlet clears the central motor (r21), drops over the niche
 hole_radial_out  = 35;   // 2026-06-06: out pulled IN from the rim (40→35) so
 hole_w           = 34;   //   the paddle TIP sweeps solid floor near the rim
 hole_corner_r    = 2;    //   and never crosses a hole edge there.
@@ -236,10 +230,6 @@ module inlet_2d() {
 }
 
 // Cap outline (2D): the housing teardrop inset so the cap drops inside the
-// housing rebate lip (with cap_clear slip).
-module cap_outline() {
-    offset(-(rab_w + cap_clear)) teardrop_2d(hr_out, td_tip_r, td_tip_cx);
-}
 
 // ===========================================================================
 // WHEEL  full-height hub + N radial paddles on the bottom half
@@ -422,53 +412,12 @@ module housing() {
   }
 }
 
-// ===========================================================================
-// END_CAP  disc + lip + axle bore + inlet ROUNDED-RECT hole +
-//          rectangular COLLAR (fence) around the hole on top
-//
-// Collar replaces the old boss-socket. The hopper sits ON the cap top
-// surface (around the hole), with the collar surrounding its outer edge.
-// No socket, no shelf, no wall narrowing of the kibble flow.
-// Collar is intersected with the cap disc so its corners cannot overhang
-// the cap OD.
-// ===========================================================================
-module end_cap() {
-    // 2026-06-06: TEARDROP cap that NESTS into the housing rebate. Its
-    // teardrop is inset by (rab_w + cap_clear) so it drops inside the
-    // housing lip; the disc is (end_wall + rab_d) thick so its bottom rab_d
-    // sits in the cut while its top stays flush with the old rim height
-    // (collar/funnel unchanged). The teardrop blocks rotation; the lip
-    // captures it laterally. No pins, no holes.
-    cap_t = end_wall + rab_d;
-    difference() {
-        union() {
-            // inset teardrop disc (nests into the rebate)
-            linear_extrude(cap_t) cap_outline();
-            // collar fence around the inlet (clipped within the inset disc)
-            intersection() {
-                translate([0, 0, cap_t])
-                    linear_extrude(collar_h)
-                        difference() {
-                            offset(hopper_wall + collar_clear + collar_wall) inlet_2d();
-                            offset(hopper_wall + collar_clear) inlet_2d();
-                        }
-                linear_extrude(cap_t + collar_h + 1) cap_outline();
-            }
-        }
-
-        // central axle bore (in the solid front of the cap — top guide)
-        translate([0, 0, -1])
-            cylinder(h = cap_t + 2, d = axle_d + fit_clear * 2);
-
-        // INLET through-hole
-        translate([0, 0, -1])
-            linear_extrude(cap_t + 2) inlet_2d();
-        // collar interior above the cap — accepts the funnel plug
-        translate([0, 0, cap_t + 0.5])
-            linear_extrude(collar_h + 1)
-                offset(hopper_wall + collar_clear) inlet_2d();
-    }
-}
+// END_CAP — REMOVED 2026-07-02 (dead part).
+// It nested into the housing REBATE, which was deleted 2026-06-19 when the housing
+// got its pointed nest top. With no rebate it seated on nothing. The product's cap is
+// bulk_hopper_module.scad cap_plate(): it nests DOWN over the housing top wall
+// (nest_h groove) and the funnel shell sits over it. cap_outline() and rab_d/rab_w/
+// cap_clear went with it — nothing else referenced them.
 
 // ===========================================================================
 // HOPPER  small test hopper — open-bottom rect-to-round cone.
@@ -519,7 +468,9 @@ if (part == "wheel")   wheel();
 if (part == "axle")    axle();
 if (part == "housing") housing();   // NATIVE 0° for the tilted printer (flipped
                                     // 180° from the earlier rotate on 2026-06-22).
-if (part == "end_cap") end_cap();
+// end_cap REMOVED (2026-07-02): the housing lost its rebate (2026-06-19), so end_cap
+// nested into nothing — a dead part. The real cap is bulk_hopper_module.scad cap_plate(),
+// which nests on the housing TOP wall and is what the funnel sits over.
 if (part == "hopper")  hopper();
 if (part == "assembly") {
     color("Silver")
@@ -528,8 +479,8 @@ if (part == "assembly") {
         translate([0, 0, -axle_stub_bot]) axle();
     color("LightBlue", 0.28)
         housing();
-    color("LightSteelBlue", 0.55)
-        translate([0, 0, housing_h - rab_d]) end_cap();  // nests into the rebate
+    // (cap removed — see the end_cap note at the dispatch. In the real product the
+    //  cap is bulk_hopper cap_plate(), shown in that file's assemblies.)
     // hopper sits ON the cap (z = housing_h + end_wall = cap top),
     // offset to inlet_angle_deg, radial offset hole_mid_r
     color("Khaki", 0.55)

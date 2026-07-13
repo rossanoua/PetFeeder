@@ -1,3 +1,9 @@
+// DEPRECATED — superseded by bulk_hopper_module.scad base()
+// Kept for reference only. This C-shape 220x200x160 chassis is the OLD body;
+// the product is now the Ø160 cylinder tower (base + housing + funnel + rings).
+// Do NOT build from this file: its assembly() still uses the removed end_cap()
+// and a stale translate([-28,..]) for the funnel (current throat_cx = 0).
+// Its echo total_tower_z is also stale (funnel 153 vs actual 115).
 // AiPetFeeder — Lower body chassis (C-shape, with internal chute)
 // ---------------------------------------------------------------------------
 // First iteration of the integrated feeder body. C-shape architecture:

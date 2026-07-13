@@ -50,7 +50,11 @@ throat_fillet   = 8;    // 2026-06-06: ROUND the plug→cone inner corner so
 // anti-bridge is still a vibromotor; only the mounting geometry is TBD.
 
 /* [Storage ring] */
-ring_h          = 170;  // height per ring; stack as needed
+// 150, NOT 170: the ring also grows a stacking_lip (joint_lip_h = 10) on top, so the
+// printed part is ring_h + 10. At 170 that is exactly 180 mm = the full bed height,
+// with zero margin for brim/first-layer → it does not print. 150 → 160 mm printed
+// (20 mm margin). Rings are modular: print one extra ring to recover the old volume.
+ring_h          = 150;  // height per ring; stack as needed
 
 /* [Lid] */
 lid_disc_h      = 4;
@@ -67,7 +71,12 @@ join_clear      = 0.3;
 // in between (the old spout cube is gone in this revision).
 // 2026-06-05b: throat extended inward toward the axle (in 14→7) to feed
 // the wheel's stirrer cone. Now 33×34. MUST match paddle_wheel_module.scad.
-hole_radial_in   = 22;   // 2026-06-26: 7→22 so the outlet clears the central motor (r21) and sits
+// 2026-07-02 (B2): 22→25. The bowl (Ø175 @ bowl_cx=112) starts at x=24.5, so an outlet
+// starting at x=22 dropped a 2.5 mm band of kibble BEHIND the bowl rim → onto the tray.
+// At 25 the whole outlet is over the bowl (0.5 mm margin) and still clears the motor (r21).
+// MUST MATCH hole_radial_in in paddle_wheel_module.scad — the housing floor outlet and
+// this disc outlet have to stay aligned or food lands on the disc.
+hole_radial_in   = 25;   // 2026-06-26: 7→22 so the outlet clears the central motor (r21) and sits
 hole_radial_out  = 35;   //   fully over the front niche (x>20.5) → food drops to the bowl, not the motor
 hole_w           = 34;   // tangential
 hole_corner_r    = 2;
@@ -400,11 +409,18 @@ module funnel() {
     // assembly view of the 3 SEPARATE parts together (shell + cone + cap). Each is a
     // single wall → no double-wall void in any one part → slices clean. The gap
     // between shell and cone is real AIR (the cone is located by the cap collar, not
-    // the shell). NB: the cone is raised by cap_t here because in the real stack it
-    // RESTS on the cap top (the print part funnel_cone() is still at z0 — view-only).
+    // the shell). Print parts are all modelled at z0; the offsets here are VIEW-ONLY
+    // and reproduce the real stack when funnel() is placed at base_h:
+    //   shell  z0        — its rim rests on the base top rim (= housing top = base_h)
+    //   cap   z-nest_h   — DROPS DOWN over the housing top wall, which enters the cap's
+    //                      underside groove (depth nest_h). Was at z0 → the wall entered
+    //                      0 mm, i.e. the cap sat on nothing and the joint did not key.
+    //   cone  z(cap_t-nest_h) — RESTS ON THE CAP TOP (cap spans -nest_h .. cap_t-nest_h)
+    //                      and its throat plug drops into the cap collar. Was at cap_t →
+    //                      it floated nest_h above the cap.
     funnel_shell();
-    translate([0, 0, cap_t]) funnel_cone();
-    cap_plate();
+    translate([0, 0, -nest_h])          cap_plate();
+    translate([0, 0, cap_t - nest_h])   funnel_cone();
 }
 // 3-part funnel — SHELL: the outer Ø160 tube + the stacking lip. A plain tube →
 // slices perfectly (one wall, no void, no bottom disc).
@@ -444,6 +460,11 @@ module cone_bortik() {
 // ===========================================================================
 // STORAGE RING  modular section, stacks via top lip
 // ===========================================================================
+// BUGFIX 2026-07-02: the bore used to run the FULL height (ring_h + joint_lip_h + 2) at
+// r = bulk_r_in. But lip_or = bulk_r_in - join_clear < bulk_r_in, so the bore swallowed
+// the whole stacking lip — the ring printed as a bare tube and rings COULD NOT STACK.
+// Now bored like shell_tube(): straight to (ring_h - cavity_taper_h), then a taper up to
+// lip_ir so the lip's first layer lands on solid wall instead of printing in air.
 module ring() {
     difference() {
         union() {
@@ -451,7 +472,9 @@ module ring() {
             stacking_lip(ring_h);
         }
         translate([0, 0, -1])
-            cylinder(h = ring_h + joint_lip_h + 2, r = bulk_r_in);
+            cylinder(h = ring_h - cavity_taper_h + 1, r = bulk_r_in);
+        translate([0, 0, ring_h - cavity_taper_h])
+            cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
     }
 }
 
@@ -592,7 +615,10 @@ lc_x0  = 70;      // cell fixed-end x (on the tower-front shelf, behind the bowl
 lc_hole_d = 4.3;  // M4
 lc_fix1 = lc_x0 + 6;  lc_fix2 = lc_x0 + 18;     // fixed-end holes (anchor to base shelf)
 lc_load1 = lc_x0 + lc_l - 18; lc_load2 = lc_x0 + lc_l - 6;  // load-end holes (to platform)
-plat_d = 170;     // bowl platform Ø (holds the Ø175 bowl; low rim)
+// 160, not 170: at 170 the tray + a brim is flush against the 180 bed edge (B1). The
+// Ø175 bowl sits mostly FORWARD of the tray anyway, so Ø160 carries it fine and leaves
+// 20 mm of bed margin — same footprint as every other part.
+plat_d = 160;     // bowl platform Ø (holds the Ø175 bowl; low rim)
 plat_t = 4;       // tray thickness
 plat_z = lc_z + lc_h + 2;   // tray underside z (cell deflection clearance below)
 
@@ -610,6 +636,142 @@ module base_keybar(z0, z1, r0, r1, g)
     rotate([0, 0, key_ang]) translate([r0, -(jkey_w + 2*g)/2, z0])
         cube([r1 - r0, jkey_w + 2*g, z1 - z0]);
 
+/* [Electronics bay — A3] ====================================================
+   The bay is the annulus inside the Ø160 tube: r ≈30 (NEMA17 body corner) .. 77,
+   z 0..base_deck_z. It is only base_deck_z (43) mm TALL — the motor hangs the full
+   height — so a 110×70 tray does NOT fit. The boards ride on ONE VERTICAL tray.
+   PRINTABILITY (base_motor prints STANDING, so a horizontal shelf inside it would be
+   a ceiling → supports): everything added here is vertical —
+     · rails  = ribs running along Z  → zero overhang
+     · slots  = vertical grooves      → zero overhang
+     · panel opening = 45° GABLE roof → self-supporting, no bridge over the window
+   The tray itself is a SEPARATE part printed FLAT with its standoffs pointing UP.
+   Placement: el_sector = 180° — opposite the +X food outlet, and it slots between the
+   leg bosses (nearest boss edge is 37.6° off the sector axis; the rails sit at ~34°).
+*/
+el_sector  = 180;   // bay centre angle (opposite the +X outlet)
+el_tray_t  = 3;     // tray plate thickness
+el_tray_w  = 80;    // tray width  (chord, → global Y). ESP32 52 + a 22-wide column
+el_tray_h  = 38;    // tray height (→ global Z). Must stay under base_deck_z (43)
+el_x       = 58;    // tray mid-plane distance from the axis. Corners land at
+                    // hypot(58,40)=70.4 < bulk_r_in; and 56.5 − 29.9 = 26 mm off the motor
+el_z0      = 3;     // tray bottom. The rail slot STARTS here, so its floor is the tray stop
+el_slip    = 0.4;   // tray ↔ slot slip
+rail_y0    = 33;    // rail inner edge (Y)
+rail_y1    = 44;    // rail outer edge (Y). Slot ends at 40.4 → the 40.4..44 material is
+                    // the lateral stop. Rail stays clear of the leg bosses (see above).
+rail_x0    = 54;    // rail inner face (X) — the cheek in front of the tray
+el_slot_w  = el_tray_t + el_slip;          // 3.4
+el_slot_y1 = el_tray_w/2 + el_slip;        // 40.4 — slot outer edge
+// service window in the Ø160 wall + its removable panel
+panel_w     = 46;              // window width (chord)
+panel_z0    = 4;               // window bottom
+panel_hs    = 14;             // straight part height (DC jack Ø8 + USB live here)
+panel_gable = panel_w/2;      // 45° roof: rise == half-width → self-supporting
+panel_clr   = 0.35;           // panel ↔ window slip
+panel_flange = 2.5;           // inner flange width — the panel cannot fall outward
+dc_jack_d   = 8;
+usb_slot    = [12, 6];
+// boards (VERIFY against your actual modules — hole patterns differ per vendor)
+esp_c = [-13,  0];  esp_holes = [48, 24];
+drv_c = [ 27, 10];  drv_holes = [15, 10];
+hx_c  = [ 27,-10];  hx_holes  = [17, 11];
+standoff_d = 6; standoff_h = 4; standoff_hole = 2.3;   // Ø2.3 → M2.5 self-tap
+
+// vertical U-channel rails the tray slides DOWN into. Clipped to the bore so their outer
+// face IS the wall inner surface → they merge into the wall on union.
+module el_rails() {
+    rotate([0, 0, el_sector])
+        for (s = [-1, 1])
+            intersection() {
+                translate([rail_x0, s > 0 ? rail_y0 : -rail_y1, 0])
+                    cube([bulk_r_out, rail_y1 - rail_y0, base_deck_z]);
+                cylinder(r = bulk_r_in, h = base_deck_z, $fn = 160);
+            }
+}
+// the groove cut out of each rail. Open at the TOP (tray drops in), closed at el_z0 —
+// that floor is the tray's bottom stop, so no separate stop lug is needed.
+module el_rail_slots() {
+    rotate([0, 0, el_sector])
+        for (s = [-1, 1])
+            translate([el_x - el_slot_w/2, s > 0 ? rail_y0 - 1 : -el_slot_y1, el_z0])
+                cube([el_slot_w, el_slot_y1 - (rail_y0 - 1), base_deck_z]);
+}
+// service window through the wall. Rectangle + 45° GABLE roof (hull to a ridge), so the
+// window has no horizontal ceiling to bridge — it self-supports on a standing print.
+module el_window(grow = 0) {
+    rotate([0, 0, el_sector])
+        hull() {
+            translate([bulk_r_in - 1, -(panel_w/2 + grow), panel_z0 - grow])
+                cube([bulk_wall + 6, panel_w + 2*grow, panel_hs]);
+            translate([bulk_r_in - 1, -0.5, panel_z0 + panel_hs + panel_gable + grow - 0.5])
+                cube([bulk_wall + 6, 1, 0.5]);
+        }
+}
+// PRINT: removable service panel — a curved wall segment (prints STANDING like the tube,
+// its gable roof self-supports). An inner FLANGE laps the wall from inside so it cannot
+// fall outward; it is fitted from inside and pins the tray behind it.
+module el_panel() {
+    intersection() {
+        union() {
+            difference() {                                   // wall-thickness segment
+                el_window(-panel_clr);
+                cylinder(r = bulk_r_in, h = base_deck_z + 10, $fn = 160);
+            }
+            difference() {                                   // inner flange (laps the wall)
+                el_window(panel_flange);
+                cylinder(r = bulk_r_in - 1.5, h = base_deck_z + 10, $fn = 160);
+                el_window(-panel_clr);                       // keep only the lapping ring
+            }
+        }
+        cylinder(r = bulk_r_out, h = base_deck_z + 10, $fn = 160);
+        // connector holes
+        rotate([0, 0, el_sector]) difference() {
+            cylinder(r = bulk_r_out + 1, h = base_deck_z + 10, $fn = 160);
+            translate([bulk_r_in - 4, -14, panel_z0 + panel_hs/2])
+                rotate([0, 90, 0]) cylinder(d = dc_jack_d, h = 20, $fn = 32);
+            translate([bulk_r_in - 4, 6 - usb_slot[0]/2, panel_z0 + panel_hs/2 - usb_slot[1]/2])
+                cube([20, usb_slot[0], usb_slot[1]]);
+        }
+    }
+}
+// PRINT: electronics tray — FLAT on the bed, standoffs UP (zero overhang). Slides down
+// the base rails on edge. Plate centred on z so its mid-plane lands on el_x in assembly.
+module el_tray_standoffs(c, hp) {
+    for (sx = [-1, 1], sy = [-1, 1])
+        translate([c[0] + sx*hp[0]/2, c[1] + sy*hp[1]/2, el_tray_t/2])
+            difference() {
+                cylinder(d = standoff_d, h = standoff_h, $fn = 24);
+                translate([0, 0, -0.5]) cylinder(d = standoff_hole, h = standoff_h + 1, $fn = 20);
+            }
+}
+module el_tray() {
+    difference() {
+        union() {
+            translate([0, 0, -el_tray_t/2])                       // plate, centred on z=0
+                cube([el_tray_w, el_tray_h, el_tray_t], center = true);
+            el_tray_standoffs(esp_c, esp_holes);                  // ESP32
+            el_tray_standoffs(drv_c, drv_holes);                  // A4988 / DRV8825
+            el_tray_standoffs(hx_c,  hx_holes);                   // HX711
+        }
+        // wiring pass-throughs (also cut plastic/print time)
+        for (x = [-30, 0, 30])
+            translate([x, -el_tray_h/2 + 4, 0])
+                cube([10, 5, el_tray_t + 2], center = true);
+        translate([el_tray_w/2 - 6, el_tray_h/2 - 5, 0])
+            cube([8, 6, el_tray_t + 2], center = true);
+    }
+}
+// the tray as SEATED in the base (view only): its plate mid-plane lands on el_x, its
+// width runs along the chord (global Y) and its standoffs face INWARD (−X, toward the
+// motor: 26 mm clear there vs 19 mm to the wall).
+module el_tray_mounted()
+    rotate([0, 0, el_sector])
+        multmatrix([[0, 0, -1, el_x],
+                    [1, 0,  0, 0],
+                    [0, 1,  0, el_z0 + el_tray_h/2],
+                    [0, 0,  0, 1]])
+            el_tray();
 // PART 1 — LEG SHROUD: a plain Ø160 tube (z0..43), open both ends, around the motor;
 // leg sockets at the bottom; a SNAP spigot on top that springs into the disc. PRINTS
 // STANDING (z0 on the bed) — a plain tube, no support. Motor inserts from the bottom.
@@ -634,7 +796,10 @@ module base_motor() {
                 rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, 0])
                     cylinder(d = leg_boss_d, h = leg_socket_h, $fn = 48);
             base_keybar(base_deck_z, base_deck_z + snap_h, snap_or - 1, snap_or + snap_bead, 0);  // −X key lug
+            el_rails();                           // electronics-tray rails (vertical ribs)
         }
+        el_rail_slots();                          // the tray grooves (open top, floor = stop)
+        el_window();                              // service window (gabled → self-supporting)
         for (a = leg_sock_ang)                    // FEMALE-threaded leg sockets (legs screw in from z0)
             rotate([0, 0, a]) translate([bulk_r_out - leg_boss_d/2 - 1, 0, -0.01])
                 if ($preview || !socket_thread)   // plain self-tap hole (slices open); thread only if forced
@@ -920,6 +1085,14 @@ if (part == "lid")      lid();
 if (part == "base")        base();                       // assembly preview (2 snapped parts)
 if (part == "base_motor")  base_motor();                 // PRINT: leg shroud, standing
 if (part == "base_hopper") base_hopper();                // PRINT: core disc, disc-on-the-bed
+if (part == "el_tray")     el_tray();                    // PRINT: electronics tray, FLAT, standoffs up
+if (part == "el_panel")    el_panel();                   // PRINT: service panel, standing (curved segment)
+if (part == "el_fit") {                                  // DEBUG: bay fit — tray + panel in the shroud
+    color("Gainsboro", 0.35) base_motor();
+    color("SteelBlue")       el_tray_mounted();
+    color("Tomato")          el_panel();
+    color("DimGray", 0.5)    motor_mock(base_deck_z);
+}
 if (part == "base_cut")                                  // DEBUG: vertical half-cut, colour-coded
     intersection() {
         union() {
@@ -965,6 +1138,8 @@ if (part == "full" || part == "full_norings") {
     // + standalone weighing platform (foot+cell+tray) + bowl, under the food drop.
     color("Gainsboro")            base();
     color("DimGray")              legs_mounted();
+    color("SteelBlue")            el_tray_mounted();                           // electronics tray
+    color("Tomato")               el_panel();                                  // service panel
     color("LightSteelBlue", 0.45) translate([0, 0, base_motor_h]) housing();   // hidden inside
     color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
     color("Khaki")                translate([0, 0, base_h]) funnel();
@@ -984,6 +1159,8 @@ if (part == "full_cut") {
         union() {
             color("Gainsboro")            base();
             color("DimGray")              legs_mounted();
+            color("SteelBlue")            el_tray_mounted();
+            color("Tomato")               el_panel();
             color("LightSteelBlue")       translate([0, 0, base_motor_h]) housing();
             color("Silver")               translate([throat_cx, 0, base_motor_h + 3.5]) wheel();
             color("Khaki")                translate([0, 0, base_h]) funnel();

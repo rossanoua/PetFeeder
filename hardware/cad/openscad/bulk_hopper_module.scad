@@ -58,10 +58,17 @@ throat_fillet   = 8;    // 2026-06-06: ROUND the plug→cone inner corner so
 ring_h          = 150;  // height per ring; stack as needed
 
 /* [Lid] */
-lid_disc_h      = 4;
-lid_handle      = true;
-lid_handle_d    = 30;
-lid_handle_h    = 4;
+// 5, was 4: the finger-grip scallops are 3 mm deep; at disc 4 that leaves only 1 mm of
+// floor. 5 leaves 2 mm. +1 mm on the lid doesn't change the fit.
+lid_disc_h      = 5;
+// L2 — the round knob ("pill" look) is gone; the lid opens by TWO finger scallops for a
+// twist grip. Ø22 pockets, 3 mm deep, on a 50 mm radius, on the −Y/+Y axis (so thumb +
+// finger pull tangentially = the ¼-turn unlock direction).
+lid_grip        = true;
+lid_grip_d      = 22;
+lid_grip_depth  = 3;
+lid_grip_r      = 50;
+lid_grip_n      = 2;
 
 /* [Stacking joint] */
 joint_lip_h     = 10;
@@ -295,6 +302,17 @@ module bay_tab(i)
                      [bulk_r_in,  bay_tab_z + bay_tab_h],      // full-height outer
                      [bay_tab_ir, bay_tab_z + bay_tab_h],      // full-depth top
                      [bay_tab_ir, bay_tab_z + bay_lead]]);     // underside ramps 45° back out
+// LID variant of the tab: identical footprint + L-engagement, but the 45° lead-in is on
+// the TOP face instead of the bottom. The lid prints UPSIDE-DOWN (disc on the bed, skirt
+// up), so the tab's bed-facing overhang is its MODEL-TOP face — the ramp must live there
+// or it bridges. Everything else (radius, angle, slot, detent) is shared, not duplicated.
+module bay_tab_lid(i)
+    rotate([0, 0, i * 360/bay_n])
+        rotate_extrude(angle = bay_tab_ang, $fn = 160)
+            polygon([[bulk_r_in,  bay_tab_z],
+                     [bulk_r_in,  bay_tab_z + bay_tab_h],
+                     [bay_tab_ir, bay_tab_z + bay_tab_h - bay_lead],   // TOP face ramps 45°
+                     [bay_tab_ir, bay_tab_z]]);
 // The matching L-slot, cut into the lip at global z_base. Vertical channel runs the FULL
 // lip height (the tab has to travel down past all of it), then an L-run at the bottom.
 module bay_slot(i, z_base) {
@@ -532,10 +550,15 @@ module funnel() {
 // 3-part funnel — SHELL: the outer Ø160 tube + the stacking lip. A plain tube →
 // slices perfectly (one wall, no void, no bottom disc).
 module funnel_shell() {
-    union() {
-        shell_tube();
-        stacking_lip(z_funnel_top);
-        for (i = [0 : bay_n - 1]) bay_tab(i);   // J2 — bayonet tabs, onto the base's lip
+    difference() {
+        union() {
+            shell_tube();
+            stacking_lip(z_funnel_top);
+            for (i = [0 : bay_n - 1]) bay_tab(i);                 // tabs (down) → base lip
+            for (i = [0 : bay_n - 1]) bay_detent(i, z_funnel_top);// detents in the TOP lip → ring/lid
+        }
+        // L-slots in the TOP lip so a ring or the lid can bayonet straight onto the funnel
+        for (i = [0 : bay_n - 1]) bay_slot(i, z_funnel_top);
     }
 }
 // 3-part funnel — CONE insert: the mass-flow cone + spider pockets. The cone is
@@ -578,35 +601,52 @@ module ring() {
         union() {
             cylinder(h = ring_h, d = bulk_d);
             stacking_lip(ring_h);
+            for (i = [0 : bay_n - 1]) bay_detent(i, ring_h);   // J2 — click for the lid/next tab
         }
         translate([0, 0, -1])
             cylinder(h = ring_h - cavity_taper_h + 1, r = bulk_r_in);
         translate([0, 0, ring_h - cavity_taper_h])
             cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
+        // J2 — L-slots in this ring's TOP lip so a lid (or the next shell's tabs) can
+        // bayonet on. The channel is just a void; rings still slip-stack through it.
+        for (i = [0 : bay_n - 1]) bay_slot(i, ring_h);
     }
 }
 
 // ===========================================================================
-// LID  top cover, finger handle
+// LID  top cover — J2 BAYONET onto the ring/shell lip + finger-grip scallops.
+// Modelled skirt-DOWN (disc on top) = the working pose on the jar. Prints UPSIDE-DOWN
+// (see lid_print): disc on the bed, skirt up, scallops face the bed (shallow cavities in
+// the first layers), tabs use bay_tab_lid (ramp on the model-top = bed face when flipped).
 // ===========================================================================
 module lid() {
-    skirt_h    = joint_lip_h + 4;
-    skirt_id   = 2 * bulk_r_in + 2 * join_clear;
+    skirt_h    = joint_lip_h + 4;                       // 14 — skirt must clear the full lip
+    // bore = 2*bulk_r_in (= 2*(lip_or+join_clear)): the skirt slips over the lip with
+    // join_clear, AND its inner face lands exactly on bulk_r_in so the bay_tab_lid tabs
+    // (outer edge = bulk_r_in) FUSE to it. The old +2*join_clear left the tabs floating.
+    skirt_id   = 2 * bulk_r_in;
     skirt_od   = bulk_d;
-
-    union() {
-        difference() {
-            union() {
-                translate([0, 0, skirt_h])
-                    cylinder(h = lid_disc_h, d = bulk_d);
-                cylinder(h = skirt_h, d = skirt_od);
+    top_z      = skirt_h + lid_disc_h;                  // outer disc face
+    grip_R     = (pow(lid_grip_d/2, 2) + pow(lid_grip_depth, 2)) / (2 * lid_grip_depth); // sagitta
+    difference() {
+        union() {
+            difference() {
+                union() {
+                    translate([0, 0, skirt_h]) cylinder(h = lid_disc_h, d = bulk_d);   // disc
+                    cylinder(h = skirt_h, d = skirt_od);                                // skirt
+                }
+                translate([0, 0, -1]) cylinder(h = skirt_h + 1, d = skirt_id);          // hollow skirt
             }
-            translate([0, 0, -1])
-                cylinder(h = skirt_h + 1, d = skirt_id);
+            for (i = [0 : bay_n - 1]) bay_tab_lid(i);   // J2 — bayonet tabs on the skirt bore
         }
-        if (lid_handle)
-            translate([0, 0, skirt_h + lid_disc_h])
-                cylinder(h = lid_handle_h, d = lid_handle_d);
+        // L2 — finger-grip scallops: spherical pockets in the OUTER disc face (which is the
+        // bed face in print), so they print as self-supporting shallow domes, not a flat
+        // Ø22 bridge. lid_grip_n pockets on lid_grip_r, on the ±Y axis (tangential pull).
+        if (lid_grip)
+            for (i = [0 : lid_grip_n - 1])
+                rotate([0, 0, 90 + i * 360/lid_grip_n])
+                    translate([lid_grip_r, 0, top_z + grip_R - lid_grip_depth])
+                        sphere(r = grip_R, $fn = 64);
     }
 }
 
@@ -824,12 +864,15 @@ module el_rail_slots() {
 // service window through the wall. Rectangle + 45° GABLE roof (hull to a ridge), so the
 // window has no horizontal ceiling to bridge — it self-supports on a standing print.
 module el_window(grow = 0) {
+    // ridge is a near-zero-width LINE (not a 1 mm plank) so the gabled ceiling meets at a
+    // sharp crest = two 45° skates, self-supporting. A flat-topped ridge left a shallow
+    // ceiling that pulled support even at the lowest threshold.
     rotate([0, 0, el_sector])
         hull() {
             translate([bulk_r_in - 1, -(panel_w/2 + grow), panel_z0 - grow])
                 cube([bulk_wall + 6, panel_w + 2*grow, panel_hs]);
-            translate([bulk_r_in - 1, -0.5, panel_z0 + panel_hs + panel_gable + grow - 0.5])
-                cube([bulk_wall + 6, 1, 0.5]);
+            translate([bulk_r_in - 1, -0.01, panel_z0 + panel_hs + panel_gable + grow])
+                cube([bulk_wall + 6, 0.02, 0.02]);
         }
 }
 // J5 — the nibs / their dimples, as ONE solid used by both the panel (added) and the
@@ -1273,7 +1316,22 @@ if (part == "cone")     funnel_cone();   // PRINT: cone insert + spider pockets.
                                        // earlier rotate on 2026-06-22 — matches housing).
 if (part == "cap")      cap_plate();   // PRINT: separate solid cap disc (nests on housing)
 if (part == "ring")     ring();
-if (part == "lid")      lid();
+if (part == "lid")      lid();            // working pose (skirt down, on the jar)
+if (part == "lid_print")                 // PRINT pose: flipped disc-on-bed, skirt + tabs up
+    translate([0, 0, lid_disc_h + joint_lip_h + 4]) rotate([180, 0, 0]) lid();
+if (part == "lid_on_ring_cut") {         // DEBUG: lid bayoneted onto a ring, half-cut
+    // zoom on the lip joint only (z-slab), keep x<0 half, contrasting colours
+    intersection() {
+        difference() {
+            union() {
+                color("#2E6FA8") ring();                                             // jar = blue
+                color("#E0781E") rotate([0, 0, -bay_run]) translate([0, 0, ring_h]) lid();  // lid = orange
+            }
+            translate([-300, -300, -60]) cube([300, 600, 400]);   // keep x<0 (view the cut face)
+        }
+        translate([0, 0, ring_h - 4]) cylinder(r = bulk_r_out + 1, h = joint_lip_h + 12, $fn = 160);
+    }
+}
 if (part == "base")        base();                       // assembly preview (2 snapped parts)
 if (part == "base_motor")  base_motor();                 // PRINT: leg shroud, standing
 if (part == "base_hopper") base_hopper();                // PRINT: core disc, disc-on-the-bed
@@ -1518,5 +1576,5 @@ echo(str("bulk_d=", bulk_d, " funnel_h=", funnel_h,
          " wall_angle=", funnel_wall_angle, "deg cone_top_z=", round(cone_top_z*10)/10,
          " hopper_outer=", hopper_outer_len, "x", hopper_outer_w,
          " ring_h=", ring_h,
-         " total_h=", z_funnel_top + ring_h + joint_lip_h + 4 + lid_disc_h + lid_handle_h,
+         " total_h=", z_funnel_top + ring_h + joint_lip_h + 4 + lid_disc_h,
          " est_ring_L=", round(3.14159 * bulk_r_in * bulk_r_in * ring_h / 1000) / 1000));

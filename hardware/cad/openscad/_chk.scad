@@ -38,3 +38,15 @@ if(chk=="cap_nestdet") intersection() {
         difference() { offset(nest_clear) teardrop_2d(pw_hr_out,pw_td_tip_r,pw_td_tip_cx);
                        offset(nest_clear-nest_det) teardrop_2d(pw_hr_out,pw_td_tip_r,pw_td_tip_cx); }
 }
+
+// --- L1 lid bayonet onto the ring lip ---
+module lid_tabs(rot=0) rotate([0,0,rot]) translate([0,0,ring_h]) for(i=[0:bay_n-1]) bay_tab_lid(i);
+if(chk=="lid_entry")  intersection() { ring(); lid_tabs(0); }         // want EMPTY (tab in channel)
+if(chk=="lid_locktab")intersection() { ring(); lid_tabs(-bay_run); }  // want EMPTY (tab in the run)
+if(chk=="lid_lockover")                                               // want NON-empty (roof over tab)
+    intersection() {
+        ring();
+        rotate([0,0,-bay_run]) translate([0,0,ring_h]) for(i=[0:bay_n-1])
+            rotate([0,0,i*360/bay_n]) rotate_extrude(angle=bay_tab_ang, $fn=160)
+                translate([bay_tab_ir, bay_tab_z+bay_tab_h+bay_slip]) square([bay_tab_r, 3]);
+    }

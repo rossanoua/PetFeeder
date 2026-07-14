@@ -27,6 +27,7 @@
 use <paddle_wheel_module.scad>   // wheel() for the spider_fit clearance render
 
 part = "assembly";   // funnel | ring | lid | assembly | spider | spider_fit
+step = 9;            // for part="step": 0..9, cumulative assembly (see the step dispatch)
 
 /* [Hopper outer geometry] */
 bulk_d        = 160;    // outer diameter of every section (mm)
@@ -1473,6 +1474,45 @@ if (part == "assembly") {
     color("LightSteelBlue", 0.55)   translate([0, 0, z_funnel_top]) ring();
     color("Khaki", 0.7)             translate([0, 0, z_funnel_top + ring_h]) lid();
 }
+if (part == "bay_zoom") {
+    // debug: J2 bayonet, LOCKED. A z-slab isolates the lip band; the base lip (blue) shows
+    // its 3 L-slots, the shell (translucent orange) is dropped on and twisted -bay_run so
+    // its 3 tabs sit in the LOCKED leg of the L (under the lip roof), not the entry channel.
+    // Render top-down (rx=0) to read the tabs-in-slots; iso/side for the roof overlap.
+    // pre-rotate +bay_run so the locked tab (twists to -bay_run) lands on +X, then keep a
+    // ±26° wedge + z-slab = a big zoom on ONE tab-in-slot. Shell translucent so the tab
+    // shows through, sitting under the lip roof.
+    rotate([0, 0, bay_run])
+    intersection() {
+        union() {
+            color("#2E6FA8")        base_hopper();
+            color("#E0781E", 0.55)  rotate([0, 0, -bay_run]) translate([0, 0, base_h]) funnel_shell();
+        }
+        translate([0, 0, base_h - 2]) cylinder(r = bulk_r_out + 1, h = joint_lip_h + 5, $fn = 160);
+        rotate([0, 0, -26]) rotate_extrude(angle = 52, $fn = 160)
+            translate([bulk_r_in - 8, base_h - 2]) square([14, joint_lip_h + 5]);
+    }
+}
+// STEP-BY-STEP assembly. step 0..9, cumulative — each value adds the next part in the
+// §3 HANDOFF order. For rendering a picture-per-step build instruction.
+module _step_stack(step) {
+    if (step >= 1) color("#444")          motor_mock(base_deck_z);                       // 1 motor
+    if (step >= 1) color("Gold")          base_hopper();                                 // 1 disc
+    if (step >= 2) color("Silver")        translate([throat_cx, 0, base_motor_h + 3.5]) wheel();  // 2 wheel
+    if (step >= 3) color("LightSteelBlue")translate([0, 0, base_motor_h]) housing();     // 3 housing
+    if (step >= 4) color("SteelBlue")     el_tray_mounted();                             // 4 electronics
+    if (step >= 4) color("Tomato")        el_panel();
+    if (step >= 5) color("Gainsboro", 0.55) base_motor();                                // 5 shroud snaps on
+    if (step >= 6) color("#4A4F55")       cell_mock();                                   // 6 weigh
+    if (step >= 6) color("Wheat")         cell_platform();
+    if (step >= 6) color("LightBlue", 0.6)tray_mounted();
+    if (step >= 7) color("MediumSeaGreen")translate([0, 0, base_h - nest_h]) cap_plate();// 7 cap+cone
+    if (step >= 7) color("Orange", 0.8)   translate([0, 0, base_h + cap_t - nest_h]) funnel_cone();
+    if (step >= 8) color("Khaki", 0.5)    translate([0, 0, base_h]) funnel_shell();      // 8 shell bayonet
+    if (step >= 9) color("BurlyWood")     translate([0, 0, base_h + z_funnel_top]) ring();          // 9 ring+lid
+    if (step >= 9) color("Tan")           translate([0, 0, base_h + z_funnel_top + ring_h]) lid();
+}
+if (part == "step") _step_stack(step);
 
 echo(str("bulk_d=", bulk_d, " funnel_h=", funnel_h,
          " wall_angle=", funnel_wall_angle, "deg cone_top_z=", round(cone_top_z*10)/10,

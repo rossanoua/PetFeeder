@@ -57,3 +57,13 @@ module food_pieces() {
 if (view == "product") product_pieces();
 if (view == "base")    base_pieces();
 if (view == "food")    food_pieces();
+
+// J2 bayonet close-up: shell tabs + base L-slots, exploded a little
+module bayonet_pieces() {
+    piece("#C7A96B", 0.30) translate([0, 0, base_h + 18]) funnel_shell();   // shell lifted, tabs visible
+    piece("#B9BFC6")       base();                                          // base with the slotted lip
+}
+if (view == "bayonet") bayonet_pieces();
+
+// tray alone, cut across Y, to show the low back ramp wall
+if (view == "trayramp") color("#6FA8C7") intersection() { tray(); translate([-200,-200,-5]) cube([400,200,60]); }

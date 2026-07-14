@@ -15,6 +15,14 @@
 
 Друк: **AONE2 / Klipper**, поле **180 × 180 × 180** — усі деталі туди вписані.
 
+| Вежа в зборі | Вибухова схема |
+|---|---|
+| ![Вежа в зборі](cad/openscad/preview/gallery/view_product.png) | ![Вибухова схема вежі](cad/openscad/preview/gallery/exp_tower.png) |
+
+| Вибух: база | Вибух: лійка |
+|---|---|
+| ![База](cad/openscad/preview/gallery/exp_base.png) | ![Лійка](cad/openscad/preview/gallery/exp_funnel.png) |
+
 ### Файли
 
 | Файл | Що |
@@ -67,6 +75,30 @@ z85 ─── верх бази (base_h) = верх housing; сюди сідає
 
 Габарити зняті з **експортованих STL**, не з памʼяті.
 
+### Галерея деталей
+
+Усі рендери — `cad/openscad/preview/gallery/`, кожна деталь має `*_iso.png` і `*_side.png`.
+
+| `base_motor` — обичайка | `base_hopper` — диск | `housing` — камера |
+|---|---|---|
+| ![base_motor](cad/openscad/preview/gallery/base_motor_iso.png) | ![base_hopper](cad/openscad/preview/gallery/base_hopper_iso.png) | ![housing](cad/openscad/preview/gallery/pw_housing_iso.png) |
+
+| `wheel` — колесо | `cap` — кришка housing | `shell` — оболонка лійки |
+|---|---|---|
+| ![wheel](cad/openscad/preview/gallery/pw_wheel_iso.png) | ![cap](cad/openscad/preview/gallery/cap_iso.png) | ![shell](cad/openscad/preview/gallery/shell_iso.png) |
+
+| `cone` — конус | `spider_body` — анти-джам | `spider_legs` — леза |
+|---|---|---|
+| ![cone](cad/openscad/preview/gallery/cone_iso.png) | ![spider_body](cad/openscad/preview/gallery/spider_body_iso.png) | ![spider_legs](cad/openscad/preview/gallery/spider_legs_iso.png) |
+
+| `ring` — банка | `lid` — кришка | `tray` — лоток-миска |
+|---|---|---|
+| ![ring](cad/openscad/preview/gallery/ring_iso.png) | ![lid](cad/openscad/preview/gallery/lid_iso.png) | ![tray](cad/openscad/preview/gallery/tray_iso.png) |
+
+| `cell_platform` — площадка ваги | `el_tray` — плата-носій | `el_panel` — сервісна панель |
+|---|---|---|
+| ![cell_platform](cad/openscad/preview/gallery/cell_platform_iso.png) | ![el_tray](cad/openscad/preview/gallery/el_tray_iso.png) | ![el_panel](cad/openscad/preview/gallery/el_panel_iso.png) |
+
 ### Куплене
 
 NEMA17 17HS4401 (Ø42.3, вал Ø5 D, довж. 40) · load cell 1–5 кг (80×12.7×12.7) ·
@@ -116,6 +148,19 @@ HX711 · ESP32 devkit (~52×28) · A4988/DRV8825 · DC-jack Ø8 · USB 12×6 ·
 ---
 
 ## 4. ⚠️ Числа, які не можна чіпати наосліп
+
+Розрізи до кожного пункту (повний набір — `cad/openscad/preview/gallery/sec_*.png`,
+відтворюються з `gallery_views.scad`):
+
+| Шлях корму (розріз по Y) | База в розрізі: дно, cell, лоток |
+|---|---|
+| ![Шлях корму](cad/openscad/preview/gallery/sec_food.png) | ![База в розрізі](cad/openscad/preview/gallery/sec_base_cut.png) |
+| Банка → конус → housing → колесо → виток → комірець → диск → **лоток** | Дно z0–3, cell на пʼєдесталі, площадка, лоток висувається вперед |
+
+| Відсік електроніки — згори (зріз z14–22) | Відсік — збоку |
+|---|---|
+| ![Відсік згори](cad/openscad/preview/gallery/sec_bay_top.png) | ![Відсік збоку](cad/openscad/preview/gallery/sec_bay_side.png) |
+| Синє — `el_tray` **ребром** у рейках ззаду; квадрат у центрі — мотор | Плата на всю висоту відсіку (z3–41); червоне — сервісна панель |
 
 ### 4.1 Виток корму — затиснутий з ЧОТИРЬОХ боків
 
@@ -241,3 +286,29 @@ python3 pf_thumb.py g_<name>/plate_1.gcode <48.png> <300.png>   # thumbnail
 **STL має бути binary** (`--export-format binstl`) — ASCII не центрується в `pf_make`.
 
 Принцип користувача: **підтримки = сміття = гроші.** Дизайн має бути support-free.
+
+---
+
+## 8. Як перегенерувати картинки
+
+Усі рендери в цьому файлі лежать у `cad/openscad/preview/gallery/`.
+
+```sh
+cd hardware/cad/openscad
+
+# одна деталь, 2 ракурси (БЕЗ --render: інакше злетять кольори)
+xvfb-run -a openscad -o preview/gallery/tray_iso.png  --imgsize=560,450 \
+  --viewall --autocenter --camera=0,0,0,58,0,25,0 -D 'part="tray"' bulk_hopper_module.scad
+xvfb-run -a openscad -o preview/gallery/tray_side.png --imgsize=560,450 \
+  --viewall --autocenter --camera=0,0,0,90,0,0,0  -D 'part="tray"' bulk_hopper_module.scad
+
+# розрізи (gallery_views.scad): view = product | base | food ; cut = none | slab | xhalf | yhalf
+xvfb-run -a openscad -o preview/gallery/sec_food.png --imgsize=840,680 --viewall --autocenter \
+  --camera=0,0,0,76,0,195,0 -D 'view="food"' -D 'cut="yhalf"' gallery_views.scad
+```
+
+Камера — `--camera=tx,ty,tz,rx,ry,rz,dist`; з `--viewall` дистанція 0 = автопідбір.
+`cut="yhalf"` лишає **y<0**, тому щоб бачити площину зрізу, дивись з **+Y** (rz ≈ 180–200).
+
+Візуальний довідник цією ж галереєю (деталі + розрізи + порядок збирання):
+<https://claude.ai/code/artifact/f1700034-7984-4b45-b9b1-5870580ef21e>

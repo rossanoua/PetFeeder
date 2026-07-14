@@ -275,6 +275,49 @@ module rounded_rect(x, y, r, h) {
     }
 }
 
+// ---- J2 BAYONET ----------------------------------------------------------------
+// The base's stacking lip spans z_base .. z_base+joint_lip_h, outer radius lip_or. The
+// shell's bore (bulk_r_in) drops over it. The tabs live on the shell bore and engage
+// slots cut into that lip's OUTER face. (bay_tab_ir / bay_tab_ang / bay_seg are DERIVED
+// down in the [Self-locking joints] block, AFTER the bay_* params they depend on — they
+// were up here once and evaluated to undef, which made rotate_extrude draw a FULL RING
+// instead of a tab.)
+// One tab, as it sits on the shell bore (shell-local z; shell bottom = 0). A single
+// rotate_extrude of a (r,z) trapezoid: full depth to bulk_r_in at the top, a 45° lead-in
+// on the underside (bay_lead) so a STANDING print never bridges it. NO hull() — hull of
+// two arcs left tessellation crumbs that read as a collision. The SLOT is widened by a
+// whole facet each side (bay_seg) so the tab clears it despite coarse arc facets.
+module bay_tab(i)
+    rotate([0, 0, i * 360/bay_n])
+        rotate_extrude(angle = bay_tab_ang, $fn = 160)
+            polygon([[bulk_r_in,  bay_tab_z],                  // outer edge starts at the floor
+                     [bulk_r_in,  bay_tab_z + bay_tab_h],      // full-height outer
+                     [bay_tab_ir, bay_tab_z + bay_tab_h],      // full-depth top
+                     [bay_tab_ir, bay_tab_z + bay_lead]]);     // underside ramps 45° back out
+// The matching L-slot, cut into the lip at global z_base. Vertical channel runs the FULL
+// lip height (the tab has to travel down past all of it), then an L-run at the bottom.
+module bay_slot(i, z_base) {
+    zr0 = z_base + bay_tab_z - bay_slip;            // run floor
+    zr1 = z_base + bay_tab_z + bay_tab_h + bay_slip; // run ceiling
+    r0  = bay_tab_ir - bay_slip;
+    r1  = lip_or + 1;                               // out through the lip's outer face
+    // widen the slot by a whole facet each side so the coarsely-facetted tab clears it
+    rotate([0, 0, i * 360/bay_n - bay_seg]) {
+        rotate_extrude(angle = bay_tab_ang + 2*bay_seg, $fn = 160)   // vertical entry channel
+            translate([r0, zr0]) square([r1 - r0, joint_lip_h + 2]);
+        rotate([0, 0, -bay_run])                    // L-run: twist CW to lock
+            rotate_extrude(angle = bay_tab_ang + 2*bay_seg + bay_run, $fn = 160)
+                translate([r0, zr0]) square([r1 - r0, zr1 - zr0]);
+    }
+}
+// Detent left standing in the run: the tab must ride over it, so the tower will not
+// unscrew itself. Sits just inside the run's far (locked) end.
+module bay_detent(i, z_base)
+    rotate([0, 0, i * 360/bay_n - bay_run + 1.5])
+        rotate_extrude(angle = 3, $fn = 160)
+            translate([bay_tab_ir - bay_slip, z_base + bay_tab_z - bay_slip])
+                square([lip_or - (bay_tab_ir - bay_slip), bay_det]);
+
 module stacking_lip(z_base) {
     translate([0, 0, z_base])
         difference() {
@@ -367,6 +410,48 @@ module cone_wall_solid() {
     }
 }
 
+/* [Self-locking joints — no glue, no metal] ================================
+   The lower stack (motor / wheel / housing / shroud / disc) was already positively
+   located. The UPPER stack was a slippery gravity pile. These add the retention.
+
+   J1 (wheel axial capture) NEEDED NO WORK — verified, do not "fix" it:
+     the wheel's top is not the Ø20 hub (18 tall) but its central stirrer boss, which
+     reaches local z29 → global 80.5. The cap underside is at 81.5. So the wheel is
+     ALREADY captured with a 1.0 mm gap, and the contact face is the boss at r<10 —
+     i.e. the narrow, low-friction land near the axis that a counterbore would have
+     added. Shaft engagement is 15.5 mm; lifting the full 1.0 mm still leaves 14.5 mm.
+     It cannot climb off the shaft.
+*/
+// J2 — BAYONET, shell → base (the critical one). The shell used to just rest its rim on
+// the base with 0.3 mm of slip: lift the lid and the whole tower came with it. Now 3 tabs
+// on the shell's inner bore ride down 3 full-height channels in the base's stacking lip,
+// then twist ~20° into an L-run and click past a detent.
+bay_n     = 3;      // tabs / slots
+bay_tab_w = 8;      // tab width, tangential (mm at the lip radius)
+bay_tab_h = 3;      // tab height (vertical)
+bay_tab_r = 1.5;    // tab radial depth (protrudes inward from the shell bore)
+bay_tab_z = 0.5;    // tab bottom, above the shell's bottom rim
+bay_slip  = 0.35;   // slot ↔ tab clearance
+bay_run   = 20;     // horizontal travel of the L (degrees)
+bay_det   = 0.35;   // detent bump proud (rides over it → will not back off on its own)
+bay_lead  = 1.5;    // 45° lead-in under the tab → prints support-free on the standing shell
+bay_tab_ir  = bulk_r_in - bay_tab_r;                 // 75.5 — tab inner radius
+bay_tab_ang = bay_tab_w / (bulk_r_in * PI / 180);    // 5.95 — tab angular width at the bore
+bay_seg     = 360 / 160;                             // one $fn=160 facet (slot over-width)
+// J3 — housing clicks onto the disc's anti-rotation collar (it was held down only by the
+// weight of the tower above; pull the funnel and housing+cap fell out in your hand).
+ar_bead   = 0.35;   // bead proud on the collar's outer walls → friction/snap into the
+                    //   housing floor outlet. Small on purpose: it must not need a tool.
+// J4 — the cap↔housing nest and the cone↔collar register were pure slip fits.
+nest_det  = 0.4;    // detent in the cap's nest groove → clicks onto the housing top wall
+cone_det  = 0.4;    // detent in the cap's throat collar → clicks onto the cone's plug
+// J5 — the service panel could not fall OUT (it has a flange) but nothing stopped it
+// falling IN. Two nibs on its side edges snap into dimples in the window reveal.
+pan_nib   = 0.4;
+// J6 — a shallow ring on the platform so the tray self-centres and does not shuffle when
+// kibble lands (a shuffling tray corrupts the weight reading).
+loc_h     = 1.2;    // locator ring height
+loc_slip  = 0.5;    // ring ↔ tray outer clearance
 nest_clear = 0.4;   // groove↔wall slip clearance (mirror nest_clear in paddle_wheel)
 nest_h     = 3.5;   // nest depth — the housing top wall enters this far up
 
@@ -402,6 +487,21 @@ module cap_plate() {
                 offset(cone_wall + cap_reg_clear + cap_reg_wall) throat_2d();
                 offset(cone_wall + cap_reg_clear)                throat_2d();
             }
+        // J4 — DETENT RIDGE inside the throat collar: the cone's plug clicks past it, so
+        // the cap+cone stay together in your hand before the shell goes over them.
+        translate([0, 0, cap_t + cap_reg_h - 1.6]) linear_extrude(0.8)
+            difference() {
+                offset(cone_wall + cap_reg_clear)             throat_2d();
+                offset(cone_wall + cap_reg_clear - cone_det)  throat_2d();
+            }
+        // J4 — DETENT LIP in the NEST groove (added AFTER the groove is cut, or the cut
+        // would delete it): a thin ridge near the groove mouth that the housing's top
+        // wall snaps past, so the cap stays on the housing while you handle it.
+        translate([0, 0, nest_h - 1.4]) linear_extrude(0.7)
+            difference() {
+                offset(nest_clear)            teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+                offset(nest_clear - nest_det) teardrop_2d(pw_hr_out, pw_td_tip_r, pw_td_tip_cx);
+            }
     }
 }
 
@@ -434,6 +534,7 @@ module funnel_shell() {
     union() {
         shell_tube();
         stacking_lip(z_funnel_top);
+        for (i = [0 : bay_n - 1]) bay_tab(i);   // J2 — bayonet tabs, onto the base's lip
     }
 }
 // 3-part funnel — CONE insert: the mass-flow cone + spider pockets. The cone is
@@ -730,10 +831,22 @@ module el_window(grow = 0) {
                 cube([bulk_wall + 6, 1, 0.5]);
         }
 }
+// J5 — the nibs / their dimples, as ONE solid used by both the panel (added) and the
+// base window (subtracted, grown by a slip). The panel could already not fall OUT (it has
+// an inner flange) but nothing stopped it falling IN — it would rattle or drop into the
+// bay. Two nibs on its side edges click into the window reveal.
+module el_nibs(g = 0)
+    rotate([0, 0, el_sector])
+        for (s = [-1, 1])
+            translate([bulk_r_in + bulk_wall/2, s * (panel_w/2 - panel_clr), panel_z0 + panel_hs/2])
+                rotate([0, 90, 0])
+                    cylinder(r = pan_nib + g, h = bulk_wall + 2, center = true, $fn = 16);
 // PRINT: removable service panel — a curved wall segment (prints STANDING like the tube,
 // its gable roof self-supports). An inner FLANGE laps the wall from inside so it cannot
 // fall outward; it is fitted from inside and pins the tray behind it.
 module el_panel() {
+    union() {
+    el_nibs(0);                                          // J5 — side nibs (click into the reveal)
     intersection() {
         union() {
             difference() {                                   // wall-thickness segment
@@ -755,6 +868,7 @@ module el_panel() {
             translate([bulk_r_in - 4, 6 - usb_slot[0]/2, panel_z0 + panel_hs/2 - usb_slot[1]/2])
                 cube([20, usb_slot[0], usb_slot[1]]);
         }
+    }
     }
 }
 // PRINT: electronics tray — FLAT on the bed, standoffs UP (zero overhang). Slides down
@@ -819,6 +933,7 @@ module base_motor() {
         }
         el_rail_slots();                          // the tray grooves (open top, floor = stop)
         el_window();                              // service window (gabled → self-supporting)
+        el_nibs(0.25);                            // J5 — dimples the panel's nibs click into
         // NOTE: these 6 relief slots are for the SNAP SPIGOT's flex (base_motor ↔ base_hopper),
         // NOT for any leg thread — they stay even though the legs are gone.
         for (a = [30, 90, 150, 210, 270, 330])
@@ -841,12 +956,22 @@ module base_hopper() {
                 union() {
                     translate([0, 0, base_motor_h]) cylinder(d = bulk_d, h = base_h - base_motor_h, $fn = 160);
                     stacking_lip(base_h);
+                    for (i = [0 : bay_n - 1]) bay_detent(i, base_h);   // J2 — ride-over detents
                 }
                 translate([0, 0, base_motor_h - 1]) cylinder(r = bulk_r_in, h = base_h - base_motor_h + 1 - cavity_taper_h + 1);
                 translate([0, 0, base_h - cavity_taper_h]) cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
+                for (i = [0 : bay_n - 1]) bay_slot(i, base_h);         // J2 — L-slots in the lip
             }
             translate([0, 0, base_motor_h]) rotate([0, 0, base_outlet_angle])   // housing key collar (into housing outlet)
-                translate([base_mid_r, 0, 0]) rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
+                translate([base_mid_r, 0, 0]) union() {
+                    rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
+                    // J3 — 2 beads on the collar's tangential faces: the housing floor's
+                    // outlet presses over them and stays put when the funnel comes off.
+                    for (s = [-1, 1])
+                        translate([0, s * (ar_oy/2 - ar_bead/2), ar_h - 1.2])
+                            rotate([0, 90, 0])
+                                cylinder(r = ar_bead, h = ar_ox - 4, center = true, $fn = 16);
+                }
         }
         // motor mount on the UNDERSIDE (z43 face): pilot recess, 4× M3, shaft hole
         translate([0, 0, base_deck_z - 1]) cylinder(d = nema_shaft_d + 3, h = motor_mount_t + 2);  // shaft Ø8 through
@@ -887,6 +1012,14 @@ module cell_platform() {                 // PRINT: flat on the bed
     rotate([0, 0, base_outlet_angle]) difference() {
         union() {
             translate([bowl_cx, 0, plat_z]) cylinder(d = plat_d, h = plat_t, $fn = 120);
+            // J6 — LOCATOR RING: the tray drops inside it, so it self-centres and cannot
+            // shuffle when kibble lands (a shuffling tray corrupts the weight reading).
+            translate([bowl_cx, 0, plat_z + plat_t - 0.01])
+                difference() {
+                    cylinder(d = plat_d, h = loc_h, $fn = 120);
+                    translate([0, 0, -1]) cylinder(d = plat_d - 2 * (plat_d - tray_d)/2 - 2*loc_slip - 4,
+                                                   h = loc_h + 2, $fn = 120);
+                }
             for (hx = [lc_load1, lc_load2])                  // 2 bosses down to the cell load end
                 translate([hx, 0, lc_z + lc_h])
                     cylinder(d = 11, h = plat_z - (lc_z + lc_h) + plat_t, $fn = 32);
@@ -895,11 +1028,39 @@ module cell_platform() {                 // PRINT: flat on the bed
             translate([hx, 0, lc_z + lc_h - 1]) cylinder(d = lc_hole_d, h = plat_z + 4, $fn = 24);
     }
 }
+// The tray's BACK wall is a problem the geometry cannot design away. The outlet starts at
+// hole_radial_in (x23) but the tray's inner floor cannot start before x25.5: its outer back
+// (x23) is already only 1.9 mm off the NEMA17 body (r21.15), so the tray cannot move back,
+// and pushing the outlet forward instead would collapse hole_len and jam the bore. So a
+// 2.5 mm band of kibble lands ON the back wall. Fix: that back wall is CUT DOWN and given a
+// 45 deg inward RAMP — anything that lands there slides into the tray instead of sitting on
+// a ledge or bouncing out. Printed open-side-up the ramp grows outward layer by layer, so
+// it is self-supporting.
+tray_ramp_a = 46;    // angular half-width of the cut-down back sector (deg, about -X)
+tray_ramp_h = 6;     // back wall height at the ramp (vs tray_h elsewhere)
 module tray() {                          // PRINT: flat on the bed, open side up
+    ri = tray_d/2 - tray_t;              // inner floor radius
     difference() {
-        cylinder(d = tray_d, h = tray_h, $fn = 140);
-        translate([0, 0, tray_t])
-            cylinder(d = tray_d - 2*tray_t, h = tray_h, $fn = 140);   // open top
+        union() {
+            difference() {
+                cylinder(d = tray_d, h = tray_h, $fn = 140);
+                translate([0, 0, tray_t]) cylinder(r = ri, h = tray_h, $fn = 140);  // open top
+            }
+            // the ramp itself: a 45 deg fillet from the floor up the inner back wall
+            intersection() {
+                rotate_extrude($fn = 140)
+                    polygon([[ri - tray_ramp_h, tray_t],
+                             [ri,               tray_t],
+                             [ri,               tray_t + tray_ramp_h]]);
+                rotate([0, 0, 180 - tray_ramp_a])
+                    rotate_extrude(angle = 2 * tray_ramp_a, $fn = 140)
+                        translate([0, 0]) square([tray_d, tray_h + 1]);
+            }
+        }
+        // cut the back wall down to tray_ramp_h over that same sector
+        rotate([0, 0, 180 - tray_ramp_a])
+            rotate_extrude(angle = 2 * tray_ramp_a, $fn = 140)
+                translate([ri, tray_ramp_h]) square([tray_t + 1, tray_h]);
     }
 }
 // the tray as SEATED on the platform (view only)

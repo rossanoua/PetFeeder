@@ -58,16 +58,18 @@ throat_fillet   = 8;    // 2026-06-06: ROUND the plug→cone inner corner so
 ring_h          = 150;  // height per ring; stack as needed
 
 /* [Lid] */
-// 5, was 4: the finger-grip scallops are 3 mm deep; at disc 4 that leaves only 1 mm of
-// floor. 5 leaves 2 mm. +1 mm on the lid doesn't change the fit.
-lid_disc_h      = 5;
-// L2 — the round knob ("pill" look) is gone; the lid opens by TWO finger scallops for a
-// twist grip. Ø22 pockets, 3 mm deep, on a 50 mm radius, on the −Y/+Y axis (so thumb +
-// finger pull tangentially = the ¼-turn unlock direction).
+// 8: the grip scallops are now 6 mm deep (to PINCH-LIFT the lid one-handed, not just
+// twist it); disc = depth + 2 mm floor. +4 mm on the lid (19→22 tall) doesn't hurt.
+lid_disc_h      = 8;
+// L2 — the lid opens AND lifts by two finger scallops (no knob). Deep enough that a
+// fingertip drops in and hooks the far wall to pull the lid up one-handed. On r30, NOT
+// r50: diametrically opposite on r30 = 60 mm apart = a thumb+finger pinch a hand can
+// span. r50 would be 100 mm apart — impossible to pinch one-handed. 30 mm is still ample
+// leverage for the ¼-turn unlock. On the ±Y axis (tangential = the unlock direction).
 lid_grip        = true;
-lid_grip_d      = 22;
-lid_grip_depth  = 3;
-lid_grip_r      = 50;
+lid_grip_d      = 26;      // wider so the fingertip seats
+lid_grip_depth  = 6;       // deep enough to hook and lift
+lid_grip_r      = 30;      // pinch-spannable one-handed
 lid_grip_n      = 2;
 
 /* [Stacking joint] */

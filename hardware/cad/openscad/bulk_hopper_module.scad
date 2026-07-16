@@ -842,7 +842,7 @@ usb_slot    = [12, 6];
 esp_c = [-13,  0];  esp_holes = [48, 24];
 drv_c = [ 27, 10];  drv_holes = [15, 10];
 hx_c  = [ 27,-10];  hx_holes  = [17, 11];
-standoff_d = 6; standoff_h = 4; standoff_hole = 2.3;   // Ø2.3 → M2.5 self-tap
+standoff_d = 8; standoff_h = 4; standoff_hole = 2.3;   // Ø2.3 → M2.5 self-tap
 
 // vertical U-channel rails the tray slides DOWN into. Clipped to the bore so their outer
 // face IS the wall inner surface → they merge into the wall on union.
@@ -926,13 +926,18 @@ module el_panel() {
 // not flow). Running the column from the bed means it prints as one body with the plate
 // from layer 1, and the plate's top surface fills AROUND it. Blind hole (1 mm floor left)
 // so the M2.5 screw bites and doesn't poke out the back.
+// Standoff = solid column from the plate BOTTOM up through the plate and out standoff_h,
+// with a THROUGH bore. Running it from the bed (not sitting on the top face) makes it one
+// body with the plate from layer 1; the through bore keeps its centre a ring, not a solid
+// disc for a top-skin to form on. Ø8 (was 6): double the weld area at the base — a thin
+// top skin, if the slicer still lays one, can't pop an 8 mm column off. M2.5 self-taps.
 module el_tray_standoffs(c, hp) {
     base_z = -el_tray_t/2;
     for (sx = [-1, 1], sy = [-1, 1])
         translate([c[0] + sx*hp[0]/2, c[1] + sy*hp[1]/2, 0])
             difference() {
-                translate([0, 0, base_z]) cylinder(d = standoff_d, h = el_tray_t + standoff_h, $fn = 24);
-                translate([0, 0, base_z + 1]) cylinder(d = standoff_hole, h = el_tray_t + standoff_h, $fn = 20);
+                translate([0, 0, base_z]) cylinder(d = standoff_d, h = el_tray_t + standoff_h, $fn = 32);
+                translate([0, 0, base_z - 1]) cylinder(d = standoff_hole, h = el_tray_t + standoff_h + 2, $fn = 20);
             }
 }
 module el_tray() {

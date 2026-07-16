@@ -919,12 +919,20 @@ module el_panel() {
 }
 // PRINT: electronics tray — FLAT on the bed, standoffs UP (zero overhang). Slides down
 // the base rails on edge. Plate centred on z so its mid-plane lands on el_x in assembly.
+// Each standoff is a solid column from the plate's BOTTOM (z=-el_tray_t/2) up through the
+// plate and out standoff_h above it — NOT a pin sitting on the plate's top face. Why: a
+// pin that starts at the top surface is sliced as a separate object printed ONTO a
+// finished top-solid skin — it welds to nothing and snaps off at a touch (the real cause,
+// not flow). Running the column from the bed means it prints as one body with the plate
+// from layer 1, and the plate's top surface fills AROUND it. Blind hole (1 mm floor left)
+// so the M2.5 screw bites and doesn't poke out the back.
 module el_tray_standoffs(c, hp) {
+    base_z = -el_tray_t/2;
     for (sx = [-1, 1], sy = [-1, 1])
-        translate([c[0] + sx*hp[0]/2, c[1] + sy*hp[1]/2, el_tray_t/2])
+        translate([c[0] + sx*hp[0]/2, c[1] + sy*hp[1]/2, 0])
             difference() {
-                cylinder(d = standoff_d, h = standoff_h, $fn = 24);
-                translate([0, 0, -0.5]) cylinder(d = standoff_hole, h = standoff_h + 1, $fn = 20);
+                translate([0, 0, base_z]) cylinder(d = standoff_d, h = el_tray_t + standoff_h, $fn = 24);
+                translate([0, 0, base_z + 1]) cylinder(d = standoff_hole, h = el_tray_t + standoff_h, $fn = 20);
             }
 }
 module el_tray() {

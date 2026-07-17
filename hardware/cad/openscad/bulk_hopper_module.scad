@@ -639,21 +639,20 @@ module lid() {
                 }
                 translate([0, 0, -1]) cylinder(h = skirt_h + 1, d = skirt_id);          // hollow skirt
             }
-            for (i = [0 : bay_n - 1]) bay_tab(i);       // J2 — tabs with the fillet on the UNDERSIDE,
-            // support-free with the skirt DOWN = the working pose. The lid prints DISC-UP (part="lid",
-            // not lid_print): the coin pockets open upward and print clean, no support. The disc's
-            // underside bridges the skirt (Ø154 internal bridge) — that face is INSIDE the lid, over
-            // the jar mouth, hidden; a little sag there is invisible. Flipped-disc-down was worse: the
-            // pockets landed on the bed and the slicer filled them as bottom skin (grips vanished).
+            for (i = [0 : bay_n - 1]) bay_tab_lid(i);   // J2 — fillet on the model-TOP = the bed face
+            // when the lid prints FLIPPED (disc on the bed, skirt up). See lid_print.
         }
-        // L2 — finger grips: CYLINDRICAL "coin" pockets in the OUTER (TOP) disc face. Disc prints UP,
-        // so they are open-topped pockets that print cleanly. Ø28 + 6 mm deep: an adult fingertip
-        // hooks in to pinch-lift one-handed. lid_grip_n on lid_grip_r, ±Y (tangential = unlock dir).
+        // L2 — finger grips: THROUGH holes (not blind pockets). Every attempt at a blind recess on the
+        // disc face failed to print without support: disc-down the slicer filled the pocket as bottom
+        // skin; disc-up the whole disc became a Ø154 internal bridge that sagged and closed the pockets
+        // on the real print. A through hole has no floor to fill or sag — it always prints as a clean
+        // hole, no support, disc flat on the bed. Two Ø28 holes: fingertips pinch through them to lift
+        // one-handed. lid_grip_n on lid_grip_r, ±Y axis (tangential pull = the ¼-turn unlock direction).
         if (lid_grip)
             for (i = [0 : lid_grip_n - 1])
                 rotate([0, 0, 90 + i * 360/lid_grip_n])
-                    translate([lid_grip_r, 0, top_z - lid_grip_depth])
-                        cylinder(d = lid_grip_d, h = lid_grip_depth + 1, $fn = 48);
+                    translate([lid_grip_r, 0, -1])
+                        cylinder(d = lid_grip_d, h = skirt_h + lid_disc_h + 2, $fn = 48);
     }
 }
 

@@ -67,9 +67,9 @@ lid_disc_h      = 8;
 // span. r50 would be 100 mm apart — impossible to pinch one-handed. 30 mm is still ample
 // leverage for the ¼-turn unlock. On the ±Y axis (tangential = the unlock direction).
 lid_grip        = true;
-lid_grip_d      = 26;      // wider so the fingertip seats
-lid_grip_depth  = 6;       // deep enough to hook and lift
-lid_grip_r      = 30;      // pinch-spannable one-handed
+lid_grip_d      = 28;      // "coin" Ø — an adult fingertip drops in
+lid_grip_depth  = 6;       // deep enough to hook and pinch-lift (disc 8 → 2 mm floor = the bridge)
+lid_grip_r      = 30;      // pinch-spannable one-handed (60 mm apart)
 lid_grip_n      = 2;
 
 /* [Stacking joint] */
@@ -639,16 +639,21 @@ module lid() {
                 }
                 translate([0, 0, -1]) cylinder(h = skirt_h + 1, d = skirt_id);          // hollow skirt
             }
-            for (i = [0 : bay_n - 1]) bay_tab_lid(i);   // J2 — bayonet tabs on the skirt bore
+            for (i = [0 : bay_n - 1]) bay_tab(i);       // J2 — tabs with the fillet on the UNDERSIDE,
+            // support-free with the skirt DOWN = the working pose. The lid prints DISC-UP (part="lid",
+            // not lid_print): the coin pockets open upward and print clean, no support. The disc's
+            // underside bridges the skirt (Ø154 internal bridge) — that face is INSIDE the lid, over
+            // the jar mouth, hidden; a little sag there is invisible. Flipped-disc-down was worse: the
+            // pockets landed on the bed and the slicer filled them as bottom skin (grips vanished).
         }
-        // L2 — finger-grip scallops: spherical pockets in the OUTER disc face (which is the
-        // bed face in print), so they print as self-supporting shallow domes, not a flat
-        // Ø22 bridge. lid_grip_n pockets on lid_grip_r, on the ±Y axis (tangential pull).
+        // L2 — finger grips: CYLINDRICAL "coin" pockets in the OUTER (TOP) disc face. Disc prints UP,
+        // so they are open-topped pockets that print cleanly. Ø28 + 6 mm deep: an adult fingertip
+        // hooks in to pinch-lift one-handed. lid_grip_n on lid_grip_r, ±Y (tangential = unlock dir).
         if (lid_grip)
             for (i = [0 : lid_grip_n - 1])
                 rotate([0, 0, 90 + i * 360/lid_grip_n])
-                    translate([lid_grip_r, 0, top_z + grip_R - lid_grip_depth])
-                        sphere(r = grip_R, $fn = 64);
+                    translate([lid_grip_r, 0, top_z - lid_grip_depth])
+                        cylinder(d = lid_grip_d, h = lid_grip_depth + 1, $fn = 48);
     }
 }
 
@@ -1350,7 +1355,11 @@ if (part == "lid_on_ring_cut") {         // DEBUG: lid bayoneted onto a ring, ha
 if (part == "base")        base();                       // assembly preview (2 snapped parts)
 if (part == "base_motor")  base_motor();                 // PRINT: leg shroud, standing
 if (part == "base_hopper") base_hopper();                // PRINT: core disc, disc-on-the-bed
-if (part == "el_tray")     el_tray();                    // PRINT: electronics tray, FLAT, standoffs up
+if (part == "el_tray")     el_tray();                    // el_tray modelled flat (standoffs up)
+if (part == "el_tray_print")                             // PRINT ON EDGE: plate vertical, pins
+    // horizontal → each pin prints INSIDE the plate's wall layers (one body, no top-skin
+    // between pin and plate — the flat-print failure). Cost: light support under the pins.
+    rotate([90, 0, 0]) translate([0, 0, el_tray_h/2]) el_tray();
 if (part == "el_panel")    el_panel();                   // PRINT: service panel, standing (curved segment)
 if (part == "el_fit") {                                  // DEBUG: bay fit — tray + panel in the shroud
     color("Gainsboro", 0.35) base_motor();

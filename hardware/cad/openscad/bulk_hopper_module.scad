@@ -58,19 +58,25 @@ throat_fillet   = 8;    // 2026-06-06: ROUND the plug→cone inner corner so
 ring_h          = 150;  // height per ring; stack as needed
 
 /* [Lid] */
-// 8: the grip scallops are now 6 mm deep (to PINCH-LIFT the lid one-handed, not just
-// twist it); disc = depth + 2 mm floor. +4 mm on the lid (19→22 tall) doesn't hurt.
-lid_disc_h      = 8;
+// 12 = grip depth 10 + 2 mm floor. The coin pockets now have a CONICAL roof (see lid()),
+// which needs depth to work: the cone eats lid_grip_depth of height.
+lid_disc_h      = 12;
 // L2 — the lid opens AND lifts by two finger scallops (no knob). Deep enough that a
 // fingertip drops in and hooks the far wall to pull the lid up one-handed. On r30, NOT
 // r50: diametrically opposite on r30 = 60 mm apart = a thumb+finger pinch a hand can
 // span. r50 would be 100 mm apart — impossible to pinch one-handed. 30 mm is still ample
 // leverage for the ¼-turn unlock. On the ±Y axis (tangential = the unlock direction).
 lid_grip        = true;
-lid_grip_d      = 28;      // "coin" Ø — an adult fingertip drops in
-lid_grip_depth  = 6;       // deep enough to hook and pinch-lift (disc 8 → 2 mm floor = the bridge)
+lid_grip_d      = 28;      // "coin" Ø at the disc face — an adult fingertip drops in
+lid_grip_depth  = 10;      // 45° cone needs height: Ø28 -> Ø8 over 10 mm (disc 12 → 2 mm floor)
 lid_grip_r      = 30;      // pinch-spannable one-handed (60 mm apart)
 lid_grip_n      = 2;
+// CONICAL roof for the pocket. The lid prints disc-on-bed, so the pocket opens DOWNWARD and
+// its roof would be a flat Ø28 bridge. Taper it instead: walls at 45° from vertical are
+// self-supporting, so the roof climbs itself and only a small Ø-lid_grip_tip bridge is left
+// at the apex. A full point (no bridge at all) would need cone height = radius = 14 mm, i.e.
+// a 16 mm disc — too heavy for the gain; Ø8 bridges trivially.
+lid_grip_tip    = lid_grip_d - 2 * lid_grip_depth;   // 8 mm apex = 45° walls
 
 /* [Stacking joint] */
 joint_lip_h     = 10;
@@ -653,7 +659,9 @@ module lid() {
             for (i = [0 : lid_grip_n - 1])
                 rotate([0, 0, 90 + i * 360/lid_grip_n])
                     translate([lid_grip_r, 0, top_z - lid_grip_depth])
-                        cylinder(d = lid_grip_d, h = lid_grip_depth + 1, $fn = 48);
+                        // d1 (deep end) = the narrow apex, d2 (disc face) = full Ø. Printed
+                        // flipped this becomes a 45° cone that closes upward on its own.
+                        cylinder(d1 = lid_grip_tip, d2 = lid_grip_d, h = lid_grip_depth + 0.01, $fn = 48);
     }
 }
 

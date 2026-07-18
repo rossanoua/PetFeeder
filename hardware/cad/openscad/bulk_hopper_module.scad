@@ -642,17 +642,18 @@ module lid() {
             for (i = [0 : bay_n - 1]) bay_tab_lid(i);   // J2 — fillet on the model-TOP = the bed face
             // when the lid prints FLIPPED (disc on the bed, skirt up). See lid_print.
         }
-        // L2 — finger grips: THROUGH holes (not blind pockets). Every attempt at a blind recess on the
-        // disc face failed to print without support: disc-down the slicer filled the pocket as bottom
-        // skin; disc-up the whole disc became a Ø154 internal bridge that sagged and closed the pockets
-        // on the real print. A through hole has no floor to fill or sag — it always prints as a clean
-        // hole, no support, disc flat on the bed. Two Ø28 holes: fingertips pinch through them to lift
-        // one-handed. lid_grip_n on lid_grip_r, ±Y axis (tangential pull = the ¼-turn unlock direction).
+        // L2 — finger grips: BLIND "coin" pockets in the outer disc face, Ø28 x 6 deep — an adult
+        // fingertip drops in to pinch-lift one-handed. These are back after the real cause of the
+        // "solid blank" was found: it was NOT the geometry or the orientation, it was the slicer's
+        // make_overhang_printable option EDITING THE MESH (a downward-facing pocket is an overhang, so
+        // it got filled in). With that off in pf_make, a blind pocket prints fine with the disc on the
+        // bed — no support, no through-holes over the food. lid_grip_n on lid_grip_r, ±Y (tangential
+        // pull = the ¼-turn unlock direction). Disc 8 mm - 6 mm pocket = 2 mm floor.
         if (lid_grip)
             for (i = [0 : lid_grip_n - 1])
                 rotate([0, 0, 90 + i * 360/lid_grip_n])
-                    translate([lid_grip_r, 0, -1])
-                        cylinder(d = lid_grip_d, h = skirt_h + lid_disc_h + 2, $fn = 48);
+                    translate([lid_grip_r, 0, top_z - lid_grip_depth])
+                        cylinder(d = lid_grip_d, h = lid_grip_depth + 1, $fn = 48);
     }
 }
 

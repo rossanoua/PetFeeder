@@ -67,16 +67,25 @@ lid_disc_h      = 12;
 // span. r50 would be 100 mm apart — impossible to pinch one-handed. 30 mm is still ample
 // leverage for the ¼-turn unlock. On the ±Y axis (tangential = the unlock direction).
 lid_grip        = true;
-lid_grip_d      = 28;      // "coin" Ø at the disc face — an adult fingertip drops in
-lid_grip_depth  = 10;      // 45° cone needs height: Ø28 -> Ø8 over 10 mm (disc 12 → 2 mm floor)
 lid_grip_r      = 30;      // pinch-spannable one-handed (60 mm apart)
 lid_grip_n      = 2;
-// CONICAL roof for the pocket. The lid prints disc-on-bed, so the pocket opens DOWNWARD and
-// its roof would be a flat Ø28 bridge. Taper it instead: walls at 45° from vertical are
-// self-supporting, so the roof climbs itself and only a small Ø-lid_grip_tip bridge is left
-// at the apex. A full point (no bridge at all) would need cone height = radius = 14 mm, i.e.
-// a 16 mm disc — too heavy for the gain; Ø8 bridges trivially.
-lid_grip_tip    = lid_grip_d - 2 * lid_grip_depth;   // 8 mm apex = 45° walls
+// GROOVE grips, not round coins. A plain cone let the fingertip slide straight back out —
+// nothing to pull against. The groove has three zones up its depth (see lid()):
+//   1. UNDERCUT: walls splay OUTWARD by lid_grip_uc per side going deeper, so the mouth is
+//      narrower than the belly and the finger HOOKS instead of sliding. Printed flipped this
+//      is an overhang of only ~11° from vertical (1 mm over 5 mm) — well inside the 45°
+//      self-supporting limit, so no support and no droop. Even 1 mm of catch is enough.
+//   2. ROOF at 45°: closes itself as it climbs, so nothing bridges the full width.
+//   3. a small Ø-lid_grip_tip apex left over, which bridges trivially.
+// Elongated (not round) so a whole fingertip lies in it, and laid tangentially so pushing
+// sideways on the wall is exactly the ¼-turn unlock direction.
+lid_grip_w      = 13;      // mouth width at the disc face
+lid_grip_uc     = 1;       // undercut per side — the "catch"
+lid_grip_uc_h   = 5;       // height over which it splays (1 mm / 5 mm = 11° from vertical)
+lid_grip_roof_h = 5;       // 45° roof: (w+2*uc - tip)/2 == roof_h
+lid_grip_tip    = 5;       // leftover apex, bridges trivially
+lid_grip_len    = 36;      // groove length — a whole fingertip
+lid_grip_depth  = lid_grip_uc_h + lid_grip_roof_h;   // 10 → disc 12 keeps a 2 mm floor
 
 /* [Stacking joint] */
 joint_lip_h     = 10;
@@ -627,6 +636,24 @@ module ring() {
 // (see lid_print): disc on the bed, skirt up, scallops face the bed (shallow cavities in
 // the first layers), tabs use bay_tab_lid (ramp on the model-top = bed face when flipped).
 // ===========================================================================
+// Finger-groove cut for the lid (see the [Lid] params). Built from two stacked hulls so it
+// is an elongated slot, not a round hole: an UNDERCUT zone whose walls splay outward going
+// deeper (the finger hooks on it), then a 45° roof that closes itself. Cut downward from
+// face_z. Printed lid-flipped, the undercut is an ~11° overhang and the roof is self-
+// supporting, so the whole grip needs no support and bridges only the small apex.
+module lid_groove(face_z) {
+    off   = (lid_grip_len - lid_grip_w) / 2;      // hull centres
+    belly = lid_grip_w + 2 * lid_grip_uc;         // widest point, at the bottom of the undercut
+    // 1. undercut: mouth (narrow) at face_z, belly (wide) lid_grip_uc_h deeper
+    hull() for (s = [-1, 1])
+        translate([s * off, 0, face_z - lid_grip_uc_h])
+            cylinder(d1 = belly, d2 = lid_grip_w, h = lid_grip_uc_h + 0.01, $fn = 40);
+    // 2. roof: from the belly down to the small apex at 45°
+    hull() for (s = [-1, 1])
+        translate([s * off, 0, face_z - lid_grip_depth])
+            cylinder(d1 = lid_grip_tip, d2 = belly, h = lid_grip_roof_h + 0.01, $fn = 40);
+}
+
 module lid() {
     skirt_h    = joint_lip_h + 4;                       // 14 — skirt must clear the full lip
     // bore = 2*bulk_r_in (= 2*(lip_or+join_clear)): the skirt slips over the lip with
@@ -658,10 +685,9 @@ module lid() {
         if (lid_grip)
             for (i = [0 : lid_grip_n - 1])
                 rotate([0, 0, 90 + i * 360/lid_grip_n])
-                    translate([lid_grip_r, 0, top_z - lid_grip_depth])
-                        // d1 (deep end) = the narrow apex, d2 (disc face) = full Ø. Printed
-                        // flipped this becomes a 45° cone that closes upward on its own.
-                        cylinder(d1 = lid_grip_tip, d2 = lid_grip_d, h = lid_grip_depth + 0.01, $fn = 48);
+                    translate([lid_grip_r, 0, 0])
+                        rotate([0, 0, 90])          // groove runs tangentially = unlock direction
+                            lid_groove(top_z);
     }
 }
 

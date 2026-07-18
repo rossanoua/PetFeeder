@@ -58,9 +58,12 @@ throat_fillet   = 8;    // 2026-06-06: ROUND the plug→cone inner corner so
 ring_h          = 150;  // height per ring; stack as needed
 
 /* [Lid] */
-// 12 = grip depth 10 + 2 mm floor. The coin pockets now have a CONICAL roof (see lid()),
-// which needs depth to work: the cone eats lid_grip_depth of height.
-lid_disc_h      = 12;
+// 2 mm = exactly bottom_shell_layers(4) + top_shell_layers(6) at 0.2 mm — i.e. the lid is
+// pure shell, no wasted infill core (user). The finger grooves are no longer buried inside a
+// thick disc: they EMBOSS, bulging into the lid's inside. That space is over the jar mouth
+// and unused, so it costs nothing and saves a lot of plastic and time.
+lid_disc_h      = 2;
+lid_wall        = 2;       // wall thickness of the embossed groove
 // L2 — the lid opens AND lifts by two finger scallops (no knob). Deep enough that a
 // fingertip drops in and hooks the far wall to pull the lid up one-handed. On r30, NOT
 // r50: diametrically opposite on r30 = 60 mm apart = a thumb+finger pinch a hand can
@@ -641,17 +644,19 @@ module ring() {
 // deeper (the finger hooks on it), then a 45° roof that closes itself. Cut downward from
 // face_z. Printed lid-flipped, the undercut is an ~11° overhang and the roof is self-
 // supporting, so the whole grip needs no support and bridges only the small apex.
-module lid_groove(face_z) {
+module lid_groove(face_z, sh = 0) {
     off   = (lid_grip_len - lid_grip_w) / 2;      // hull centres
-    belly = lid_grip_w + 2 * lid_grip_uc;         // widest point, at the bottom of the undercut
+    w     = lid_grip_w + 2 * sh;                  // mouth
+    belly = lid_grip_w + 2 * lid_grip_uc + 2 * sh;
+    tip   = max(0.5, lid_grip_tip + 2 * sh);
     // 1. undercut: mouth (narrow) at face_z, belly (wide) lid_grip_uc_h deeper
     hull() for (s = [-1, 1])
         translate([s * off, 0, face_z - lid_grip_uc_h])
-            cylinder(d1 = belly, d2 = lid_grip_w, h = lid_grip_uc_h + 0.01, $fn = 40);
+            cylinder(d1 = belly, d2 = w, h = lid_grip_uc_h + 0.01, $fn = 40);
     // 2. roof: from the belly down to the small apex at 45°
     hull() for (s = [-1, 1])
-        translate([s * off, 0, face_z - lid_grip_depth])
-            cylinder(d1 = lid_grip_tip, d2 = belly, h = lid_grip_roof_h + 0.01, $fn = 40);
+        translate([s * off, 0, face_z - lid_grip_depth - sh])
+            cylinder(d1 = tip, d2 = belly, h = lid_grip_roof_h + sh + 0.01, $fn = 40);
 }
 
 module lid() {
@@ -674,14 +679,21 @@ module lid() {
             }
             for (i = [0 : bay_n - 1]) bay_tab_lid(i);   // J2 — fillet on the model-TOP = the bed face
             // when the lid prints FLIPPED (disc on the bed, skirt up). See lid_print.
+            // Grip SHELL: the same groove grown by lid_wall, so after the groove itself is cut
+            // below, a lid_wall-thick skin is left wrapping it. That skin bulges DOWN into the
+            // lid's inside (over the jar mouth — unused space), instead of the groove being
+            // buried in a thick disc. Lid stays a 2 mm shell: far less plastic and time.
+            if (lid_grip)
+                for (i = [0 : lid_grip_n - 1])
+                    rotate([0, 0, 90 + i * 360/lid_grip_n])
+                        translate([lid_grip_r, 0, 0]) rotate([0, 0, 90])
+                            lid_groove(top_z, lid_wall);
         }
-        // L2 — finger grips: BLIND "coin" pockets in the outer disc face, Ø28 x 6 deep — an adult
-        // fingertip drops in to pinch-lift one-handed. These are back after the real cause of the
-        // "solid blank" was found: it was NOT the geometry or the orientation, it was the slicer's
-        // make_overhang_printable option EDITING THE MESH (a downward-facing pocket is an overhang, so
-        // it got filled in). With that off in pf_make, a blind pocket prints fine with the disc on the
-        // bed — no support, no through-holes over the food. lid_grip_n on lid_grip_r, ±Y (tangential
-        // pull = the ¼-turn unlock direction). Disc 8 mm - 6 mm pocket = 2 mm floor.
+        // L2 — finger GROOVES: elongated, with an UNDERCUT so the fingertip hooks instead of
+        // sliding out (a plain cone let it slip). Mouth 13 → belly 15 (1 mm undercut per side =
+        // 11° from vertical, self-supporting), then a 45° roof closing to a Ø5 apex. Tangential,
+        // so pushing sideways on the wall is the ¼-turn unlock direction. Now EMBOSSED rather
+        // than sunk: see the grip shell above.
         if (lid_grip)
             for (i = [0 : lid_grip_n - 1])
                 rotate([0, 0, 90 + i * 360/lid_grip_n])

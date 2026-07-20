@@ -417,13 +417,13 @@ cone_clear   = 3;                            // radial gap cone-top → shell bo
 cap_reg_clear = 0.4;                         // slip: cone plug outer ↔ collar inner
 cap_reg_wall  = 2;                           // collar wall thickness
 cap_reg_h     = 8;                           // collar height = plug register depth
-// 76.6 — the cone now runs to the SNUG radius on its own, in ONE straight angle (38.4° from
-// vertical instead of 37.1°). It used to stop at bulk_r_in - cone_clear (74) and a separate
-// bortik ring flared out to 76.6 over the last 8 mm — but that ring's inner edge sat at r73
-// while the cone at that height was only r67.3, so it started 5.7 mm OUT IN MID-AIR and
-// printed into nothing (user). No late flare: one angle all the way up.
-cone_snug_clr = 0.4;                         // radial slip cone top ↔ shell bore
-cone_out_top = bulk_r_in - cone_snug_clr;    // snug in the shell bore, no add-on ring
+// 74 — one straight wall angle, stopping at the LOOSE containment gap above. A bortik ring
+// used to flare the last 8 mm out to 76.6 to touch the bore: its inner edge sat at r73 while
+// the cone there was only r67.3, so it began 5.7 mm OUT IN MID-AIR and printed into nothing
+// (user saw it). Deleted — it was the same mistake as the ribs this design already removed
+// for printing in air at the cone top, and it contradicted the 3-part scheme: the cone is
+// located by the CAP, so its top must stay free of the shell, not snug against it.
+cone_out_top = bulk_r_in - cone_clear;       // 74 — cone outer stops short of the shell
 cone_in_top  = cone_out_top - cone_wall;     // 72 — cone inner opening at the top
 
 // Outer Ø160 shell — a tube, OPEN at the bottom (its rim rests on the base).

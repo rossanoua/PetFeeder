@@ -411,7 +411,8 @@ pw_fit_clear = 0.3;
 // between shell and cone is real AIR in assembly). The cone is LOCATED BY THE CAP
 // (throat plug into the cap collar), so cone_clear is just a loose containment gap
 // to the shell bore (no ribs — they printed in air at the cone top).
-cone_clear   = 3;                            // radial gap cone-top → shell bore (air)
+cone_clear   = 3;                            // (legacy) old loose gap, superseded below
+cone_snug_clr = 0.4;                         // radial slip: cone top ↔ shell bore
 // cap throat COLLAR — a raised rim the cone's throat plug drops into so the cap
 // centres the cone + holds it against tipping (replaces the deleted shell ribs).
 cap_reg_clear = 0.4;                         // slip: cone plug outer ↔ collar inner
@@ -423,7 +424,14 @@ cap_reg_h     = 8;                           // collar height = plug register de
 // (user saw it). Deleted — it was the same mistake as the ribs this design already removed
 // for printing in air at the cone top, and it contradicted the 3-part scheme: the cone is
 // located by the CAP, so its top must stay free of the shell, not snug against it.
-cone_out_top = bulk_r_in - cone_clear;       // 74 — cone outer stops short of the shell
+// The cone reaches the SNUG radius on its own, in ONE straight wall. Any late flare — the
+// old bortik, or the small lip I tried — jumps the radius several mm inside a single 0.2 mm
+// layer (measured: r73.2 -> r76.4 between layers 404 and 405), and that ring prints in mid
+// air. The cone falls away as it rises, so a widening feature at the top can never be
+// supported; the only way to land on the bore is to aim there from the bottom.
+// This costs the 3 mm air gap the old 3-part note describes, and gains the top location the
+// cone otherwise lacks (it is still carried by the cap collar below).
+cone_out_top = bulk_r_in - cone_snug_clr;    // 76.6 — lands on the bore, no add-on ring
 cone_in_top  = cone_out_top - cone_wall;     // 72 — cone inner opening at the top
 
 // Outer Ø160 shell — a tube, OPEN at the bottom (its rim rests on the base).
@@ -595,7 +603,6 @@ module funnel_shell() {
 module funnel_cone() {
     union() {
         cone_wall_solid();
-        cone_lip();                            // small top stop — keeps the cone from leaning
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
     }
 }
@@ -603,35 +610,8 @@ module funnel_cone() {
 // the cone is located at the TOP too (was only held by the cap collar at the bottom
 // + friction). Snug slide-fit (bort_clr to the Ø160 bore); the underside is a ~23°
 // ramp so it prints support-free on the throat-down cone.
-// Small centring LIP at the top of the cone: it stands on the cap, but its top otherwise
-// floats in 3 mm of air and can lean. This is a STOP, not a press fit — the rest of the cone
-// keeps its air gap (it is located by the cap, per the 3-part scheme).
-//
-// SHAPE — measured, not assumed. Three versions were sliced and audited facet-by-facet
-// (check_overhang.py) plus counted in gcode:
-//   old bortik, 8 mm sloped ledge starting 5.7 mm out in mid-air : 248 overhang moves
-//   45° chamfer, 10.7 mm tall                                     : 415 overhang moves
-//   THIS: 2 mm tall, flat underside spanning cone_lip_w           :   8 overhang moves
-// The chamfer is worse because reaching the bore at 45° needs 10.7 mm of height, and that
-// whole sloped skirt is then unsupported. A true "<=45° everywhere" lip is impossible here:
-// the cone wall itself measures 48.2° (its throat is rectangular, so the corners are steeper
-// than the nominal 40°), and a chamfer cannot be shallower than the surface it grows from.
-// The flat underside is a 90° overhang on paper, but it spans only cone_lip_w — a short
-// bridge the printer crosses unsupported, which is why it costs 8 moves instead of 415.
-cone_lip_clr = 0.4;                          // radial slip lip ↔ shell bore
-cone_lip_h   = 2;                            // keep SHORT: the bridge is the underside
-cone_lip_or  = bulk_r_in - cone_lip_clr;     // 76.6 — outer, sits in the bore
-// inner edge starts ON the cone surface at that height (not at cone_out_top — that hangs)
-cone_lip_ir  = cone_out_top - cone_lip_h * tan(funnel_wall_angle);
-cone_lip_w   = cone_lip_or - cone_lip_ir;    // unsupported bridge span
-
-module cone_lip() {
-    rotate_extrude($fn = 160)
-        polygon([[cone_lip_ir - 1,  cone_top_z - cone_lip_h],  // -1: bite in so it fuses
-                 [cone_lip_or,      cone_top_z - cone_lip_h],
-                 [cone_lip_or,      cone_top_z],
-                 [cone_out_top - 1, cone_top_z]]);             // inner edge rides the wall
-}
+// No top lip and no bortik: both flared outward at the end and printed into air. The cone
+// itself now ends at the bore radius (see cone_out_top), so its top rim IS the stop.
 
 // cone_bortik() REMOVED (user, 2026-07). It was a ring that flared the cone's last 8 mm out
 // to the snug radius — but its inner edge started at r73 where the cone was only r67.3, i.e.

@@ -417,7 +417,13 @@ cone_clear   = 3;                            // radial gap cone-top → shell bo
 cap_reg_clear = 0.4;                         // slip: cone plug outer ↔ collar inner
 cap_reg_wall  = 2;                           // collar wall thickness
 cap_reg_h     = 8;                           // collar height = plug register depth
-cone_out_top = bulk_r_in - cone_clear;       // 74 — cone outer stops short of the shell
+// 76.6 — the cone now runs to the SNUG radius on its own, in ONE straight angle (38.4° from
+// vertical instead of 37.1°). It used to stop at bulk_r_in - cone_clear (74) and a separate
+// bortik ring flared out to 76.6 over the last 8 mm — but that ring's inner edge sat at r73
+// while the cone at that height was only r67.3, so it started 5.7 mm OUT IN MID-AIR and
+// printed into nothing (user). No late flare: one angle all the way up.
+cone_snug_clr = 0.4;                         // radial slip cone top ↔ shell bore
+cone_out_top = bulk_r_in - cone_snug_clr;    // snug in the shell bore, no add-on ring
 cone_in_top  = cone_out_top - cone_wall;     // 72 — cone inner opening at the top
 
 // Outer Ø160 shell — a tube, OPEN at the bottom (its rim rests on the base).
@@ -590,23 +596,16 @@ module funnel_cone() {
     union() {
         cone_wall_solid();
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
-        cone_bortik();                         // top rim → snug in the shell bore
     }
 }
 // Top BORTIK (rim): a flange at the cone top that flares out to the shell bore so
 // the cone is located at the TOP too (was only held by the cap collar at the bottom
 // + friction). Snug slide-fit (bort_clr to the Ø160 bore); the underside is a ~23°
 // ramp so it prints support-free on the throat-down cone.
-bort_clr = 0.4;                 // radial slip cone bortik ↔ shell bore
-bort_h   = 8;                   // bortik height down from the cone top
-module cone_bortik() {
-    bo_r = bulk_r_in - bort_clr;          // 76.6 — snug in the Ø154 bore
-    rotate_extrude($fn = 160)
-        polygon([[cone_out_top - 1,       cone_top_z - bort_h],   // inner, low — on the cone wall
-                 [bo_r,                    cone_top_z - 2],        // outer — ramp underside (~23°)
-                 [bo_r,                    cone_top_z],            // outer top — vertical snug face
-                 [cone_out_top - 1,        cone_top_z]]);          // inner top
-}
+// cone_bortik() REMOVED (user, 2026-07). It was a ring that flared the cone's last 8 mm out
+// to the snug radius — but its inner edge started at r73 where the cone was only r67.3, i.e.
+// 5.7 mm out in mid-air, so the printer laid it into nothing. The cone now reaches the snug
+// radius by itself in one straight 38.4° wall (see cone_out_top), so no add-on ring is needed.
 
 // ===========================================================================
 // STORAGE RING  modular section, stacks via top lip

@@ -595,6 +595,7 @@ module funnel_shell() {
 module funnel_cone() {
     union() {
         cone_wall_solid();
+        cone_lip();                            // small top stop — keeps the cone from leaning
         if (sp_pockets_on) spider_pockets();   // 3 capture pockets (floor + side walls)
     }
 }
@@ -602,6 +603,29 @@ module funnel_cone() {
 // the cone is located at the TOP too (was only held by the cap collar at the bottom
 // + friction). Snug slide-fit (bort_clr to the Ø160 bore); the underside is a ~23°
 // ramp so it prints support-free on the throat-down cone.
+// Small centring LIP at the very top of the cone. The cone stands on the cap (throat plug in
+// the collar), but its top otherwise floats in 3 mm of air, free to lean. This lip reaches
+// out to the bore leaving cone_lip_clr, so the cone cannot tip or drop crooked — WITHOUT
+// going back to the old bortik: that one was 8 mm tall with a sloped underside that began
+// 5.7 mm out in mid-air. This is 2 mm tall with a FLAT underside only cone_lip_w wide, i.e.
+// a short bridge the printer spans by itself. Keep it small — it is a stop, not a press fit.
+cone_lip_clr = 0.4;                          // radial slip lip ↔ shell bore
+cone_lip_h   = 2;                            // lip height at the cone top
+cone_lip_or  = bulk_r_in - cone_lip_clr;     // 76.6
+cone_lip_w   = cone_lip_or - cone_out_top;   // 2.6 — underside bridge span
+
+// inner edge must START ON THE CONE SURFACE, not at cone_out_top — the cone at
+// (top - cone_lip_h) is already narrower by lip_h*tan(angle). Sinking it 2 mm further in
+// guarantees the lip fuses to the wall (manifold) instead of floating beside it.
+cone_lip_ir  = cone_out_top - cone_lip_h * tan(funnel_wall_angle) - 2;
+module cone_lip() {
+    rotate_extrude($fn = 160)
+        polygon([[cone_lip_ir, cone_top_z - cone_lip_h],
+                 [cone_lip_or, cone_top_z - cone_lip_h],
+                 [cone_lip_or, cone_top_z],
+                 [cone_lip_ir, cone_top_z]]);
+}
+
 // cone_bortik() REMOVED (user, 2026-07). It was a ring that flared the cone's last 8 mm out
 // to the snug radius — but its inner edge started at r73 where the cone was only r67.3, i.e.
 // 5.7 mm out in mid-air, so the printer laid it into nothing. The cone now reaches the snug

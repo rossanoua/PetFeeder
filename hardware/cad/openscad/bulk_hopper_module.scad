@@ -1515,7 +1515,12 @@ if (part == "chassis") {
 
 // PRINT parts of the feeding station
 if (part == "tray")          tray();            // PRINT: shallow pull-out feed tray, flat
-if (part == "cell_platform") cell_platform();   // PRINT: tray platform on the cell load end
+// PRINT FLIPPED: modelled with the two Ø11 bosses hanging DOWN off the Ø120 disc, so
+// printing it as modelled leaves the whole disc bridging between two thin posts — 11116 mm2
+// of 90° overhang at z17.7 (measured). Upside-down the disc/locator ring lies flat on the
+// bed and the bosses point up as plain columns: 0 mm2 unsupported.
+if (part == "cell_platform")
+    translate([0, 0, plat_z + plat_t + loc_h]) rotate([180, 0, 0]) cell_platform();
 if (part == "chassis_cut") {
     difference() {
         union() {

@@ -632,19 +632,26 @@ module funnel_cone() {
 // Now bored like shell_tube(): straight to (ring_h - cavity_taper_h), then a taper up to
 // lip_ir so the lip's first layer lands on solid wall instead of printing in air.
 module ring() {
-    difference() {
-        union() {
-            cylinder(h = ring_h, d = bulk_d);
-            stacking_lip(ring_h);
-            for (i = [0 : bay_n - 1]) bay_detent(i, ring_h);   // J2 — click for the lid/next tab
+    union() {
+        difference() {
+            union() {
+                cylinder(h = ring_h, d = bulk_d);
+                stacking_lip(ring_h);
+                for (i = [0 : bay_n - 1]) bay_detent(i, ring_h);   // J2 — click for the lid/next tab
+            }
+            translate([0, 0, -1])
+                cylinder(h = ring_h - cavity_taper_h + 1, r = bulk_r_in);
+            translate([0, 0, ring_h - cavity_taper_h])
+                cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
+            // J2 — L-slots in this ring's TOP lip so a lid (or the next shell's tabs) can
+            // bayonet on. The channel is just a void; rings still slip-stack through it.
+            for (i = [0 : bay_n - 1]) bay_slot(i, ring_h);
         }
-        translate([0, 0, -1])
-            cylinder(h = ring_h - cavity_taper_h + 1, r = bulk_r_in);
-        translate([0, 0, ring_h - cavity_taper_h])
-            cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
-        // J2 — L-slots in this ring's TOP lip so a lid (or the next shell's tabs) can
-        // bayonet on. The channel is just a void; rings still slip-stack through it.
-        for (i = [0 : bay_n - 1]) bay_slot(i, ring_h);
+        // J2 — UNDERSIDE tabs, added AFTER the bore (like funnel_shell) so they survive it.
+        // Without these a ring only slip-stacked; now it ¼-turn-locks into the bay_slot of
+        // the base/funnel/ring lip below. 45° lead is on the tab underside → support-free
+        // on the standing print. Outer edge = bulk_r_in, so they fuse to the bored wall.
+        for (i = [0 : bay_n - 1]) bay_tab(i);
     }
 }
 

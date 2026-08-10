@@ -713,7 +713,6 @@ module lid() {
     skirt_id   = 2 * bulk_r_in;
     skirt_od   = bulk_d;
     top_z      = skirt_h + lid_disc_h;                  // outer disc face
-    grip_R     = (pow(lid_grip_d/2, 2) + pow(lid_grip_depth, 2)) / (2 * lid_grip_depth); // sagitta
     difference() {
         union() {
             difference() {

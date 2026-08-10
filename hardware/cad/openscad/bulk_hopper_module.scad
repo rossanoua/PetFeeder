@@ -110,9 +110,14 @@ join_clear      = 0.3;
 // Now: hole_len 13, ar_bx 10.1 (the pre-B2 value). Margins: housing wall 1.6, wheel rim
 // 2.5, motor 2.0, bowl rim 2.5 — nothing under 1.5 mm.
 // MUST MATCH hole_radial_in / _out / _w / _corner_r in paddle_wheel_module.scad.
-hole_radial_in   = 23;   // 7 → 22 (clear motor) → 25 (B2, clear bowl) → 23 (bowl moved in)
-hole_radial_out  = 36;   // 40 → 35 (keep the paddle tip off the hole edge) → 36
-hole_w           = 34;   // tangential
+hole_radial_in   = 22;   // 7 → 22 (clear motor) → 25 (B2, clear bowl) → 23 → 22 (widen slit; band 3.5 on tray ramp, motor clr 2.3)
+hole_radial_out  = 37;   // 40 → 35 (keep the paddle tip off the hole edge) → 36 → 37 (widen slit; 37 = documented ceiling, corner 40.1<40.8)
+hole_w           = 34;   // tangential — FROZEN: feeds cone_top_z only (do NOT retune to widen the outlet)
+outlet_w         = 44;   // tangential OUTLET opening (arc-capped). Decoupled from hole_w so the
+                         //   food aperture can widen (34→44) WITHOUT moving cone_top_z / unfreezing
+                         //   the cone. The arc cap (outer edge on a constant-r circle) keeps every
+                         //   point ≤ hole_radial_out=37 → 1.5 mm under the paddle rim ring (38.5),
+                         //   3.8 mm under the housing bore (40.8). MUST MATCH outlet_w in paddle_wheel.
 hole_corner_r    = 2;
 
 /* [Cap collar — MUST match paddle_wheel_module.scad] */
@@ -741,7 +746,7 @@ base_plate_t      = 3;          // housing-rest plate thickness
 base_deck_z       = base_floor + nema_len;   // 43 — motor face / deck; body hangs below
 base_motor_h      = base_deck_z + motor_mount_t;        // 48 — disc top = housing floor (no coupler gap)
 base_h            = base_motor_h + pw_housing_h2;       // 85
-base_chute_w      = hole_w + 6; // 40 — chute / outlet-drop width
+base_chute_w      = outlet_w + 6; // 50 — chute / outlet-drop width (documentary; no geometry consumer)
 base_mouth_h      = 18;         // front exit opening height
 base_mid_r        = (hole_radial_in + hole_radial_out) / 2;   // 21 — outlet centre r
 // ANTI-ROTATION key collar: a rounded-rect spigot on the rest-plate that rises into
@@ -760,7 +765,7 @@ ar_slip = 0.5;                  // collar ↔ housing-outlet slip
 ar_wall = 1.2;                  // collar wall
 ar_h    = 2.5;                  // collar height (≈ housing end_wall − 0.5)
 ar_ox   = hole_len - ar_slip;             // collar outer, radial      = hole_len − 0.5
-ar_oy   = hole_w   - ar_slip;             // collar outer, tangential  = 33.5
+ar_oy   = outlet_w - ar_slip;             // collar outer, tangential  = 43.5 (was hole_w-based)
 ar_bx   = ar_ox - 2 * ar_wall;            // bore / disc outlet, radial     ← THE narrowest
 ar_by   = ar_oy - 2 * ar_wall;            // bore / disc outlet, tangential = 31.1
 // 2-PART base (2026-06-26): the motor DECK and the housing PLATE are MERGED into ONE
@@ -1083,14 +1088,21 @@ module base_hopper() {
                 for (i = [0 : bay_n - 1]) bay_slot(i, base_h);         // J2 — L-slots in the lip
             }
             translate([0, 0, base_motor_h]) rotate([0, 0, base_outlet_angle])   // housing key collar (into housing outlet)
-                translate([base_mid_r, 0, 0]) union() {
-                    rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
-                    // J3 — 2 beads on the collar's tangential faces: the housing floor's
-                    // outlet presses over them and stays put when the funnel comes off.
-                    for (s = [-1, 1])
-                        translate([0, s * (ar_oy/2 - ar_bead/2), ar_h - 1.2])
-                            rotate([0, 90, 0])
-                                cylinder(r = ar_bead, h = ar_ox - 4, center = true, $fn = 16);
+                // ARC CAP: the wider ar_oy pushes the tangential corners past the housing bore;
+                // intersect with a concentric cylinder at the collar's outer radial edge so the
+                // outer edge follows the wall (constant r) and no corner exceeds it. Radial slip
+                // to the housing outlet is preserved (same edge radius as before).
+                intersection() {
+                    translate([base_mid_r, 0, 0]) union() {
+                        rounded_rect(ar_ox, ar_oy, hole_corner_r, ar_h);
+                        // J3 — 2 beads on the collar's tangential faces: the housing floor's
+                        // outlet presses over them and stays put when the funnel comes off.
+                        for (s = [-1, 1])
+                            translate([0, s * (ar_oy/2 - ar_bead/2), ar_h - 1.2])
+                                rotate([0, 90, 0])
+                                    cylinder(r = ar_bead, h = ar_ox - 4, center = true, $fn = 16);
+                    }
+                    translate([0, 0, -1]) cylinder(r = base_mid_r + ar_ox/2, h = ar_h + 2, $fn = 160);
                 }
         }
         // motor mount on the UNDERSIDE (z43 face): pilot recess, 4× M3, shaft hole
@@ -1098,8 +1110,13 @@ module base_hopper() {
         translate([0, 0, base_deck_z])     cylinder(d = nema_pilot_d + 1, h = 3);                  // pilot recess (z43, opens down)
         for (sx = [-1, 1]) for (sy = [-1, 1])     // 4× M3 (motor bolts up from below)
             translate([sx*nema_bolt_sq/2, sy*nema_bolt_sq/2, base_deck_z - 1]) cylinder(d = nema_bolt_d, h = motor_mount_t + 2);
-        rotate([0, 0, base_outlet_angle]) translate([base_mid_r, 0, base_deck_z - 1])    // food outlet through the disc
-            rounded_rect(ar_bx, ar_by, hole_corner_r, motor_mount_t + ar_h + 2);
+        rotate([0, 0, base_outlet_angle])    // food outlet through the disc — ARC CAP: outer edge hugs the wall
+            intersection() {
+                translate([base_mid_r, 0, base_deck_z - 1])
+                    rounded_rect(ar_bx, ar_by, hole_corner_r, motor_mount_t + ar_h + 2);
+                translate([0, 0, base_deck_z - 2])
+                    cylinder(r = base_mid_r + ar_bx/2, h = motor_mount_t + ar_h + 4, $fn = 160);
+            }
         // SNAP recess (annular) in the disc underside + bead groove + −X key slot
         translate([0, 0, base_deck_z - 0.01])     // recess receiving the spigot (keeps the disc centre solid)
             difference() {

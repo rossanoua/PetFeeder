@@ -145,9 +145,13 @@ axle_keep    = axle_d/2 + fit_clear + 2;  // solid cap kept around the axle bore
 //     or the outlet breaks through the housing wall. out=36 → corner 39.2 (1.6 mm spare);
 //     out=38 → corner 41.0 = THROUGH THE WALL. Do not go past 37.
 // MUST MATCH hole_radial_in / _out / _w / _corner_r in bulk_hopper_module.scad.
-hole_radial_in   = 23;   // 7 → 22 (clear motor r21) → 25 (B2, clear bowl) → 23 (bowl moved in)
-hole_radial_out  = 36;   // 40 → 35 (keep the paddle tip off the hole edge) → 36
-hole_w           = 34;   // tangential
+hole_radial_in   = 22;   // 7 → 22 (clear motor r21) → 25 (B2, clear bowl) → 23 → 22 (widen slit, mirror bulk)
+hole_radial_out  = 37;   // 40 → 35 (keep the paddle tip off the hole edge) → 36 → 37 (widen slit; 37 = documented ceiling, corner 40.1<40.8)
+hole_w           = 34;   // tangential — kept only for the test hopper() + hopper_outer (parity w/ bulk)
+outlet_w         = 44;   // tangential OUTLET opening (arc-capped). MUST MATCH outlet_w in bulk_hopper.
+                         //   The housing floor outlet uses THIS (not hole_w); an arc cap on the outer
+                         //   edge keeps every point ≤ hole_radial_out=37 (1.5 mm under the paddle rim
+                         //   ring at 38.5 — the real ceiling — and 3.8 mm under the housing bore 40.8).
 hole_corner_r    = 2;
 out_cham         = 3;    // tangential lead-in: the two edges the paddle
                          //   crosses are SLOPED (wider at the wheel side), a
@@ -397,17 +401,22 @@ module housing() {
         // (the ones the paddle crosses as it sweeps) are SLOPED: nominal at
         // the exit (bottom), wider tangentially at the top (wheel side), so
         // the paddle/kibble ride a ramp. The radial edges stay vertical; the
-        // outer edge is at r=35 (clear of the rim) so the paddle tip never
-        // meets it.
+        // outer edge is ARC-CAPPED at r = hole_radial_out (37): every point stays 1.5 mm
+        // under the paddle rim ring (38.5), so the sweeping tip never crosses it — even as
+        // the tangential opening widens to outlet_w. (Tangential width uses outlet_w, NOT
+        // hole_w, so the cone coupling in bulk_hopper stays frozen.)
         rotate([0, 0, outlet_angle_deg])
-            translate([hole_mid_r, 0, 0])
-                hull() {
-                    translate([0, 0, -1])
-                        rounded_rect(hole_len, hole_w, hole_corner_r, 0.5);
-                    translate([0, 0, end_wall + 0.5])
-                        rounded_rect(hole_len, hole_w + 2*out_cham,
-                                     hole_corner_r, 0.5);
-                }
+            intersection() {
+                translate([hole_mid_r, 0, 0])
+                    hull() {
+                        translate([0, 0, -1])
+                            rounded_rect(hole_len, outlet_w, hole_corner_r, 0.5);
+                        translate([0, 0, end_wall + 0.5])
+                            rounded_rect(hole_len, outlet_w + 2*out_cham,
+                                         hole_corner_r, 0.5);
+                    }
+                translate([0, 0, -2]) cylinder(r = hole_radial_out, h = end_wall + 4, $fn = 160);
+            }
 
         // (REBATE removed 2026-06-19 — the cap is MERGED into the funnel, which
         //  now mates via a teardrop SKIRT dropping over this top rim, not a cut.)

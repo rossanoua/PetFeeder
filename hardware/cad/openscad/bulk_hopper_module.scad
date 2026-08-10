@@ -236,6 +236,28 @@ $fn = 96;
 bulk_r_out     = bulk_d / 2;
 bulk_r_in      = bulk_r_out - bulk_wall;
 
+// 45° bevel on the Ø160 BOTTOM-OUTER edge. On the bottom part it is the foot chamfer
+// (lifts the full-Ø edge off the bed → kills elephant-foot); at every stack joint the
+// upper part's bevel opens a clean shadow-line reveal over the flush part below, so the
+// real parting line reads as an intended groove. 45° face = self-supporting standing.
+// Cuts only r∈[bulk_r_out−foot_cham, bulk_r_out] (78..80) → never touches bore/lip (≤76.7).
+foot_cham      = 2;
+// top=false → bevels the BOTTOM-outer edge (foot / stack-seam reveal, self-supporting
+// standing). top=true → mirrors it onto the TOP-outer edge, for a part that prints
+// FLIPPED (the lid: crown on the bed → the crown edge is first-layer = support-free).
+module seam_bevel(z0, top = false)
+    translate([0, 0, z0])
+        rotate_extrude($fn = 160)
+            polygon(top
+                ? [[bulk_r_out - foot_cham,  0.02],
+                   [bulk_r_out + 1,          0.02],
+                   [bulk_r_out + 1,         -foot_cham],
+                   [bulk_r_out,             -foot_cham]]
+                : [[bulk_r_out - foot_cham, -0.02],
+                   [bulk_r_out + 1,         -0.02],
+                   [bulk_r_out + 1,          foot_cham],
+                   [bulk_r_out,              foot_cham]]);
+
 // Funnel cone top z from the wall angle (nominal throat→Ø160, from vertical).
 cone_top_z     = cap_collar_h
                + (bulk_d / 2 - hopper_wall - hole_w / 2) / tan(funnel_wall_angle);
@@ -449,6 +471,7 @@ module shell_tube() {
             cylinder(r = bulk_r_in, h = funnel_h - cavity_taper_h + 1);
         translate([0, 0, funnel_h - cavity_taper_h])
             cylinder(r1 = bulk_r_in, r2 = lip_ir, h = cavity_taper_h + 0.01);
+        seam_bevel(0);   // reveal groove over the base_hopper↔funnel seam; also the funnel's foot on the bed
     }
 }
 
@@ -646,6 +669,7 @@ module ring() {
             // J2 — L-slots in this ring's TOP lip so a lid (or the next shell's tabs) can
             // bayonet on. The channel is just a void; rings still slip-stack through it.
             for (i = [0 : bay_n - 1]) bay_slot(i, ring_h);
+            seam_bevel(0);   // reveal groove over the seam below; also the ring's foot on the bed
         }
         // J2 — UNDERSIDE tabs, added AFTER the bore (like funnel_shell) so they survive it.
         // Without these a ring only slip-stacked; now it ¼-turn-locks into the bay_slot of
@@ -722,6 +746,8 @@ module lid() {
                     translate([lid_grip_r, 0, 0])
                         rotate([0, 0, 90])          // groove runs tangentially = unlock direction
                             lid_groove(top_z);
+        seam_bevel(top_z, true);   // matching 45° reveal on the crown edge (top=true → the
+                                   // lid's first-layer face when flipped, so support-free)
     }
 }
 
@@ -1043,7 +1069,8 @@ module el_tray_mounted()
 // PART 1 — LEG SHROUD: a plain Ø160 tube (z0..43), open both ends, around the motor;
 // leg sockets at the bottom; a SNAP spigot on top that springs into the disc. PRINTS
 // STANDING (z0 on the bed) — a plain tube, no support. Motor inserts from the bottom.
-module base_motor() {
+module base_motor() difference() {
+  union() {
     difference() {
         union() {
             difference() {                        // Ø160 tube z0..43, open both ends
@@ -1076,6 +1103,8 @@ module base_motor() {
     // added AFTER the niche cut so the scallop cannot eat them
     base_sole();
     cell_pedestal();
+  }
+  seam_bevel(0);          // 45° foot chamfer on the tower's bottom-outer edge
 }
 // PART 2 — CORE DISC (z43..48): the motor bolts to its UNDERSIDE (face z43), the housing
 // seats on top (z48); housing-seat tube + stacking lip grow up. The shroud snaps into a
@@ -1136,6 +1165,7 @@ module base_hopper() {
                 translate([0, 0, -1]) cylinder(r = snap_or + snap_slip, h = 3.2, $fn = 160);
             }
         base_keybar(base_deck_z - 0.01, base_deck_z + snap_h, snap_or - 1 - snap_slip, snap_or + snap_bead + snap_slip + 1, snap_slip);  // −X key slot
+        seam_bevel(base_deck_z);   // reveal groove over the base_motor↔base_hopper seam (z43); also its own foot on the bed
         // NO base_niche() here — deliberately. The scallop used to be cut through the disc
         // too (niche_h was 58 > the disc's z43..48), which deleted the food outlet AND the
         // anti-rotation key collar and left the housing's front half unsupported. The niche

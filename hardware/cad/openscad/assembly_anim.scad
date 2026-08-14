@@ -14,20 +14,23 @@ part = "__h__";
 $fn = 48;                     // preview density; plenty for a motion video
 
 // --- seated global poses (mirror clash_harness.scad / funnel() / full_norings) ---
+// Colour per part (matches full/step palette) so each piece reads as it seats.
 module A(name) {
-    if      (name == "shell")         translate([0,0,base_h])                       funnel_shell();
-    else if (name == "cap")           translate([0,0,base_h - nest_h])              cap_plate();
-    else if (name == "cone")          translate([0,0,base_h + cap_t - nest_h])      funnel_cone();
-    else if (name == "spider")        translate([0,0,base_h + cap_t - nest_h])      spider();
-    else if (name == "lid")           translate([0,0,base_h + z_funnel_top])        lid();
-    else if (name == "base_motor")    base_motor();
-    else if (name == "base_hopper")   base_hopper();
-    else if (name == "el_tray")       el_tray_mounted();
-    else if (name == "el_panel")      el_panel();
-    else if (name == "cell_platform") cell_platform();
-    else if (name == "tray")          tray_mounted();
-    else if (name == "housing")       translate([0,0,base_motor_h])                 housing();
-    else if (name == "wheel")         translate([throat_cx,0,base_motor_h + 3.5])   wheel();
+    if      (name == "shell")         color("Khaki")          translate([0,0,base_h])                       funnel_shell();
+    else if (name == "cap")           color("MediumSeaGreen") translate([0,0,base_h - nest_h])              cap_plate();
+    else if (name == "cone")          color("Orange")         translate([0,0,base_h + cap_t - nest_h])      funnel_cone();
+    else if (name == "spider")        color("MediumPurple")   translate([0,0,base_h + cap_t - nest_h])      spider();
+    else if (name == "lid")           color("Tan")            translate([0,0,base_h + z_funnel_top])        lid();
+    else if (name == "ring")          color("BurlyWood")      translate([0,0,base_h + z_funnel_top])        ring();          // J2 onto funnel top lip
+    else if (name == "lid_on_ring")   color("Tan")            translate([0,0,base_h + z_funnel_top + ring_h]) lid();          // lid caps the ring
+    else if (name == "base_motor")    color("Gainsboro")      base_motor();
+    else if (name == "base_hopper")   color("Gold")           base_hopper();
+    else if (name == "el_tray")       color("SteelBlue")      el_tray_mounted();
+    else if (name == "el_panel")      color("Tomato")         el_panel();
+    else if (name == "cell_platform") color("Wheat")          cell_platform();
+    else if (name == "tray")          color("LightBlue")      tray_mounted();
+    else if (name == "housing")       color("LightSteelBlue") translate([0,0,base_motor_h])                 housing();
+    else if (name == "wheel")         color("Silver")         translate([throat_cx,0,base_motor_h + 3.5])   wheel();
 }
 
 // cosine ease-in-out: 0 before window a, 1 after window b, smooth between.
@@ -46,23 +49,33 @@ module place(name, ox,oy,oz, a,b) {
 // --- build sequence (windows tile [0,1]); offsets follow the verified vectors ---
 A("base_motor");                                        // ground — static
 place("base_hopper",    0,  0,  70,   0.00, 0.08);      // drop from above
-place("el_tray",        0,  0,  70,   0.06, 0.14);      // down into el_rails
-place("el_panel",     -60,  0,   0,   0.12, 0.20);      // radially in (+x)
-place("cell_platform",120,  0,   0,   0.18, 0.28);      // drawer in (-x)
-place("tray",         130,  0,   0,   0.26, 0.36);      // drawer over platform
-place("housing",        0,  0,  80,   0.34, 0.44);      // over the base centre
-place("wheel",          0,  0,  80,   0.42, 0.50);      // drop INTO the housing
-place("cap",            0,  0,  80,   0.50, 0.58);      // onto the housing top
-place("cone",           0,  0,  75,   0.57, 0.66);      // onto the cap
-place("shell",          0,  0,  85,   0.65, 0.76);      // big tube down over cone
-place("spider",         0,  0,  75,   0.75, 0.83);      // into the cone pockets
+// Electronics/tray parts (el_tray, el_panel, cell_platform, tray) are intentionally
+// omitted from THIS fit-review video — they are peripheral to the refactor under
+// review (ring bayonet + base bevels) and their drawer poses clutter the frame.
+// The mechanical dosing stack below is what items 1 & 3 actually touch.
+place("housing",        0,  0,  80,   0.08, 0.20);      // over the base centre
+place("wheel",          0,  0,  80,   0.20, 0.30);      // drop INTO the housing
+place("cap",            0,  0,  80,   0.30, 0.42);      // onto the housing top
+place("cone",           0,  0,  75,   0.42, 0.54);      // onto the cap
+place("shell",          0,  0,  85,   0.54, 0.66);      // big tube down over cone
+place("spider",         0,  0,  75,   0.66, 0.74);      // into the cone pockets
 
-// lid: appears at 0.83, straight drop (held unlocked at +20 deg), then twist
-// +20 -> 0 to lock the bayonet.
-if ($t >= 0.83) {
-    lid_drop  = prog(0.83, 0.92);
-    lid_twist = prog(0.92, 1.00);
-    translate([0,0, 70*(1-lid_drop)])
-        rotate([0,0, 20*(1-lid_twist)])
-            A("lid");
+// ring (J2, item 1): straight drop onto the funnel top lip, then a +bay_run -> 0
+// bayonet twist so its underside tabs sweep the slot channel and seat under the lip.
+if ($t >= 0.74) {
+    ring_drop  = prog(0.74, 0.82);
+    ring_twist = prog(0.82, 0.88);
+    translate([0,0, 60*(1-ring_drop)])
+        rotate([0,0, bay_run*(1-ring_twist)])
+            A("ring");
+}
+
+// lid: drops onto the RING (held unlocked at +bay_run), then twists +bay_run -> 0
+// to lock its J2 into the ring's top lip.
+if ($t >= 0.88) {
+    lid_drop  = prog(0.88, 0.94);
+    lid_twist = prog(0.94, 1.00);
+    translate([0,0, 55*(1-lid_drop)])
+        rotate([0,0, bay_run*(1-lid_twist)])
+            A("lid_on_ring");
 }

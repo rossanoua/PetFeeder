@@ -813,14 +813,35 @@ ar_by   = ar_oy - 2 * ar_wall;            // bore / disc outlet, tangential = 31
 // must the shroud-side; the shroud-as-standing-tube provides the male snap the disc
 // (printed face-down) can't, so they mate directly with no middle ring.
 key_ang  = 180;                           // anti-rotation key on −X (away from +X outlet)
-// SNAP-joint params (shroud spigot → disc-underside recess)
-snap_ir  = bulk_r_in - 1.5;               // 75.5 — snap-spigot inner r
-snap_or  = bulk_r_in + 1;                 // 78   — snap-spigot outer r (seats on the wall top)
-snap_h   = 3;                             // spigot rise into the disc recess (z43..46)
-snap_bead = 0.7;                          // bead radial proud → springs into the recess groove
-snap_slip = 0.35;                         // recess ↔ spigot slip
-jkey_w   = 5;                             // rotational-key width (tangential)
-jkey_pro = 3;                             // rotational-key radial reach
+// ── BREECH-LOCK CAPTURE JOINT (base_motor ↔ base_hopper) ─────────────────────
+// Replaces the brittle snap. The old 1.0 mm chevron bead over a 0.65 mm web at
+// Ø156 chipped, the chip jammed the close, and standing-vs-flat Ø divergence
+// exceeded the 0.35 mm slip. New joint: 3 chunky DOVETAIL lugs on the motor top
+// drop into 3 keyholes in the disc, then a ~50° twist slides the disc's grounded
+// tabs UNDER each lug's inward-overhanging head → the disc CANNOT lift off (hard
+// axial capture, not a spring). One lug/keyhole is wider (poka-yoke) → exactly one
+// mating orientation, so +X outlet / −X window / front niche stay registered.
+// Uses the full 5 mm disc depth (z43..48). EVERY load/overhang face is 45° → prints
+// support-free BOTH ways (motor standing features-up, disc flat z43 on the bed).
+// No thin bead, no 360° debris trap; the 3 gaps make it self-clearing + tolerant.
+bl_reg    = key_ang;      // 180 — master lug on −X (so the +X outlet registers)
+bl_z0     = base_deck_z;  // 43 — interface plane (motor top = disc bottom = the bed)
+bl_slip   = 0.4;          // male↔female clearance (looser than the old 0.35, for Ø156)
+bl_n      = 3;            // lugs / keyholes
+bl_w      = 34;          // lug angular width (deg)
+bl_wm     = 46;          // master lug width (poka-yoke: +12°, a normal keyhole can't take it)
+bl_twist  = 50;          // drop-then-turn angle to lock (~1/7 turn); big slop for Ø divergence
+// Radial DOVETAIL profile, z RELATIVE to bl_z0. A 360° base ring grounds the lugs
+// and IS the seam interface (like the old spigot, it bridges ~1.4 mm over the bore —
+// proven printable). Each lug head overhangs INWARD on a 45° flank; the disc's tab
+// (grounded on the bed, so no disc-side overhang) hooks under that flank = capture.
+// Outer stays ≤ old snap_or so it clears the seam_bevel(z43) knife-edge zone.
+bl_ring_i = 75.6;  bl_ring_o = 77.6;   // base ring radial band (outer seam-safe)
+bl_ring_h = 1.0;                       // base ring rise  z43..44
+bl_flank_h = 1.4;                      // 45° inner flank rise z44..45.4 (Δr 1.4 = Δz 1.4)
+bl_head_i = bl_ring_i - bl_flank_h;    // 74.2 — head inner reach (overhang crest)
+bl_head_h = 3.0;                       // lug head top  z46 (crest z45.4..46)
+jkey_w   = 5;                          // retained: base_keybar()'s default width (joint no longer keys)
 // [Bowl NICHE] — a scallop in the FRONT of the base; the store-bought bowl tucks
 // in (under the tower) and the chute drops food straight into it. Above niche_h
 // the tower stays full Ø160. Clears the central motor (niche back at x≈30 > r21).
@@ -894,11 +915,76 @@ module cell_pedestal()
         for (hx = [lc_fix1, lc_fix2])                       // M4 anchor holes
             translate([hx, 0, -1]) cylinder(d = lc_hole_d, h = lc_z + 2, $fn = 24);
     }
-// −X rotational key: a radial bar over [z0,z1], radius band [r0,r1]. `g` grows it
-// (0 for the lug, +snap_slip for the receiving slot).
-module base_keybar(z0, z1, r0, r1, g)
-    rotate([0, 0, key_ang]) translate([r0, -(jkey_w + 2*g)/2, z0])
-        cube([r1 - r0, jkey_w + 2*g, z1 - z0]);
+// Rotational key: a radial bar over [z0,z1], radius band [r0,r1], at angle `a`,
+// tangential width `w`. `g` grows it (0 for the lug, +snap_slip for the receiving
+// slot). Defaults (a=key_ang, w=jkey_w) keep the old single −X call working.
+module base_keybar(z0, z1, r0, r1, g, a = key_ang, w = jkey_w)
+    rotate([0, 0, a]) translate([r0, -(w + 2*g)/2, z0])
+        cube([r1 - r0, w + 2*g, z1 - z0]);
+
+// ── Breech-lock helpers ──────────────────────────────────────────────────────
+// One arc-shaped 2D r-z profile revolved about Z over `arc` degrees, centred on
+// `a`, lifted to bl_z0. Used for both the male lug heads and the female cuts so
+// the two sides share one geometry source (no drift between lug and pocket).
+module bl_prof(a, arc, prof)
+    translate([0, 0, bl_z0]) rotate([0, 0, a - arc/2])
+        rotate_extrude(angle = arc, $fn = 240) polygon(prof);
+// A simple radial slab (annulus wedge) r0..r1 × z0..z1 (z relative to bl_z0),
+// centred on `a`, spanning `arc`. Used for the female neck slot / head channel /
+// keyhole and the 360° ring clearance.
+module bl_slab(a, arc, r0, r1, z0, z1)
+    bl_prof(a, arc, [[r0, z0], [r1, z0], [r1, z1], [r0, z1]]);
+
+// Lug head r-z profile (relative z): sits on the base ring (z=bl_ring_h), rises to
+// the crest (z=bl_head_h), overhanging INWARD from bl_ring_i to bl_head_i on a 45°
+// flank. Outer wall is vertical at bl_ring_o (seam-safe). CCW.
+bl_head_prof = [
+    [bl_ring_i, bl_ring_h],                 // 75.6, 1.0  head base, inner (ring top)
+    [bl_ring_o, bl_ring_h],                 // 77.6, 1.0  head base, outer
+    [bl_ring_o, bl_head_h],                 // 77.6, 3.0  outer wall up to crest top
+    [bl_head_i, bl_head_h],                 // 74.2, 3.0  crest top (overhung inward)
+    [bl_head_i, bl_ring_h + bl_flank_h],    // 74.2, 2.4  crest bottom
+    [bl_ring_i, bl_ring_h]                  // 75.6, 1.0  inner 45° flank back to base
+];
+
+// MALE (base_motor top): 360° base ring + 3 inward-dovetail lug heads on top,
+// master (i==0) wider on −X. Placed by the caller at the tube top; self-supporting
+// standing (ring floor bridges the bore like the old spigot; every head face is
+// vertical, up-facing, or a 45° down-facing flank).
+module bl_male() {
+    // 360° base ring z43..44 (grounds the heads, is the seam, bridges the bore)
+    bl_slab(0, 360, bl_ring_i, bl_ring_o, 0, bl_ring_h);
+    for (i = [0 : bl_n - 1])
+        bl_prof(bl_reg + i*120, (i == 0) ? bl_wm : bl_w, bl_head_prof);
+}
+
+// FEMALE (subtracted from the disc underside): clears the ring + lets each lug drop
+// in at its keyhole, then leaves grounded tabs under the heads along the twist path.
+//   · ring clearance (360°): r[ring_i-slip .. ring_o+slip], z0..ring_h+slip
+//   · neck slot  (per lug, full height, arc=twist+w): lets the head base travel;
+//     its lock-end wall is the STOP (registration)
+//   · head channel (per lug, UPPER only z≥ring_h, arc=twist+w): clears the swept
+//     head; disc below ring_h stays solid = the capture tab (r head_i-slip..ring_i-slip)
+//   · keyhole (per lug, FULL height, arc=w) at the insert end: removes the tab there
+//     so the head can drop in axially
+module bl_female() {
+    eps = 0.05;
+    hi = bl_head_i - bl_slip;               // 73.8 channel/keyhole inner
+    ho = bl_ring_o + bl_slip;               // 78.0 channel/keyhole/ring-clear outer
+    // 360° ring clearance
+    bl_slab(0, 360, bl_ring_i - bl_slip, ho, -eps, bl_ring_h + bl_slip);
+    for (i = [0 : bl_n - 1]) {
+        w = (i == 0) ? bl_wm : bl_w;
+        a = bl_reg + i*120;
+        ac = a + bl_twist/2;                // channel centre (lock end at a - w/2)
+        // neck slot: full height, narrow (just the ring band + slip)
+        bl_slab(ac, bl_twist + w, bl_ring_i - bl_slip, ho, -eps, bl_head_h + bl_slip);
+        // head channel: wide but UPPER only → tabs (z0..ring_h) survive under it
+        bl_slab(ac, bl_twist + w, hi, ho, bl_ring_h, bl_head_h + bl_slip);
+        // keyhole at the insert end: full height so the head drops in
+        bl_slab(a + bl_twist, w, hi, ho, -eps, bl_head_h + bl_slip);
+    }
+}
 
 /* [Electronics bay — A3] ====================================================
    The bay is the annulus inside the Ø160 tube: r ≈30 (NEMA17 body corner) .. 77,
@@ -1076,27 +1162,13 @@ module base_motor() difference() {
                 cylinder(d = bulk_d, h = base_deck_z, $fn = 160);
                 translate([0, 0, -1]) cylinder(r = bulk_r_in, h = base_deck_z + 1);
             }
-            translate([0, 0, base_deck_z])        // SNAP spigot ring (z43..46) rising from the tube top
-                difference() {
-                    cylinder(r = snap_or, h = snap_h, $fn = 160);
-                    translate([0, 0, -1]) cylinder(r = snap_ir, h = snap_h + 2, $fn = 160);
-                }
-            translate([0, 0, base_deck_z + snap_h - 1.6])   // snap bead: cone lead-in (wide at bottom = the catch)
-                difference() {
-                    cylinder(r1 = snap_or + snap_bead, r2 = snap_or, h = 1.6, $fn = 160);
-                    translate([0, 0, -1]) cylinder(r = snap_ir, h = 3.6, $fn = 160);
-                }
-            base_keybar(base_deck_z, base_deck_z + snap_h, snap_or - 1, snap_or + snap_bead, 0);  // −X key lug
+            bl_male();                            // BREECH-LOCK: base ring + 3 dovetail lug heads (z43..46)
             el_rails();                           // electronics-tray rails (vertical ribs)
         }
         el_rail_slots();                          // the tray grooves (open top, floor = stop)
         el_window();                              // service window (gabled → self-supporting)
         el_nibs(0.25);                            // J5 — dimples the panel's nibs click into
-        // NOTE: these 6 relief slots are for the SNAP SPIGOT's flex (base_motor ↔ base_hopper),
-        // NOT for any leg thread — they stay even though the legs are gone.
-        for (a = [30, 90, 150, 210, 270, 330])
-            rotate([0, 0, a]) translate([snap_ir - 0.5, -0.7, base_deck_z - 0.01])
-                cube([(snap_or + snap_bead + 1) - (snap_ir - 0.5), 1.4, snap_h + 1]);
+        // (the old 6 snap-spigot relief slots are gone — the rigid dovetail needs no flex)
         base_niche();
     }
     // added AFTER the niche cut so the scallop cannot eat them
@@ -1152,18 +1224,11 @@ module base_hopper() {
                 translate([0, 0, base_deck_z - 2])
                     cylinder(r = base_mid_r + ar_bx/2, h = motor_mount_t + ar_h + 4, $fn = 160);
             }
-        // SNAP recess (annular) in the disc underside + bead groove + −X key slot
-        translate([0, 0, base_deck_z - 0.01])     // recess receiving the spigot (keeps the disc centre solid)
-            difference() {
-                cylinder(r = snap_or + snap_slip, h = snap_h + 0.6, $fn = 160);
-                translate([0, 0, -1]) cylinder(r = snap_ir - snap_slip, h = snap_h + 2.6, $fn = 160);
-            }
-        translate([0, 0, base_deck_z + snap_h - 1.7])   // bead groove (undercut on the recess outer wall)
-            difference() {
-                cylinder(r = snap_or + snap_bead + snap_slip, h = 1.2, $fn = 160);
-                translate([0, 0, -1]) cylinder(r = snap_or + snap_slip, h = 3.2, $fn = 160);
-            }
-        base_keybar(base_deck_z - 0.01, base_deck_z + snap_h, snap_or - 1 - snap_slip, snap_or + snap_bead + snap_slip + 1, snap_slip);  // −X key slot
+        // BREECH-LOCK female: ring clearance + 3 keyholes + twist channels. Leaves 3
+        // grounded tabs (z43..44) that hook UNDER the male lug heads → axial capture.
+        // The neck-slot lock-end wall is the rotational stop (registration). Roof over
+        // the head channel = disc z46.4..48 (~1.6 mm) — bridges r73.8..78, supported.
+        bl_female();
         seam_bevel(base_deck_z);   // reveal groove over the base_motor↔base_hopper seam (z43); also its own foot on the bed
         // NO base_niche() here — deliberately. The scallop used to be cut through the disc
         // too (niche_h was 58 > the disc's z43..48), which deleted the food outlet AND the

@@ -21,12 +21,20 @@
 // drops OVER the LIP coupon (lip_or=76.7, 0.3 clearance); the tabs pass through the
 // slots, then a ~20° CW twist (bay_run) slides them under the L-run roof and clicks
 // past the detent. Lift-proof after the twist.
+// LIDSKIRT: the third coupon — the lid's MALE side (skirt bore + bay_tab_lid tabs),
+// printed FLIPPED exactly like the real lid (lid_print: disc on the bed, skirt + tabs
+// up). This is the one joint case the standing tab/lip pair does NOT cover: the lid's
+// skirt bore prints as flipped upper-layer walls, so its real Ø diverges from a
+// STANDING-printed lip differently than a standing bore does — the exact divergence
+// mode that killed the old snap. Its FEMALE mate is the SAME lip as ring↔shell, so it
+// twist-tests against the already-printed `ring_lip` coupon — no reprint of the lip.
 include <bulk_hopper_module.scad>
 part = "__none__";
 $fn  = 160;
-stub = "tab";          // set via -D stub="lip"
+stub = "tab";          // set via -D stub="lip"  |  -D stub="lidskirt"
 
 H_TAB = 7;             // tab-coupon height (tabs live z0.5..3.5; a few mm of grip above)
+LID_CAP = 3;           // thin disc slice kept as the flipped bed-face + handle
 
 // TAB side: ring-bore wall (bulk_r_in..bulk_r_out) + the 3 underside-lead tabs.
 // (seam_bevel omitted — it is a cosmetic reveal on the ring foot, not part of the fit.)
@@ -47,5 +55,33 @@ module lip_stub() difference() {
     for (i = [0 : bay_n - 1]) bay_slot(i, 0);            // vertical entry + 20° L-run
 }
 
-if (stub == "tab") tab_stub();
-if (stub == "lip") lip_stub();
+// LID skirt (male): faithful to lid()'s skirt block (L718-725) — disc cap + skirt,
+// hollowed to skirt_id, + bay_tab_lid tabs (45° lead on the model-TOP = bed face when
+// flipped). Modelled skirt-DOWN (disc up), then flipped disc-on-bed exactly as lid_print.
+skirt_h  = joint_lip_h + 4;      // 14 — must clear the full lip (matches lid())
+skirt_id = 2 * bulk_r_in;        // bore slips over the lip; inner face = bulk_r_in so tabs fuse
+skirt_od = bulk_d;
+// The real lid caps this with a solid Ø160 disc; for a THROWAWAY coupon that disc is
+// pure ballast (~30 g of solid infill that has nothing to do with the joint). So cap it
+// with a RING instead: keep the outer Ø160 edge (that IS the skirt base — the first-layer
+// condition whose Ø-divergence vs the standing lip is what we're testing) plus a ~10 mm
+// flange for grip/adhesion, and open the centre. The joint (skirt bore + tabs) is byte-for-
+// byte unchanged; only dead disc mass is removed.
+cap_id = 120;                    // ring-cap inner Ø (r60) — flange r60..r80, centre open
+module lidskirt_body() union() {
+    difference() {
+        union() {
+            translate([0, 0, skirt_h]) cylinder(h = LID_CAP, d = bulk_d);  // cap (bed face flipped)
+            cylinder(h = skirt_h, d = skirt_od);                           // skirt
+        }
+        translate([0, 0, -1]) cylinder(h = skirt_h + 1, d = skirt_id);     // hollow the skirt
+        translate([0, 0, skirt_h - 1]) cylinder(h = LID_CAP + 2, d = cap_id); // hollow cap centre → ring
+    }
+    for (i = [0 : bay_n - 1]) bay_tab_lid(i);                              // lid-variant tabs
+}
+// print pose: flip disc-on-bed, skirt + tabs up (same transform shape as lid_print)
+module lidskirt_stub() translate([0, 0, skirt_h + LID_CAP]) rotate([180, 0, 0]) lidskirt_body();
+
+if (stub == "tab")      tab_stub();
+if (stub == "lip")      lip_stub();
+if (stub == "lidskirt") lidskirt_stub();

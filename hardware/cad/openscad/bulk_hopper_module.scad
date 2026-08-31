@@ -1665,7 +1665,11 @@ brd_marg = 2.0;   // board edge beyond the hole centres, per side
 // One board: sits on the standoff tops (tray-local +Z), components stacked above it.
 //   c = hole-pattern centre, hp = hole pattern, comp = tallest thing on top
 module board_mock(c, hp, comp, col = "DarkGreen") {
-    translate([c[0], c[1], el_tray_t/2 + standoff_h]) {
+    // + brd_pcb/2 because the cube below is centred: without it the PCB straddles the
+    // standoff top plane instead of resting on it, sinking brd_pcb/2 = 0.8 mm into all
+    // twelve columns. That reads as a 266.6 mm3 el_tray∩boards clash across the whole
+    // board footprint — a harness crying wolf about a mock, not about the printed parts.
+    translate([c[0], c[1], el_tray_t/2 + standoff_h + brd_pcb/2]) {
         color(col)      cube([hp[0] + 2*brd_marg, hp[1] + 2*brd_marg, brd_pcb], center = true);
         color("#555")   translate([0, 0, brd_pcb/2 + comp/2])
                             cube([hp[0] + 2*brd_marg, hp[1] + 2*brd_marg - 4, comp], center = true);

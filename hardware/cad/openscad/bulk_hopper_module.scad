@@ -1175,8 +1175,17 @@ module el_tray_standoffs(c, hp) {
 module el_tray() {
     difference() {
         union() {
-            translate([0, 0, -el_tray_t/2])                       // plate, centred on z=0
-                cube([el_tray_w, el_tray_h, el_tray_t], center = true);
+            // cube(center = true) already centres the plate on z=0, which is what both
+            // this module and el_tray_mounted() assume: the mounting transform maps local
+            // z to sector X as 58 - z, so a mid-plane at z=0 is what puts the plate on
+            // el_x. The extra translate([0,0,-el_tray_t/2]) that used to be here (present
+            // since 7cf46a3, contradicting its own comment from the start) pushed it to
+            // z -3..0, i.e. 1.5 mm OUTBOARD: the plate then spanned sector X 58..61 while
+            // its slot is 56.3..59.7, so it hung 1.3 mm past the slot's outer face and
+            // engaged only half of it. It also left the standoffs starting at z-1.5 —
+            // half way UP the plate rather than at its bottom — which quietly undoes the
+            // print rationale above, since the column no longer runs from the bed.
+            cube([el_tray_w, el_tray_h, el_tray_t], center = true);
             el_tray_standoffs(esp_c, esp_holes);                  // ESP32
             el_tray_standoffs(drv_c, drv_holes);                  // A4988 / DRV8825
             el_tray_standoffs(hx_c,  hx_holes);                   // HX711

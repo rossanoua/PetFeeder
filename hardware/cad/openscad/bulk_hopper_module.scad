@@ -1121,10 +1121,20 @@ module el_panel() {
                 el_window(-panel_clr);
                 cylinder(r = bulk_r_in, h = base_deck_z + 10, $fn = 160);
             }
-            difference() {                                   // inner flange (laps the wall)
-                el_window(panel_flange);
-                cylinder(r = bulk_r_in - 1.5, h = base_deck_z + 10, $fn = 160);
-                el_window(-panel_clr);                       // keep only the lapping ring
+            // Inner flange — LAPS the wall, so it must stop at the wall's inner face.
+            // Its radial span is bounded below by the bulk_r_in-1.5 subtraction, but the
+            // only thing bounding it above used to be the panel's outer clip at
+            // bulk_r_out, so the flange ran 74.5..80 and 479.6 of its 505.4 mm3 of
+            // overlap with base_motor sat INSIDE the wall — the panel could not seat at
+            // all. Clipping it at bulk_r_in drops the overlap to 26.0 mm3, and that
+            // residue is the tessellation seam between two 160-gons at r76, not material.
+            intersection() {
+                difference() {
+                    el_window(panel_flange);
+                    cylinder(r = bulk_r_in - 1.5, h = base_deck_z + 10, $fn = 160);
+                    el_window(-panel_clr);                   // keep only the lapping ring
+                }
+                cylinder(r = bulk_r_in, h = base_deck_z + 10, $fn = 160);
             }
         }
         cylinder(r = bulk_r_out, h = base_deck_z + 10, $fn = 160);

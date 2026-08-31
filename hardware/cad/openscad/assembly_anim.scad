@@ -116,10 +116,16 @@ rotate([0, 0, view_ang()]) {
     // that is a seated-fit defect, constant along the path, not a blocked corridor.
     place("cell",          60,  0,   0,   0.11, 0.16);      // load cell onto its pedestal
     place("cell_platform", 60,  0,   0,   0.16, 0.21);      // weighing platform onto the cell
-    place("el_tray",        0,  0,  60,   0.21, 0.27);      // tray drops down the wall rails
-    place("boards",         0,  0,  60,   0.21, 0.27);      // boards ride the tray in
-    place("el_panel",      27,  0,   0,   0.27, 0.32);      // panel fitted from INSIDE, outward
-    place("dc_jack",       20,  0,   0,   0.32, 0.36);      // barrel jack through the panel
+    // ORDER MATTERS HERE, and it is the opposite of what it was. The service panel is
+    // fitted from inside and pushed outward; seated it is clear of both the tray and the
+    // boards (EMPTY against each), but MID-PATH it passes 2182.9 mm3 straight through
+    // el_tray. Nothing is wrong with either part's geometry — the panel simply has no
+    // corridor once the tray is in. So the panel goes in first, then its jack, then the
+    // tray drops in behind them. A swept-path check found this; a seated check never would.
+    place("el_panel",      27,  0,   0,   0.21, 0.26);      // panel fitted from INSIDE, outward
+    place("dc_jack",       20,  0,   0,   0.26, 0.30);      // barrel jack through the panel
+    place("el_tray",        0,  0,  60,   0.30, 0.36);      // tray drops down the wall rails
+    place("boards",         0,  0,  60,   0.30, 0.36);      // boards ride the tray in
 
     // --- 2. the dosing stack ---
     place("base_hopper",    0,  0,  70,   0.36, 0.42);      // core disc caps the bay

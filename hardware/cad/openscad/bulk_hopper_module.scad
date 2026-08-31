@@ -1603,6 +1603,63 @@ module motor_mock(face_z) translate([0, 0, face_z]) {
     color("#444")    translate([0, 0, -0.1]) cylinder(d = nema_pilot_d, h = 2.5, $fn = 40);
     color("Silver")  cylinder(d = nema_shaft_d, h = 24, $fn = 24);
 }
+// ---------------------------------------------------------------------------
+// ELECTRONICS STAND-INS (assembly guides + clash harness only — never printed).
+// Until now the bay held only bolt-hole patterns and a Ø8 hole, so "does the power
+// plug fit" was unanswerable. These are ENVELOPES, deliberately generous.
+// The board outlines are DERIVED from this file's own hole patterns (esp_holes etc.)
+// plus a standard edge margin — the note by those constants already says to verify
+// them against your actual modules, so treat the outlines as the same assumption.
+brd_pcb  = 1.6;   // PCB thickness
+brd_marg = 2.0;   // board edge beyond the hole centres, per side
+// One board: sits on the standoff tops (tray-local +Z), components stacked above it.
+//   c = hole-pattern centre, hp = hole pattern, comp = tallest thing on top
+module board_mock(c, hp, comp, col = "DarkGreen") {
+    translate([c[0], c[1], el_tray_t/2 + standoff_h]) {
+        color(col)      cube([hp[0] + 2*brd_marg, hp[1] + 2*brd_marg, brd_pcb], center = true);
+        color("#555")   translate([0, 0, brd_pcb/2 + comp/2])
+                            cube([hp[0] + 2*brd_marg, hp[1] + 2*brd_marg - 4, comp], center = true);
+    }
+}
+// The three boards in TRAY-LOCAL space (same frame el_tray() is drawn in).
+// comp heights: ESP32 8 (can + header shells), A4988 12 (heatsink + header), HX711 5.
+module el_boards() {
+    board_mock(esp_c, esp_holes,  8, "DarkGreen");
+    board_mock(drv_c, drv_holes, 12, "Maroon");
+    board_mock(hx_c,  hx_holes,   5, "Navy");
+}
+// …and seated in the base — MUST use the same transform as el_tray_mounted(), so the
+// boards land on the standoffs and face the motor (−X local → inward).
+module el_boards_mounted()
+    rotate([0, 0, el_sector])
+        multmatrix([[0, 0, -1, el_x],
+                    [1, 0,  0, 0],
+                    [0, 1,  0, el_z0 + el_tray_h/2],
+                    [0, 0,  0, 1]])
+            el_boards();
+// Panel-mount DC barrel jack: what hangs INSIDE the wall behind the Ø8 hole. This is
+// the part that can foul the tray — the plug side is out in free air.
+dcj_body_d = 11;   // knurled body / solder-lug envelope
+dcj_body_l = 15;   // how far it reaches inward from the panel's inner face
+module dc_jack_mock()
+    rotate([0, 0, el_sector])
+        color("#1a1a1a")
+            translate([bulk_r_in - dcj_body_l, -14, panel_z0 + panel_hs/2])
+                rotate([0, 90, 0]) cylinder(d = dcj_body_d, h = dcj_body_l, $fn = 32);
+// The MATING plug + cable, OUTSIDE the wall. Not a fit question so much as a
+// "can a hand get a plug in here" question — it must not foul the tray niche or a leg.
+module dc_plug_mock()
+    rotate([0, 0, el_sector]) color("#111") {
+        translate([bulk_r_out - 2, -14, panel_z0 + panel_hs/2])
+            rotate([0, 90, 0]) cylinder(d = 9.5, h = 16, $fn = 32);     // plug barrel
+        translate([bulk_r_out + 14, -14, panel_z0 + panel_hs/2])
+            rotate([0, 90, 0]) cylinder(d = 7, h = 22, $fn = 24);       // strain relief + cable
+    }
+// USB cable plug, OUTSIDE the wall (service/flashing access).
+module usb_plug_mock()
+    rotate([0, 0, el_sector]) color("#222")
+        translate([bulk_r_out - 2, 6 - usb_slot[0]/2, panel_z0 + panel_hs/2 - usb_slot[1]/2])
+            cube([28, usb_slot[0], usb_slot[1]]);
 if (part == "x_base") {        // EXPLODED base sub-assembly (assembly guide)
     motor_mock(base_deck_z - 70);                               // motor, inserts UP from below
     color("Tomato")    base_motor();                           // shell + sole + scallop + el bay

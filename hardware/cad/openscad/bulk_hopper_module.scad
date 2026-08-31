@@ -529,10 +529,30 @@ cone_det  = 0.4;    // detent in the cap's throat collar → clicks onto the con
 // J5 — the service panel could not fall OUT (it has a flange) but nothing stopped it
 // falling IN. Two nibs on its side edges snap into dimples in the window reveal.
 pan_nib   = 0.4;
-// J6 — a shallow ring on the platform so the tray self-centres and does not shuffle when
-// kibble lands (a shuffling tray corrupts the weight reading).
-loc_h     = 1.2;    // locator ring height
-loc_slip  = 0.5;    // ring ↔ tray outer clearance
+// J6 — the tray must not shuffle when kibble lands (a shuffling tray corrupts the weight
+// reading), but it also CANNOT be lifted off: its back tucks under the disc, so the only
+// removal motion is a forward slide (see tray_d/tray_h). That rules out a ring or any
+// drop-in locator — anything the tray has to rise out of blocks its one degree of freedom.
+// So: two fore-aft RAILS on the platform running in matching grooves in the tray floor.
+// The grooves run THROUGH — open at both ends — and that is deliberate. A groove closed at
+// the back looks better (it would double as a back stop) but it cannot work: the moment the
+// tray moves forward, its own back wall rides up onto the rail and the tray climbs 1 mm and
+// runs out on two narrow rails (measured: the tray∩platform solid grows to 272 mm3 by 48 mm
+// of travel). Open at both ends the tray leaves dead flat, which is the whole point.
+// So the rails locate Y only. X is left to the scallop (Ø158 around a Ø150 tray = ±4 mm),
+// which is enough: the food column is far narrower than the tray, and 4 mm of off-centre on
+// a bending-beam cell is well under a gram. Note the grooves are cut into the UNDERSIDE of
+// the floor, so they open downward — the tray lifts straight off the rails at any point; the
+// reason it must slide first is the disc overhead, not the rails.
+// (What was here before was a locator RING and it never existed: the formula gave it a
+// bore LARGER than its OD -> empty geometry, measured. A ring also needs a bore >= 151 mm
+// on a Ø120 platform, so it could not have worked even with the arithmetic fixed.)
+loc_h     = 1.0;    // rail height (the groove is cut deeper -> tray seats on the flat)
+loc_w     = 3.0;    // rail width
+loc_y     = 25;     // rail offset from the tray axis (±) — well inside the tray floor
+loc_len   = 100;    // rail length (the Ø120 disc's half-chord at y=25 is 54.5, so it stays on)
+loc_slip  = 0.35;   // rail ↔ groove clearance per side (same as bay_slip)
+loc_seat  = 0.3;    // groove cut this much deeper than the rail -> tray rests on the flat
 nest_clear = 0.4;   // groove↔wall slip clearance (mirror nest_clear in paddle_wheel)
 nest_h     = 3.5;   // nest depth — the housing top wall enters this far up
 
@@ -888,6 +908,16 @@ ped_l  = 30;      // pedestal length (X), from lc_x0 - 3
 plat_d = 120;     // platform Ø (under the Ø150 tray; smaller so the tray lifts off easily)
 plat_t = 4;
 plat_z = lc_z + lc_h + 2;   // platform underside (2 mm of cell deflection gap)
+// SKIRT — the platform used to hang on two Ø11 bosses, so it had to be printed UPSIDE DOWN
+// to stop the Ø120 disc bridging between them. Upside down puts the top face on the bed,
+// which makes the J6 rails (proud, on that face) impossible. The skirt fixes both at once:
+// it fills the 2 mm deflection gap everywhere EXCEPT a slot over the cell, so the bosses
+// end on the SAME plane as the skirt and the whole underside is one flat face on the bed.
+// Nothing under it to clash with — the sole and pedestal both stop at z3, the cell top is
+// z15.7 and lives in the slot. Costs ~10 g of tare on a 5 kg cell, i.e. nothing.
+plat_skirt  = 2;  // skirt height = the deflection gap (z15.7 -> z17.7)
+plat_slot_w = 17; // clearance slot over the 12.7 cell — 2.15 mm each side, so the platform
+                  //   touches the cell ONLY at the two bolt bosses (else it cannot bend)
 
 // z-planes:  legs 0 · motor-face 43 · deck-top 48 · plate 57 · plate-top 60 · top 97
 deck_top_z = base_deck_z + motor_mount_t;     // 48 — disc top = housing floor (= base_motor_h)
@@ -1246,21 +1276,29 @@ module base() { base_motor(); base_hopper(); }
 // platform and PULLS FORWARD out of the scallop to be washed — it cannot lift straight
 // up, because its back tucks under the disc.
 // ===========================================================================
-module cell_platform() {                 // PRINT: flat on the bed
+// J6 rail — a fore-aft rib with a 45° lead-in at BOTH ends, so the tray's groove finds it
+// on the way in and runs off it on the way out. Printed rails-up: zero unsupported area.
+module loc_rail() {
+    rotate([90, 0, 0])
+        linear_extrude(height = loc_w, center = true)
+            polygon([[-loc_len/2,         0    ], [ loc_len/2,         0    ],
+                     [ loc_len/2 - loc_h, loc_h], [-loc_len/2 + loc_h, loc_h]]);
+}
+module cell_platform() {   // PRINT: NATIVE — the flat underside (z15.7) goes on the bed
     rotate([0, 0, base_outlet_angle]) difference() {
         union() {
             translate([bowl_cx, 0, plat_z]) cylinder(d = plat_d, h = plat_t, $fn = 120);
-            // J6 — LOCATOR RING: the tray drops inside it, so it self-centres and cannot
-            // shuffle when kibble lands (a shuffling tray corrupts the weight reading).
-            translate([bowl_cx, 0, plat_z + plat_t - 0.01])
-                difference() {
-                    cylinder(d = plat_d, h = loc_h, $fn = 120);
-                    translate([0, 0, -1]) cylinder(d = plat_d - 2 * (plat_d - tray_d)/2 - 2*loc_slip - 4,
-                                                   h = loc_h + 2, $fn = 120);
-                }
-            for (hx = [lc_load1, lc_load2])                  // 2 bosses down to the cell load end
-                translate([hx, 0, lc_z + lc_h])
-                    cylinder(d = 11, h = plat_z - (lc_z + lc_h) + plat_t, $fn = 32);
+            difference() {                                   // SKIRT -> flat underside
+                translate([bowl_cx, 0, lc_z + lc_h])
+                    cylinder(d = plat_d, h = plat_skirt, $fn = 120);
+                translate([bowl_cx - plat_d/2 - 1, -plat_slot_w/2, lc_z + lc_h - 1])
+                    cube([plat_d + 2, plat_slot_w, plat_skirt + 2]);   // cell clearance slot
+            }
+            for (hx = [lc_load1, lc_load2])                  // the 2 bolt bosses stand INSIDE
+                translate([hx, 0, lc_z + lc_h])              //   the slot and end on the SAME
+                    cylinder(d = 11, h = plat_skirt, $fn = 32);  //   z15.7 plane as the skirt
+            for (ry = [-loc_y, loc_y])                       // J6 — the two tray rails
+                translate([bowl_cx, ry, plat_z + plat_t]) loc_rail();
         }
         for (hx = [lc_load1, lc_load2])                      // M4 bolt holes
             translate([hx, 0, lc_z + lc_h - 1]) cylinder(d = lc_hole_d, h = plat_z + 4, $fn = 24);
@@ -1299,6 +1337,15 @@ module tray() {                          // PRINT: flat on the bed, open side up
         rotate([0, 0, 180 - tray_ramp_a])
             rotate_extrude(angle = 2 * tray_ramp_a, $fn = 140)
                 translate([ri, tray_ramp_h]) square([tray_t + 1, tray_h]);
+        // J6 — the two grooves that ride the platform's rails. THROUGH-cuts, front to back:
+        // a closed back end would make the tray climb the rail as soon as it moves (see the
+        // J6 note by loc_h). Cut into the UNDERSIDE, so 1.2 mm of floor is left under the
+        // kibble and printed floor-down the roof is only a 3.7 mm bridge. They notch the wall
+        // base at both ends (3.7 x 1.3 mm) — far too small for kibble to escape, and at the
+        // back the wall is already cut down to the feeding ramp anyway.
+        for (gy = [-loc_y, loc_y])
+            translate([-tray_d/2 - 1, gy - (loc_w + 2*loc_slip)/2, -1])
+                cube([tray_d + 2, loc_w + 2*loc_slip, loc_h + loc_seat + 1]);
     }
 }
 // the tray as SEATED on the platform (view only)
@@ -1633,12 +1680,13 @@ if (part == "chassis") {
 
 // PRINT parts of the feeding station
 if (part == "tray")          tray();            // PRINT: shallow pull-out feed tray, flat
-// PRINT FLIPPED: modelled with the two Ø11 bosses hanging DOWN off the Ø120 disc, so
-// printing it as modelled leaves the whole disc bridging between two thin posts — 11116 mm2
-// of 90° overhang at z17.7 (measured). Upside-down the disc/locator ring lies flat on the
-// bed and the bosses point up as plain columns: 0 mm2 unsupported.
-if (part == "cell_platform")
-    translate([0, 0, plat_z + plat_t + loc_h]) rotate([180, 0, 0]) cell_platform();
+// PRINT NATIVE (was FLIPPED until the skirt landed): the two Ø11 bosses used to hang DOWN
+// off the Ø120 disc, leaving the whole disc bridging between two thin posts — 11116 mm2 of
+// 90° overhang at z17.7 (measured), which is why it was flipped. But flipping puts the TOP
+// face on the bed, and the J6 rails live on that face. The skirt drops the underside to the
+// bosses' own plane, so the part rests on one flat face (2 crescents + the 2 boss ends) and
+// the rails grow upward. Only overhang left: the cell slot's roof, a 17 mm bridge at z2.
+if (part == "cell_platform") translate([0, 0, -(lc_z + lc_h)]) cell_platform();
 if (part == "chassis_cut") {
     difference() {
         union() {

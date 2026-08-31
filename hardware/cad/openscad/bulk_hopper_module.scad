@@ -1048,9 +1048,25 @@ el_slip    = 0.4;   // tray ↔ slot slip
 rail_y0    = 33;    // rail inner edge (Y)
 rail_y1    = 44;    // rail outer edge (Y). Slot ends at 40.4 → the 40.4..44 material is
                     // the lateral stop. Rail stays clear of the leg bosses (see above).
-rail_x0    = 54;    // rail inner face (X) — the cheek in front of the tray
 el_slot_w  = el_tray_t + el_slip;          // 3.4
 el_slot_y1 = el_tray_w/2 + el_slip;        // 40.4 — slot outer edge
+// Rail inner face (X). This is the SLOT's inner face, i.e. there is deliberately no cheek
+// standing in front of the tray any more. It used to be 54, giving a 2.3 mm cheek over
+// |Y| 33..44 — and the board standoffs, which protrude standoff_h inboard of the plate,
+// swept straight through it as the tray slid down: 519.5 mm3 of solid interference, so the
+// tray could not be installed at all. The standoffs cannot move out of the way: clearing a
+// cheek at rail_y0 = 33 needs every hole centre inside |Y| <= 29, which the three boards do
+// not fit into (the ESP32's 48 mm hole pitch alone spans ±24 about its own centre, and its
+// 52 mm outline then leaves 14 mm at each side for boards that are 19 and 21 wide). Nor can
+// the rails move outboard: the bay slots BETWEEN the leg bosses, whose nearest edge is
+// 37.6° off the sector axis, and a rail clearing standoffs at |Y| 41 would sit past 44°.
+// So the space goes to the standoffs. What still locates the tray: the slot's outer wall,
+// the slot floor at el_z0, the 40.4..44 lateral stop, and the service panel, which is
+// fitted before the tray and pins it. What is given up is inboard retention along the
+// plate's width — the tray can be pushed toward the motor, which is 26 mm away.
+// Written after el_slot_w on purpose: a forward reference at OpenSCAD top level resolves
+// to undef, silently.
+rail_x0    = el_x - el_slot_w/2;   // 56.3
 // service window in the Ø160 wall + its removable panel
 panel_w     = 46;              // window width (chord)
 panel_z0    = 4;               // window bottom
@@ -1061,9 +1077,16 @@ panel_flange = 2.5;           // inner flange width — the panel cannot fall ou
 dc_jack_d   = 8;
 usb_slot    = [12, 6];
 // boards (VERIFY against your actual modules — hole patterns differ per vendor)
-esp_c = [-13,  0];  esp_holes = [48, 24];
-drv_c = [ 27, 10];  drv_holes = [15, 10];
-hx_c  = [ 27,-10];  hx_holes  = [17, 11];
+// Board centres are nudged so that NO standoff (Ø8, so ±4 about its hole) hangs off the
+// plate. Before: the ESP pair reached |Y| 41 against a plate edge at 40 — 1 mm of each
+// column in free air on a flat print, and it also fouled the 40.4..44 lateral stop. The
+// bottom row reached local y -19.5 against a plate edge at -19 and dipped 0.5 mm through
+// the slot floor into base_sole (measured: 17.6 mm3 in two lumps, not the whole row), so
+// the tray could not reach its seat even with the cheek gone. Hole PITCHES are physical
+// and untouched; only the centres move.
+esp_c = [-11,  0];  esp_holes = [48, 24];   // standoffs now reach |Y| 39 < 40
+drv_c = [ 27,  9.5]; drv_holes = [15, 10];  // top row now reaches y 18.5 < 19
+hx_c  = [ 27, -9];  hx_holes  = [17, 11];   // bottom row now reaches y -18.5 > -19
 standoff_d = 8; standoff_h = 4; standoff_hole = 2.3;   // Ø2.3 → M2.5 self-tap
 
 // vertical U-channel rails the tray slides DOWN into. Clipped to the bore so their outer

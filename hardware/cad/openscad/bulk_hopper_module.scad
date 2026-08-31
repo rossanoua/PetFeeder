@@ -881,12 +881,20 @@ tray_t   = 2.5;   // tray wall / floor
 tray_rim = 3;     // low rim so kibble does not bounce out
 bowl_cx  = 98;    // tray centre x. Back = 98 − 75 = 23, so the outlet (x25..36) drops
                   //   fully INSIDE the tray with 2 mm to spare.
-// The scallop. niche_z0 is 4, NOT 0: the base now has a real FLOOR (base_sole) at z0..3
-// that carries the load cell, and the niche must not eat it. niche_h is 40, NOT 58:
+// The scallop. niche_z0 is 3, NOT 0: the base has a real FLOOR (base_sole) at z0..3 that
+// carries the load cell, and the niche must not eat it — so the cut starts exactly at the
+// floor's TOP face. It was 4, which left a 1 mm lip of wall standing at z3..4 right where
+// the cell beam passes: the beam's underside rests on the sole at lc_z = 3, so it had to
+// go THROUGH that lip. Measured as a constant 38.9 mm3 at x 76.69..80, y ±6.35, z 3..4 at
+// every point along the insertion path — constant, i.e. it never fitted at all, rather
+// than catching on the way in. Keep this equal to sole_t; it cannot be written as
+// `niche_z0 = sole_t` because sole_t is defined further down and OpenSCAD resolves a
+// forward reference to undef, silently.
+// niche_h is 40, NOT 58:
 // at 58 the scallop cut straight through the DISC (z43..48) — it destroyed the food
 // outlet AND the anti-rotation key collar, and left the housing's front half sitting on
 // nothing. Keeping the niche under the disc restores all three.
-niche_z0 = 4;
+niche_z0 = 3;    // = sole_t — the scallop starts at the floor top (see above)
 niche_h  = 40;    // scallop top — under the disc (43), so the disc is the tray's roof
 niche_cl = 8;     // clearance around the tray (scallop Ø = tray_d + niche_cl)
 // [Base sole] — an annular floor so the tower has a footprint AND something to bolt the
